@@ -1,0 +1,287 @@
+/*
+  Copyright 2012-present Appium Committers
+  <p>
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+  <p>
+  http://www.apache.org/licenses/LICENSE-2.0
+  <p>
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+ */
+
+package io.appium.settings;
+
+import android.app.Service;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.location.Location;
+import android.location.LocationManager;
+import android.location.LocationProvider;
+import android.location.provider.ProviderProperties;
+import android.os.Build;
+import android.os.IBinder;
+import android.os.Process;
+import android.util.Log;
+
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+
+import androidx.annotation.Nullable;
+import io.appium.settings.helpers.NotificationHelpers;
+import io.appium.settings.helpers.PlayServicesHelpers;
+import io.appium.settings.location.FusedLocationProvider;
+import io.appium.settings.location.LocationBuilder;
+import io.appium.settings.location.LocationManagerProvider;
+import io.appium.settings.location.MockLocationProvider;
+
+public class LocationService extends Service {
+    private static final String TAG = "MOCKED LOCATION SERVICE";
+
+    private static final long UPDATE_INTERVAL_MS = 2000L;
+
+    private final List<MockLocationProvider> mockLocationProviders = new LinkedList<>();
+    // Runs location updates on a single, low-priority background thread so that the
+    // recurring mock location IPC calls do not compete for CPU with time-sensitive
+    // foreground work (e.g. camera/video encoding) running on the device under test.
+    // https://github.com/appium/io.appium.settings/issues/208
+    private final ScheduledThreadPoolExecutor locationUpdatesExecutor = createLocationUpdatesExecutor();
+    private ScheduledFuture<?> locationUpdateFuture;
+
+    private static ScheduledThreadPoolExecutor createLocationUpdatesExecutor() {
+        ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1, new BackgroundThreadFactory());
+        // Without this, a cancelled task stays in the executor's queue until its
+        // delay elapses, so repeated setGeoLocation() calls could otherwise pile up
+        // stale entries there.
+        executor.setRemoveOnCancelPolicy(true);
+        return executor;
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        initializeLocationProviders();
+        enableLocationProviders();
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        for (String p : new String[]{"android.permission.ACCESS_FINE_LOCATION"}) {
+            if (getApplicationContext().checkCallingOrSelfPermission(p)
+                    != PackageManager.PERMISSION_GRANTED) {
+                Log.e(TAG, String.format("Cannot mock location due to missing permission '%s'", p));
+                stopSelf();
+                return START_NOT_STICKY;
+            }
+        }
+
+        // https://stackoverflow.com/a/45047542
+        // https://developer.android.com/about/versions/oreo/android-8.0-changes.html
+        finishForegroundSetup();
+
+        if (intent == null) {
+            Log.w(TAG, "Null intent received. Stopping mock location service");
+            stopForeground(true);
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+
+        handleIntent(intent);
+
+        return START_STICKY;
+    }
+
+    @Override
+    public void onDestroy() {
+        Log.i(TAG, "Shutting down MockLocationService");
+        locationUpdatesExecutor.shutdownNow();
+        disableLocationProviders();
+        stopForeground(true);
+        super.onDestroy();
+    }
+
+    private void handleIntent(Intent intent) {
+        Log.i(TAG, "INTENT " + intent.getExtras());
+
+        scheduleLocationUpdate(intent);
+    }
+
+    private void enableLocationProviders() {
+        for (MockLocationProvider mockLocationProvider : mockLocationProviders) {
+            try {
+                mockLocationProvider.enable();
+            } catch (Exception e) {
+                Log.e(TAG, String.format("Couldn't enable location provider: '%s'",
+                        mockLocationProvider.getProviderName()));
+            }
+        }
+    }
+
+    private void disableLocationProviders() {
+        for (MockLocationProvider mockLocationProvider : mockLocationProviders) {
+            try {
+                mockLocationProvider.disable();
+            } catch (Exception e) {
+                Log.e(TAG, String.format("Could not disable location provider: '%s'",
+                        mockLocationProvider.getProviderName()));
+            }
+        }
+    }
+
+    private void initializeLocationProviders() {
+        LocationManager locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+        mockLocationProviders.clear();
+        mockLocationProviders.addAll(createMockProviders(locationManager));
+        try {
+            if (PlayServicesHelpers.isAvailable(this)) {
+                Log.d(TAG, "Adding FusedLocationProvider");
+                mockLocationProviders.add(createFusedLocationProvider());
+            }
+        } catch (Exception | LinkageError e) {
+            // Google Play Services is optional; never let a failure here prevent
+            // the plain Android LocationManager-based providers above from working.
+            // LinkageError (e.g. NoSuchMethodError/NoClassDefFoundError) can surface
+            // from a broken or mismatched Play Services runtime, not just Exception.
+            Log.e(TAG, "Could not add FusedLocationProvider", e);
+        }
+        Log.d(TAG, String.format("Created mock providers: %s", mockLocationProviders.toString()));
+    }
+
+    private void scheduleLocationUpdate(final Intent intent) {
+        Log.i(TAG, "Scheduling mock location updates");
+
+        // If we run 'startservice' again we should schedule an update right away to avoid a delay
+        if (locationUpdateFuture != null) {
+            locationUpdateFuture.cancel(false);
+        }
+
+        Runnable locationUpdateTask = () -> {
+            for (MockLocationProvider mockLocationProvider : mockLocationProviders) {
+                Location location = LocationBuilder.buildFromIntent(intent, mockLocationProvider.getProviderName());
+                Log.d(TAG, String.format("Setting location of '%s' to '%s'", mockLocationProvider.getProviderName(), location));
+                try {
+                    mockLocationProvider.setLocation(location);
+                } catch (Exception e) {
+                    Log.e(TAG, String.format("Could not set location for '%s'",
+                            mockLocationProvider.getProviderName()), e);
+                }
+            }
+        };
+
+        locationUpdateFuture = locationUpdatesExecutor.scheduleWithFixedDelay(
+                locationUpdateTask, 0, UPDATE_INTERVAL_MS, TimeUnit.MILLISECONDS);
+    }
+
+    /**
+     * Runs its threads at background priority so periodic mock location updates
+     * do not contend for CPU with time-sensitive foreground work on the device.
+     */
+    private static class BackgroundThreadFactory implements ThreadFactory {
+        @Override
+        public Thread newThread(Runnable r) {
+            return new Thread(() -> {
+                Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+                r.run();
+            }, "LocationUpdateThread");
+        }
+    }
+
+    private List<MockLocationProvider> createMockProviders(LocationManager locationManager) {
+        List<String> providers = locationManager.getAllProviders();
+        List<MockLocationProvider> mockProviders = new LinkedList<>();
+        for (String providerName : providers) {
+            // The passive provider is not required to be mocked.
+            if (providerName.equals(LocationManager.PASSIVE_PROVIDER)) {
+                continue;
+            }
+            MockLocationProvider mockProvider = createLocationManagerMockProvider(locationManager, providerName);
+            if (mockProvider == null) {
+                Log.e(TAG, String.format("Could not create mock provider for '%s'", providerName));
+                continue;
+            }
+            mockProviders.add(mockProvider);
+        }
+        return mockProviders;
+    }
+
+    /**
+     * Creates a mock location provider based on the given provider name.
+     *
+     * @param locationManager the location manager
+     * @param providerName    the name of the provider
+     * @return a MockLocationProvider if the provider exists, otherwise null
+     */
+    @Nullable
+    private MockLocationProvider createLocationManagerMockProvider(LocationManager locationManager, String providerName) {
+        if (providerName == null) {
+            return null;
+        }
+        // API level check for existence of provider properties
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) { // API level 31 and above
+            ProviderProperties providerProperties = locationManager.getProviderProperties(providerName);
+            if (providerProperties == null) {
+                return null;
+            }
+            return new LocationManagerProvider(
+                    locationManager,
+                    providerName,
+                    providerProperties.hasNetworkRequirement(),
+                    providerProperties.hasSatelliteRequirement(),
+                    providerProperties.hasCellRequirement(),
+                    providerProperties.hasMonetaryCost(),
+                    providerProperties.hasAltitudeSupport(),
+                    providerProperties.hasSpeedSupport(),
+                    providerProperties.hasBearingSupport(),
+                    providerProperties.getPowerUsage(),
+                    providerProperties.getAccuracy()
+            );
+        }
+        LocationProvider provider = locationManager.getProvider(providerName);
+        if (provider == null) {
+            return null;
+        }
+        return new LocationManagerProvider(
+                locationManager,
+                provider.getName(),
+                provider.requiresNetwork(),
+                provider.requiresSatellite(),
+                provider.requiresCell(),
+                provider.hasMonetaryCost(),
+                provider.supportsAltitude(),
+                provider.supportsSpeed(),
+                provider.supportsBearing(),
+                provider.getPowerRequirement(),
+                provider.getAccuracy()
+        );
+    }
+
+
+    private FusedLocationProvider createFusedLocationProvider() {
+        FusedLocationProviderClient locationProviderClient = LocationServices.getFusedLocationProviderClient(this);
+        return new FusedLocationProvider(locationProviderClient, this);
+    }
+
+    private void finishForegroundSetup() {
+        startForeground(NotificationHelpers.APPIUM_NOTIFICATION_IDENTIFIER,
+                NotificationHelpers.getNotification(this));
+        Log.d(TAG, "After start foreground");
+    }
+}

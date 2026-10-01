@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json.schemastore.org/lerna",
+  "changelogPreset": {
+    "name": "./scripts/changelog-preset.mjs",
+    "types": [
+      {
+        "type": "feat",
+        "section": "Features"
+      },
+      {
+        "type": "fix",
+        "section": "Bug Fixes"
+      },
+      {
+        "type": "perf",
+        "section": "Performance Improvements"
+      },
+      {
+        "type": "revert",
+        "section": "Reverts"
+      },
+      {
+        "type": "refactor",
+        "section": "Code Refactoring"
+      },
+      {
+        "type": "chore",
+        "scope": "deps",
+        "section": "Miscellaneous Chores"
+      },
+      {
+        "type": "chore",
+        "scope": "deps-dev",
+        "section": "Miscellaneous Chores"
+      }
+    ]
+  },
+  "packages": ["packages/*"],
+  "command": {
+    "publish": {
+      "message": "chore: publish"
+    },
+    "run": {
+      "concurrency": 8
+    },
+    "version": {
+      "conventionalCommits": true,
+      "createRelease": "github",
+      "allowBranch": ["main"],
+      "exact": true
+    }
+  },
+  "ignoreChanges": ["**/test/**", "**/*.md"],
+  "useNx": false,
+  "version": "independent"
+}
