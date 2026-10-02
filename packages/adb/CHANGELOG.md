@@ -1,3 +1,15 @@
+# Change Log
+
+All notable changes to this project will be documented in this file.
+See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
+## 16.1.0 (2026-10-02)
+
+### Features
+
+* move appium-adb into packages/adb ([#12](https://github.com/appium/appium-android/issues/12)) ([50f5880](https://github.com/appium/appium-android/commit/50f588086efda73655a2282efde26621f0319a65))
+
+
 ## [16.0.9](https://github.com/appium/appium-adb/compare/v16.0.8...v16.0.9) (2026-09-26)
 
 ### Bug Fixes

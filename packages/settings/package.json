@@ -1,6 +1,6 @@
 {
   "name": "io.appium.settings",
-  "version": "8.3.1",
+  "version": "8.4.0",
   "description": "App for dealing with Android settings",
   "keywords": [
     "android",
@@ -60,7 +60,7 @@
     "@appium/types": "^1.0.0-rc.1",
     "@types/node": "^26.0.0",
     "@types/sinon": "^22.0.0",
-    "appium-adb": "^16.0.0",
+    "appium-adb": "^16.1.0",
     "sinon": "^22.0.0"
   },
   "engines": {

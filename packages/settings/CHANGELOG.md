@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [8.4.0](https://github.com/appium/appium-android/compare/io.appium.settings@8.3.1...io.appium.settings@8.4.0) (2026-10-02)
+
+### Features
+
+* move appium-adb into packages/adb ([#12](https://github.com/appium/appium-android/issues/12)) ([50f5880](https://github.com/appium/appium-android/commit/50f588086efda73655a2282efde26621f0319a65))
+
+
 ## [8.3.1](https://github.com/appium/appium-android/compare/io.appium.settings@8.3.0...io.appium.settings@8.3.1) (2026-10-02)
 
 **Note:** Version bump only for package io.appium.settings
