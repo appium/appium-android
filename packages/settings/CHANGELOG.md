@@ -1,3 +1,15 @@
+# Change Log
+
+All notable changes to this project will be documented in this file.
+See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
+## 8.3.0 (2026-10-02)
+
+### Features
+
+* set up lerna monorepo and move io.appium.settings into packages/settings ([#1](https://github.com/appium/appium-android/issues/1)) ([4e7495c](https://github.com/appium/appium-android/commit/4e7495c33063c833b0a3d6ab9f897536c0268ba4))
+
+
 ## [8.2.1](https://github.com/appium/io.appium.settings/compare/v8.2.0...v8.2.1) (2026-09-28)
 
 ### Miscellaneous Chores
