@@ -62,5 +62,25 @@ describe('android manifest', function () {
       assert.strictEqual(platformAndPath.platform, 'android-25');
       assert.strictEqual(platformAndPath.platformPath, path.resolve(ANDROID_HOME, 'platforms', 'android-25'));
     });
+
+    it('should compare API levels numerically', async function () {
+      const ANDROID_HOME = '/path/to/android/home';
+
+      mocks.fs
+        .expects('glob')
+        .returns([
+          path.resolve(ANDROID_HOME, 'platforms', 'android-9', 'build.prop'),
+          path.resolve(ANDROID_HOME, 'platforms', 'android-36', 'build.prop'),
+        ]);
+      mocks.fs
+        .expects('readFile')
+        .exactly(2)
+        .onCall(0)
+        .returns('ro.build.version.sdk=9')
+        .onCall(1)
+        .returns('ro.build.version.sdk=36');
+      const platformAndPath = await getAndroidPlatformAndPath(ANDROID_HOME);
+      assert.strictEqual(platformAndPath.platform, 'android-36');
+    });
   });
 });

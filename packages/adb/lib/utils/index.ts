@@ -14,6 +14,7 @@ export const getSdkRootFromEnv = helpers.getSdkRootFromEnv;
 export const requireSdkRoot = helpers.requireSdkRoot;
 export const getJavaHome = helpers.getJavaHome;
 export const getJavaForOs = helpers.getJavaForOs;
+export const redactSecrets = helpers.redactSecrets;
 
 export const memoize = util.memoize;
 export const cloneDeep = lodash.cloneDeep;

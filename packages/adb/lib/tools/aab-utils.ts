@@ -52,40 +52,40 @@ export async function extractUniversalApk(this: ADB, aabPath: string, opts: ApkC
 
   const aabName = path.basename(aabPath);
   const apkName = aabName.substring(0, aabName.length - path.extname(aabName).length) + '.apk';
-  const tmpRoot = await tempDir.openDir();
-  const tmpApksPath = path.join(tmpRoot, `${aabName}.apks`);
-  try {
-    return await AAB_CACHE_GUARD.acquire(aabPath, async () => {
-      const aabHash = await fs.hash(aabPath);
-      const {keystore, keystorePassword, keyAlias, keyPassword} = opts;
-      let cacheHash = aabHash;
-      if (keystore) {
-        if (!(await fs.exists(keystore))) {
-          throw new Error(`The keystore file at '${keystore}' either does not exist or is not accessible`);
-        }
-        if (!keystorePassword || !keyAlias || !keyPassword) {
-          throw new Error(
-            'It is mandatory to also provide keystore password, key alias, ' +
-              'and key password if the keystore path is set',
-          );
-        }
-        const keystoreHash = await fs.hash(keystore);
-        const keyAliasHash = crypto.createHash('sha1');
-        keyAliasHash.update(keyAlias);
-        cacheHash = [cacheHash, keystoreHash, keyAliasHash.digest('hex')].join(':');
+  return await AAB_CACHE_GUARD.acquire(aabPath, async () => {
+    const aabHash = await fs.hash(aabPath);
+    const {keystore, keystorePassword, keyAlias, keyPassword} = opts;
+    let cacheHash = aabHash;
+    if (keystore) {
+      if (!(await fs.exists(keystore))) {
+        throw new Error(`The keystore file at '${keystore}' either does not exist or is not accessible`);
       }
-      log.debug(`Calculated the cache key for '${aabPath}': ${cacheHash}`);
-      if (AAB_CACHE.has(cacheHash)) {
-        const cachedRoot = AAB_CACHE.get(cacheHash);
-        if (cachedRoot) {
-          const resultPath = path.resolve(cachedRoot, apkName);
-          if (await fs.exists(resultPath)) {
-            return resultPath;
-          }
-        }
-        AAB_CACHE.delete(cacheHash);
+      if (!keystorePassword || !keyAlias || !keyPassword) {
+        throw new Error(
+          'It is mandatory to also provide keystore password, key alias, ' +
+            'and key password if the keystore path is set',
+        );
       }
+      const keystoreHash = await fs.hash(keystore);
+      const keyAliasHash = crypto.createHash('sha1');
+      keyAliasHash.update(keyAlias);
+      cacheHash = [cacheHash, keystoreHash, keyAliasHash.digest('hex')].join(':');
+    }
+    log.debug(`Calculated the cache key for '${aabPath}': ${cacheHash}`);
+    if (AAB_CACHE.has(cacheHash)) {
+      const cachedRoot = AAB_CACHE.get(cacheHash);
+      if (cachedRoot) {
+        const resultPath = path.resolve(cachedRoot, apkName);
+        if (await fs.exists(resultPath)) {
+          return resultPath;
+        }
+      }
+      AAB_CACHE.delete(cacheHash);
+    }
 
+    const tmpRoot = await tempDir.openDir();
+    const tmpApksPath = path.join(tmpRoot, `${aabName}.apks`);
+    try {
       await this.initAapt2();
       const binaries = this.binaries as StringRecord;
       const args = [
@@ -141,9 +141,9 @@ export async function extractUniversalApk(this: ADB, aabPath: string, opts: ApkC
       await fs.mv(universalApkPath, resultPath);
       AAB_CACHE.set(cacheHash, tmpRoot);
       return resultPath;
-    });
-  } catch (e) {
-    await fs.rimraf(tmpRoot);
-    throw e;
-  }
+    } catch (e) {
+      await fs.rimraf(tmpRoot);
+      throw e;
+    }
+  });
 }

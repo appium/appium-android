@@ -7,7 +7,7 @@ import {exec, type ExecError} from 'teen_process';
 
 import type {ADB} from '../adb.js';
 import {log} from '../logger.js';
-import {APKS_EXTENSION, getJavaForOs, getJavaHome, getResourcePath} from '../utils/index.js';
+import {APKS_EXTENSION, getJavaForOs, getJavaHome, getResourcePath, redactSecrets} from '../utils/index.js';
 import type {StringRecord, SignedAppCacheValue, CertCheckOptions, KeystoreHash} from './types.js';
 
 const DEFAULT_PRIVATE_KEY = path.join('keys', 'testkey.pk8');
@@ -37,7 +37,7 @@ const SIGNED_APPS_CACHE = new LRUCache<string, SignedAppCacheValue>({
 export async function executeApksigner(this: ADB, args: string[]): Promise<string> {
   const apkSignerJar = await getApksignerForOs.bind(this)();
   const fullCmd = [await getJavaForOs(), '-Xmx1024M', '-Xss1m', '-jar', apkSignerJar, ...args];
-  log.debug(`Starting apksigner: ${util.quote(fullCmd)}`);
+  log.debug(`Starting apksigner: ${util.quote(redactSecrets(fullCmd))}`);
   // It is necessary to specify CWD explicitly; see https://github.com/appium/appium/issues/14724#issuecomment-737446715
   const {stdout, stderr} = await exec(fullCmd[0], fullCmd.slice(1), {
     cwd: path.dirname(apkSignerJar),
@@ -152,7 +152,7 @@ export async function signWithCustomCert(this: ADB, apk: string): Promise<void> 
         apk,
         this.keyAlias as string,
       ];
-      log.debug(`Starting jarsigner: ${util.quote(fullCmd)}`);
+      log.debug(`Starting jarsigner: ${util.quote(redactSecrets(fullCmd))}`);
       await exec(fullCmd[0], fullCmd.slice(1));
     } catch (e) {
       const execErr = e as ExecError;
@@ -348,7 +348,7 @@ export async function getKeystoreHash(this: ADB): Promise<KeystoreHash> {
     '-storepass',
     this.keystorePassword as string,
   ];
-  log.info(`Running '${keytool}' with arguments: ${util.quote(args)}`);
+  log.info(`Running '${keytool}' with arguments: ${util.quote(redactSecrets(args))}`);
   try {
     const {stdout} = await exec(keytool, args);
     const result: KeystoreHash = {};

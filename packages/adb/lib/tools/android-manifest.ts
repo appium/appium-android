@@ -257,7 +257,7 @@ export async function getAndroidPlatformAndPath(sdkRoot: string): Promise<Platfo
     };
   }
 
-  const recentSdkVersion = Object.keys(platformsMapping).sort().reverse()[0];
+  const recentSdkVersion = Math.max(...Object.keys(platformsMapping).map(Number));
   const result = platformsMapping[recentSdkVersion];
   log.debug(`Found the most recent Android platform: ${JSON.stringify(result)}`);
   return result;

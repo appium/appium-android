@@ -7,7 +7,7 @@ import {exec} from 'teen_process';
 
 import type {ADB} from '../adb.js';
 import {log} from '../logger.js';
-import {APK_INSTALL_TIMEOUT, buildInstallArgs, getJavaForOs, unzipFile} from '../utils/index.js';
+import {APK_INSTALL_TIMEOUT, buildInstallArgs, getJavaForOs, redactSecrets, unzipFile} from '../utils/index.js';
 import type {InstallMultipleApksOptions, InstallApksOptions, StringRecord} from './types.js';
 
 const BASE_APK = 'base-master.apk';
@@ -50,14 +50,14 @@ export async function execBundletool(this: ADB, args: string[], errorMsg: string
   await this.initBundletool();
   const binaries = this.binaries as StringRecord;
   args = ['-jar', binaries.bundletool, ...args];
-  const env = process.env;
+  const env = {...process.env};
   if (this.adbPort) {
     env.ANDROID_ADB_SERVER_PORT = `${this.adbPort}`;
   }
   if (this.adbHost) {
     env.ANDROID_ADB_SERVER_HOST = this.adbHost;
   }
-  log.debug(`Executing bundletool with arguments: ${JSON.stringify(args)}`);
+  log.debug(`Executing bundletool with arguments: ${JSON.stringify(redactSecrets(args))}`);
   let stdout: string;
   try {
     ({stdout} = await exec(await getJavaForOs(), args, {
