@@ -35,7 +35,7 @@ By default the functional tests use an avd named `NEXUS_S_18_X86`, with API Leve
 necessary to set `API_LEVEL` as it will be inferred.
 
 ```bash
-npm run e2e-test
+npm run test:e2e
 ```
 
 ## Usage:

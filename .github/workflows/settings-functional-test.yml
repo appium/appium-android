@@ -3,7 +3,7 @@ name: io.appium.settings Functional Tests
 on:
   pull_request:
     branches: [main]
-    paths: ['packages/settings/**', '.github/workflows/settings-functional-test.yml', '.github/workflows/emulator-matrix.yml']
+    paths: ['packages/settings/**', 'packages/adb/**', '.github/workflows/settings-functional-test.yml', '.github/workflows/emulator-matrix.yml']
 
 permissions:
   contents: read
