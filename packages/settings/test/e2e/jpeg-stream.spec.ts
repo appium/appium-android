@@ -102,9 +102,10 @@ describe('JPEG Streaming', function () {
       return;
     }
     try {
-      if (await session.isRunning()) {
-        await session.stop();
-      }
+      // Unconditional: a start() that timed out can still bring the service up afterwards
+      await adb.shell(['am', 'start', '-n', STREAMING_ACTIVITY_NAME, '-a', JPEG_STREAM_ACTION_STOP]).catch(() => {});
+      await session.stop();
+      await waitForCondition(async () => !(await session.isRunning()), {waitMs: 10000, intervalMs: 300});
     } catch {
       // Ignore cleanup errors
     }

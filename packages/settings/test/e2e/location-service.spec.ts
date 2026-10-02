@@ -12,8 +12,9 @@ import {getSettingsApkPath} from '../../lib/utils/index.js';
 
 const SERVICE_STARTUP_TIMEOUT_MS = 10000;
 // LocationService pushes updates every 2s (see app/src/main/java/io/appium/settings/LocationService.java),
-// so the cache needs at least that long to reflect a freshly requested location.
-const LOCATION_UPDATE_TIMEOUT_MS = 15000;
+// so the cache needs at least that long. A single `am broadcast` can also block ~30s on a busy
+// emulator, which eats the whole budget, so leave room for one slow call.
+const LOCATION_UPDATE_TIMEOUT_MS = 45000;
 
 async function isLocationServiceRunning(adb: ADB): Promise<boolean> {
   const stdout = await adb.shell(['dumpsys', 'activity', 'services', LOCATION_SERVICE]);

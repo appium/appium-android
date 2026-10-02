@@ -7,7 +7,7 @@ import {waitForCondition} from 'asyncbox';
 
 import {SettingsApp} from '../../lib/client.js';
 import type {AccessUnit} from '../../lib/commands/types.js';
-import {SETTINGS_HELPER_ID} from '../../lib/constants.js';
+import {SETTINGS_HELPER_ID, STREAMING_ACTIVITY_NAME, VIDEO_STREAM_ACTION_STOP} from '../../lib/constants.js';
 import {getSettingsApkPath} from '../../lib/utils/index.js';
 
 // `fixed-to-user-rotation` (API 30+) overrides the foreground app's own orientation request
@@ -77,9 +77,10 @@ describe('Video Streaming', function () {
       return;
     }
     try {
-      if (await session.isRunning()) {
-        await session.stop();
-      }
+      // Unconditional: a start() that timed out can still bring the service up afterwards
+      await adb.shell(['am', 'start', '-n', STREAMING_ACTIVITY_NAME, '-a', VIDEO_STREAM_ACTION_STOP]).catch(() => {});
+      await session.stop();
+      await waitForCondition(async () => !(await session.isRunning()), {waitMs: 10000, intervalMs: 300});
     } catch {
       // Ignore cleanup errors
     }
