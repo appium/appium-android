@@ -64,9 +64,28 @@ jobs:
           dry_run: ${{ inputs.dry_run || false }}
           recover_missing_only: ${{ inputs.recover_missing_only || false }}
 
-      - name: Upload settings APK to the GitHub release
-        if: steps.run-lerna-publish.outputs.settings_release_tag != ''
+      # Runs on every non-dry run (not just after a publish) so a failed upload is retried by
+      # the next run, including recovery runs that find nothing missing on npm.
+      - name: Ensure settings APK is attached to its GitHub release
+        if: ${{ !(inputs.dry_run || false) }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ steps.run-lerna-publish.outputs.settings_release_tag }}
-        run: gh release upload "$RELEASE_TAG" packages/settings/apks/settings_apk-debug.apk --clobber
+        run: |
+          set -euo pipefail
+          apk_name=settings_apk-debug.apk
+          tag="io.appium.settings@$(jq -r .version packages/settings/package.json)"
+
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            echo "No GitHub release for ${tag}; nothing to attach the APK to"
+            exit 0
+          fi
+          if gh release view "$tag" --json assets --jq '.assets[].name' | grep -qx "$apk_name"; then
+            echo "${tag} already has ${apk_name}"
+            exit 0
+          fi
+
+          # prepublishOnly leaves the APK behind after a publish; rebuild only if it's missing
+          if [ ! -f "packages/settings/apks/${apk_name}" ]; then
+            npm run build:apk --workspace io.appium.settings
+          fi
+          gh release upload "$tag" "packages/settings/apks/${apk_name}"
