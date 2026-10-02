@@ -25,6 +25,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.util.DisplayMetrics;
 import android.util.Log;
+import android.view.Display;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -103,7 +104,17 @@ public abstract class StreamingSession implements Runnable {
 
                 @Override
                 public void onDisplayChanged(int displayId) {
-                    DisplayMetrics metrics = appContext.getResources().getDisplayMetrics();
+                    if (displayId != Display.DEFAULT_DISPLAY) {
+                        return;
+                    }
+                    // Not appContext.getResources(): it can still hold the pre-rotation size
+                    // when this fires, and no further callback would follow to correct it.
+                    Display display = displayManager.getDisplay(displayId);
+                    if (display == null) {
+                        return;
+                    }
+                    DisplayMetrics metrics = new DisplayMetrics();
+                    display.getRealMetrics(metrics);
                     notifyIfChanged(metrics.widthPixels, metrics.heightPixels);
                 }
             };

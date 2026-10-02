@@ -14,7 +14,7 @@ import {
 import {StreamTrack, StreamTransport, validateLocalPortOpts} from '../utils/index.js';
 import type {AccessUnit, StartVideoStreamOpts} from './types.js';
 
-const STREAM_STARTUP_TIMEOUT_MS = 3 * 1000;
+const STREAM_STARTUP_TIMEOUT_MS = 10 * 1000;
 const STREAM_STOP_TIMEOUT_MS = 3 * 1000;
 
 /**
