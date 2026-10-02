@@ -1,0 +1,77 @@
+/*
+  Copyright 2012-present Appium Committers
+  <p>
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+  <p>
+  http://www.apache.org/licenses/LICENSE-2.0
+  <p>
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+ */
+
+package io.appium.settings.handlers;
+
+import android.content.Context;
+import android.content.res.Configuration;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Locale;
+
+public class LocaleSettingHandler extends AbstractSettingHandler {
+    private static final String CHANGE_CONFIGURATION = "android.permission.CHANGE_CONFIGURATION";
+
+    public LocaleSettingHandler(Context context) {
+        super(context, CHANGE_CONFIGURATION);
+    }
+
+    public void setLocale(Locale locale) throws ReflectiveOperationException {
+        if (!hasPermissions()) {
+            throw new IllegalStateException(
+                    "The settings app does not have enough permissions to change the device configuration"
+            );
+        }
+        setLocaleWith(locale);
+    }
+
+    private void setLocaleWith(Locale locale) throws ReflectiveOperationException {
+        Class<?> activityManagerNativeClass = Class.forName("android.app.ActivityManagerNative");
+
+        Method methodGetDefault = activityManagerNativeClass.getMethod("getDefault");
+        methodGetDefault.setAccessible(true);
+        Object amn = methodGetDefault.invoke(activityManagerNativeClass);
+
+        activityManagerNativeClass = Class.forName(amn.getClass().getName());
+
+        Method methodGetConfiguration = activityManagerNativeClass.getMethod("getConfiguration");
+        methodGetConfiguration.setAccessible(true);
+        Configuration config = (Configuration) methodGetConfiguration.invoke(amn);
+
+        Class<?> configClass = config.getClass();
+        Field f = configClass.getField("userSetLocale");
+        f.setBoolean(config, true);
+
+        config.locale = locale;
+        config.setLayoutDirection(locale);
+
+        Method methodUpdateConfiguration = activityManagerNativeClass.getMethod(
+                "updateConfiguration", Configuration.class);
+        methodUpdateConfiguration.setAccessible(true);
+        methodUpdateConfiguration.invoke(amn, config);
+    }
+
+    @Override
+    protected boolean setState(boolean state) {
+        return false;
+    }
+
+    @Override
+    protected String getSettingDescription() {
+        return "locale";
+    }
+}
