@@ -2,5 +2,5 @@ import appiumConfig, {defineConfig, ignorePatterns} from '@appium/oxc-config/oxl
 
 export default defineConfig({
   extends: [appiumConfig],
-  ignorePatterns,
+  ignorePatterns: [...ignorePatterns, 'packages/adb/keys/**'],
 });

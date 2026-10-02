@@ -1,0 +1,66 @@
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import {describe, it, before, beforeEach, afterEach} from 'node:test';
+
+import {fs, tempDir} from '@appium/support';
+
+import {ADB} from '../../lib/adb.js';
+import {unsignApk} from '../../lib/tools/apk-signing.js';
+import {FIXTURES_ROOT} from '../constants.js';
+import {getApiDemosPath} from './setup.js';
+
+const keystorePath = path.resolve(FIXTURES_ROOT, 'appiumtest.keystore');
+const keyAlias = 'appiumtest';
+
+describe('Apk-signing', function () {
+  let adb: ADB;
+  let tmpDir: string;
+  let apiDemosPath: string;
+
+  before(async function () {
+    adb = await ADB.createADB();
+    apiDemosPath = await getApiDemosPath();
+  });
+
+  beforeEach(async function () {
+    tmpDir = await tempDir.openDir();
+  });
+
+  afterEach(async function () {
+    if (tmpDir) {
+      await fs.rimraf(tmpDir);
+    }
+  });
+
+  it('checkApkCert should return false for unsigned apk', async function () {
+    const apkCopy = path.resolve(tmpDir, path.basename(apiDemosPath));
+    await fs.copyFile(apiDemosPath, apkCopy);
+    await unsignApk(apkCopy);
+    assert.strictEqual(await adb.checkApkCert(apkCopy), false);
+  });
+  it('checkApkCert should return true for signed apk', async function () {
+    // ApiDemos APK is signed but not with the default Appium certificate
+    // So we check with requireDefaultCert: false to verify it's signed
+    assert.strictEqual(await adb.checkApkCert(apiDemosPath, {requireDefaultCert: false}), true);
+  });
+  it('signWithDefaultCert should sign apk', async function () {
+    const apkCopy = path.resolve(tmpDir, path.basename(apiDemosPath));
+    await fs.copyFile(apiDemosPath, apkCopy);
+    await unsignApk(apkCopy);
+    await adb.signWithDefaultCert(apkCopy);
+    assert.strictEqual(await adb.checkApkCert(apkCopy), true);
+  });
+  it('signWithCustomCert should sign apk with custom certificate', async function () {
+    const customAdb = await ADB.createADB();
+    const apkCopy = path.resolve(tmpDir, path.basename(apiDemosPath));
+    await fs.copyFile(apiDemosPath, apkCopy);
+    await unsignApk(apkCopy);
+    customAdb.keystorePath = keystorePath;
+    customAdb.keyAlias = keyAlias;
+    customAdb.useKeystore = true;
+    customAdb.keystorePassword = 'android';
+    customAdb.keyPassword = 'android';
+    await customAdb.signWithCustomCert(apkCopy);
+    assert.strictEqual(await customAdb.checkApkCert(apkCopy), true);
+  });
+});
