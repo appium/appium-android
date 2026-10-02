@@ -97,7 +97,9 @@ describe('Location Service', function () {
   });
 
   it('should periodically push the requested location until it is retrievable', async function () {
-    const location: Location = {longitude: -122.4194, latitude: 37.7749, altitude: 10.0};
+    // Must differ from the other tests' coordinates: the tracker's 1m min-distance filter
+    // would drop an update that only changes the altitude, leaving a stale cached location.
+    const location: Location = {longitude: -0.1278, latitude: 51.5074, altitude: 10.0};
     await settingsApp.setGeoLocation(location);
 
     await waitForCondition(() => locationMatches(settingsApp, location), {

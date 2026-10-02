@@ -66,6 +66,8 @@ describe('Video Streaming', function () {
       return;
     }
     session = settingsApp.makeVideoStreamSession();
+    // start() returns false while a previous test's service is still winding down
+    await waitForCondition(async () => !(await session.isRunning()), {waitMs: 10000, intervalMs: 300});
   });
 
   // Runs after every test (pass or fail), not just at suite end, so a failed assertion
@@ -197,7 +199,10 @@ describe('Video Streaming', function () {
         assert.ok(unit.sequence > lastVideoSequence, 'expected strictly increasing video sequence numbers');
         lastVideoSequence = unit.sequence;
         if (unit.isConfig) {
-          firstConfig = unit;
+          firstConfig ??= unit;
+        } else if (firstConfig) {
+          // A data frame after CONFIG means the pipeline is streaming; rotating right after
+          // CONFIG can land before the size-change monitoring is effective.
           break;
         }
         if (Date.now() > beforeRotationDeadline) {

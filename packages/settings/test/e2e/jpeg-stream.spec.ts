@@ -91,6 +91,8 @@ describe('JPEG Streaming', function () {
       return;
     }
     session = settingsApp.makeJpegStreamSession();
+    // start() returns false while a previous test's service is still winding down
+    await waitForCondition(async () => !(await session.isRunning()), {waitMs: 10000, intervalMs: 300});
   });
 
   // Runs after every test (pass or fail), not just at suite end, so a failed assertion
