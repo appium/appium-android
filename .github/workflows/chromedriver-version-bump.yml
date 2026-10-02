@@ -1,0 +1,38 @@
+name: ChromeDriver Version Bump
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+env:
+  API_URL: https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json
+  CD_VERSIONS_MAPPING: packages/chromedriver/config/mapping.json
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump_cd_version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Use Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+      - id: release_check
+        run: |
+          export latest_release=$(curl -sf ${{ env.API_URL }} | jq .channels.Stable.version | tr -d '"' )
+          export did_update=$(node "packages/chromedriver/scripts/update_versions_mapping.mjs" "$latest_release" "${{ env.CD_VERSIONS_MAPPING }}")
+
+          echo "did_update=${did_update}" >> "$GITHUB_OUTPUT"
+          echo "cd_release=${latest_release}" >> "$GITHUB_OUTPUT"
+      - name: pull-request
+        if: steps.release_check.outputs.did_update == '1'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          branch: ${{ steps.release_check.outputs.cd_release }}
+          title: 'chore(chromedriver): ChromeDriver Bump to v${{ steps.release_check.outputs.cd_release }}'
+          body: ''
