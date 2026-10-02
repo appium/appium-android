@@ -1,7 +1,7 @@
 {
   "$schema": "https://json.schemastore.org/lerna",
   "changelogPreset": {
-    "name": "./scripts/changelog-preset.mjs",
+    "name": "conventional-changelog-conventionalcommits",
     "types": [
       {
         "type": "feat",
@@ -25,12 +25,12 @@
       },
       {
         "type": "chore",
-        "scope": "deps",
-        "section": "Miscellaneous Chores"
+        "scope": "deps-dev",
+        "section": "Miscellaneous Chores",
+        "hidden": true
       },
       {
         "type": "chore",
-        "scope": "deps-dev",
         "section": "Miscellaneous Chores"
       }
     ]
@@ -46,8 +46,7 @@
     "version": {
       "conventionalCommits": true,
       "createRelease": "github",
-      "allowBranch": ["main"],
-      "exact": true
+      "allowBranch": ["main"]
     }
   },
   "ignoreChanges": ["**/test/**", "**/*.md"],
