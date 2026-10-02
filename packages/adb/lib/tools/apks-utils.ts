@@ -7,7 +7,14 @@ import {exec} from 'teen_process';
 
 import type {ADB} from '../adb.js';
 import {log} from '../logger.js';
-import {APK_INSTALL_TIMEOUT, buildInstallArgs, getJavaForOs, redactSecrets, unzipFile} from '../utils/index.js';
+import {
+  APK_INSTALL_TIMEOUT,
+  buildInstallArgs,
+  getJavaForOs,
+  redactExecError,
+  redactSecrets,
+  unzipFile,
+} from '../utils/index.js';
 import type {InstallMultipleApksOptions, InstallApksOptions, StringRecord} from './types.js';
 
 const BASE_APK = 'base-master.apk';
@@ -58,16 +65,17 @@ export async function execBundletool(this: ADB, args: string[], errorMsg: string
     env.ANDROID_ADB_SERVER_HOST = this.adbHost;
   }
   log.debug(`Executing bundletool with arguments: ${JSON.stringify(redactSecrets(args))}`);
+  const java = await getJavaForOs();
   let stdout: string;
   try {
-    ({stdout} = await exec(await getJavaForOs(), args, {
+    ({stdout} = await exec(java, args, {
       env,
       timeout: BUNDLETOOL_TIMEOUT_MS,
     }));
     log.debug(`Command stdout: ${util.truncateString(stdout, {length: 300})}`);
     return stdout;
   } catch (e) {
-    const err = e as Error & {stdout?: string; stderr?: string};
+    const err = redactExecError(e, java, args) as Error & {stdout?: string; stderr?: string};
     if (err.stdout) {
       log.debug(`Command stdout: ${err.stdout}`);
     }

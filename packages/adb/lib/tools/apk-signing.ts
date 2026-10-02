@@ -7,7 +7,14 @@ import {exec, type ExecError} from 'teen_process';
 
 import type {ADB} from '../adb.js';
 import {log} from '../logger.js';
-import {APKS_EXTENSION, getJavaForOs, getJavaHome, getResourcePath, redactSecrets} from '../utils/index.js';
+import {
+  APKS_EXTENSION,
+  getJavaForOs,
+  getJavaHome,
+  getResourcePath,
+  redactExecError,
+  redactSecrets,
+} from '../utils/index.js';
 import type {StringRecord, SignedAppCacheValue, CertCheckOptions, KeystoreHash} from './types.js';
 
 const DEFAULT_PRIVATE_KEY = path.join('keys', 'testkey.pk8');
@@ -39,9 +46,15 @@ export async function executeApksigner(this: ADB, args: string[]): Promise<strin
   const fullCmd = [await getJavaForOs(), '-Xmx1024M', '-Xss1m', '-jar', apkSignerJar, ...args];
   log.debug(`Starting apksigner: ${util.quote(redactSecrets(fullCmd))}`);
   // It is necessary to specify CWD explicitly; see https://github.com/appium/appium/issues/14724#issuecomment-737446715
-  const {stdout, stderr} = await exec(fullCmd[0], fullCmd.slice(1), {
-    cwd: path.dirname(apkSignerJar),
-  });
+  let stdout: string;
+  let stderr: string;
+  try {
+    ({stdout, stderr} = await exec(fullCmd[0], fullCmd.slice(1), {
+      cwd: path.dirname(apkSignerJar),
+    }));
+  } catch (e) {
+    throw redactExecError(e, fullCmd[0], fullCmd.slice(1));
+  }
   for (const [name, stream] of [
     ['stdout', stdout],
     ['stderr', stderr],
@@ -153,7 +166,11 @@ export async function signWithCustomCert(this: ADB, apk: string): Promise<void> 
         this.keyAlias as string,
       ];
       log.debug(`Starting jarsigner: ${util.quote(redactSecrets(fullCmd))}`);
-      await exec(fullCmd[0], fullCmd.slice(1));
+      try {
+        await exec(fullCmd[0], fullCmd.slice(1));
+      } catch (e) {
+        throw redactExecError(e, fullCmd[0], fullCmd.slice(1));
+      }
     } catch (e) {
       const execErr = e as ExecError;
       throw new Error(`Could not sign with custom certificate. Original error: ${execErr.stderr || execErr.message}`, {
@@ -368,7 +385,7 @@ export async function getKeystoreHash(this: ADB): Promise<KeystoreHash> {
     log.debug(`Keystore hash: ${JSON.stringify(result)}`);
     return result;
   } catch (e) {
-    const err = e as ExecError;
+    const err = redactExecError(e, keytool, args) as ExecError;
     throw new Error(
       `Cannot get the hash of '${this.keystorePath}' keystore. Original error: ${err.stderr || err.message}`,
       {cause: e},
