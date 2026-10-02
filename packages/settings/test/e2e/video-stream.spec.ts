@@ -9,6 +9,7 @@ import {SettingsApp} from '../../lib/client.js';
 import type {AccessUnit} from '../../lib/commands/types.js';
 import {SETTINGS_HELPER_ID, STREAMING_ACTIVITY_NAME, VIDEO_STREAM_ACTION_STOP} from '../../lib/constants.js';
 import {getSettingsApkPath} from '../../lib/utils/index.js';
+import {consumeUntil} from './utils.js';
 
 // `fixed-to-user-rotation` (API 30+) overrides the foreground app's own orientation request
 // (e.g. a launcher's portrait lock); best-effort since it doesn't exist below that - `lock`
@@ -96,14 +97,12 @@ describe('Video Streaming', function () {
     assert.strictEqual(started, true);
     assert.strictEqual(await session.isRunning(), true);
 
+    // Stops once the config and a keyframe are in: a static screen may never yield 10 units.
     const collected: AccessUnit[] = [];
-    const deadline = Date.now() + 15000;
-    for await (const unit of session.accessUnits()) {
+    await consumeUntil(session.accessUnits(), 15000, (unit) => {
       collected.push(unit);
-      if (collected.length >= 10 || Date.now() > deadline) {
-        break;
-      }
-    }
+      return collected.some((u) => u.isConfig) && collected.some((u) => u.isKeyFrame);
+    });
 
     assert.ok(collected.length > 0, 'expected at least one video access unit');
     assert.strictEqual(collected[0].track, 'video');
@@ -136,8 +135,7 @@ describe('Video Streaming', function () {
     let sawAudio = false;
     let firstVideoTimestampMicros: number | undefined;
     let firstAudioTimestampMicros: number | undefined;
-    const deadline = Date.now() + 15000;
-    for await (const unit of session.accessUnits()) {
+    await consumeUntil(session.accessUnits(), 15000, (unit) => {
       // The CONFIG unit's timestamp already came from getPresentationTimeUs() before the
       // fix, so it can't detect a regression there - only a real (non-config) video frame,
       // which carries the encoder's own presentationTimeUs, exercises toSessionRelativeUs().
@@ -151,10 +149,8 @@ describe('Video Streaming', function () {
         assert.strictEqual(unit.data[0], 0xff);
         assert.strictEqual(unit.data[1] & 0xf0, 0xf0);
       }
-      if ((sawVideo && sawAudio) || Date.now() > deadline) {
-        break;
-      }
-    }
+      return sawVideo && sawAudio;
+    });
 
     assert.ok(sawVideo, 'expected at least one video access unit');
     assert.ok(sawAudio, 'expected at least one audio access unit');
@@ -191,36 +187,32 @@ describe('Video Streaming', function () {
       // Video and audio sequence numbers are independent per-track counters, so only the
       // video track's own sequence is checked for monotonicity across the rotation.
       let lastVideoSequence = -1;
-      let firstConfig: AccessUnit | undefined;
-      const beforeRotationDeadline = Date.now() + 15000;
-      for await (const unit of session.accessUnits()) {
+      let firstConfig = undefined as AccessUnit | undefined; // assigned in a closure
+      const units = session.accessUnits();
+      await consumeUntil(units, 15000, (unit) => {
         if (unit.track !== 'video') {
-          continue;
+          return false;
         }
         assert.ok(unit.sequence > lastVideoSequence, 'expected strictly increasing video sequence numbers');
         lastVideoSequence = unit.sequence;
         if (unit.isConfig) {
           firstConfig ??= unit;
-        } else if (firstConfig) {
-          // A data frame after CONFIG means the pipeline is streaming; rotating right after
-          // CONFIG can land before the size-change monitoring is effective.
-          break;
+          return false;
         }
-        if (Date.now() > beforeRotationDeadline) {
-          break;
-        }
-      }
+        // A data frame after CONFIG means the pipeline is streaming; rotating right after
+        // CONFIG can land before the size-change monitoring is effective.
+        return firstConfig !== undefined;
+      });
       assert.ok(firstConfig, 'expected an initial CONFIG unit');
 
       // 1 = ROTATION_90, guaranteed to flip portrait<->landscape from ROTATION_0 above.
       await adb.shell(['cmd', 'window', 'user-rotation', 'lock', '1']);
 
-      let secondConfig: AccessUnit | undefined;
+      let secondConfig = undefined as AccessUnit | undefined;
       let sawKeyframeAfterConfig = false;
-      const afterRotationDeadline = Date.now() + 15000;
-      for await (const unit of session.accessUnits()) {
+      sawKeyframeAfterConfig = await consumeUntil(units, 15000, (unit) => {
         if (unit.track !== 'video') {
-          continue;
+          return false;
         }
         assert.ok(
           unit.sequence > lastVideoSequence,
@@ -231,14 +223,10 @@ describe('Video Streaming', function () {
           if (unit.isConfig) {
             secondConfig = unit;
           }
-        } else if (unit.isKeyFrame) {
-          sawKeyframeAfterConfig = true;
-          break;
+          return false;
         }
-        if (Date.now() > afterRotationDeadline) {
-          break;
-        }
-      }
+        return unit.isKeyFrame;
+      });
 
       assert.ok(secondConfig, 'expected a second CONFIG unit after rotating');
       assert.notDeepStrictEqual(
@@ -271,11 +259,12 @@ describe('Video Streaming', function () {
       // Wait for the encoder/callback pipeline to be fully up before racing it, reproducing
       // a reported crash: a resize callback queued on the callback handler thread running
       // concurrently with teardown from the disconnect below.
-      for await (const unit of session.accessUnits()) {
-        if (unit.track === 'video' && unit.isConfig) {
-          break;
-        }
-      }
+      const sawConfig = await consumeUntil(
+        session.accessUnits(),
+        15000,
+        (unit) => unit.track === 'video' && unit.isConfig,
+      );
+      assert.ok(sawConfig, 'expected a CONFIG unit before the race');
 
       const pidsBefore = await adb.getProcessIdsByName(SETTINGS_HELPER_ID);
       assert.ok(pidsBefore.length > 0, 'expected the app process to be running before the race');

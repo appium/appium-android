@@ -9,6 +9,7 @@ import {waitForCondition} from 'asyncbox';
 import {SettingsApp} from '../../lib/client.js';
 import {JPEG_STREAM_ACTION_START, JPEG_STREAM_ACTION_STOP, STREAMING_ACTIVITY_NAME} from '../../lib/constants.js';
 import {getSettingsApkPath} from '../../lib/utils/index.js';
+import {consumeUntil} from './utils.js';
 
 // Scans JPEG markers for a Start Of Frame segment (baseline SOF0 or progressive SOF2 -
 // both encode height/width the same way, right after a 1-byte sample precision field), so a
@@ -124,14 +125,10 @@ describe('JPEG Streaming', function () {
     assert.strictEqual(await session.isRunning(), true);
 
     const collected: {sequence: number; data: Buffer}[] = [];
-    const timeoutMs = 15000;
-    const deadline = Date.now() + timeoutMs;
-    for await (const frame of session.frames()) {
+    await consumeUntil(session.frames(), 15000, (frame) => {
       collected.push(frame);
-      if (collected.length >= 5 || Date.now() > deadline) {
-        break;
-      }
-    }
+      return collected.length >= 5;
+    });
 
     assert.ok(collected.length > 0, 'expected at least one JPEG frame to be received');
     for (const frame of collected) {
@@ -174,9 +171,7 @@ describe('JPEG Streaming', function () {
     const started = await session.start({fps: 10});
     assert.strictEqual(started, true);
 
-    for await (const _frame of session.frames()) {
-      break;
-    }
+    assert.ok(await consumeUntil(session.frames(), 15000, () => true), 'expected a frame before disconnecting');
 
     // Disconnect the client transport directly (bypassing stop()/ACTION_STOP) to simulate
     // a client crash/disconnect. This reaches into a private field deliberately, since
@@ -265,31 +260,29 @@ describe('JPEG Streaming', function () {
 
     try {
       let lastSequence = -1;
-      let firstDimensions: {width: number; height: number} | undefined;
-      for await (const frame of session.frames()) {
+      let firstDimensions = undefined as {width: number; height: number} | undefined; // assigned in a closure
+      const frames = session.frames();
+      await consumeUntil(frames, 15000, (frame) => {
         lastSequence = frame.sequence;
         firstDimensions = parseJpegDimensions(frame.data);
-        break;
-      }
+        return true;
+      });
       assert.ok(firstDimensions, 'expected at least one frame before rotating');
 
       // 1 = ROTATION_90, guaranteed to flip portrait<->landscape from ROTATION_0 above.
       await adb.shell(['cmd', 'window', 'user-rotation', 'lock', '1']);
 
-      let rotatedDimensions: {width: number; height: number} | undefined;
-      const afterRotationDeadline = Date.now() + 15000;
-      for await (const frame of session.frames()) {
+      let rotatedDimensions = undefined as {width: number; height: number} | undefined;
+      await consumeUntil(frames, 15000, (frame) => {
         assert.ok(frame.sequence > lastSequence, 'expected sequence numbers to keep increasing across the rotation');
         lastSequence = frame.sequence;
         const dimensions = parseJpegDimensions(frame.data);
         if (dimensions.width !== firstDimensions!.width || dimensions.height !== firstDimensions!.height) {
           rotatedDimensions = dimensions;
-          break;
+          return true;
         }
-        if (Date.now() > afterRotationDeadline) {
-          break;
-        }
-      }
+        return false;
+      });
 
       assert.ok(rotatedDimensions, 'expected a later frame with different dimensions after rotating');
       assert.strictEqual(rotatedDimensions!.width, firstDimensions!.height);
