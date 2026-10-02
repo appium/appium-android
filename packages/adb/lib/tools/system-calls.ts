@@ -8,7 +8,7 @@ import type {ExecError, TeenProcessExecResult} from 'teen_process';
 
 import type {ADB} from '../adb.js';
 import {log} from '../logger.js';
-import {DEFAULT_ADB_EXEC_TIMEOUT, cloneDeep, getSdkRootFromEnv, memoize, zip} from '../utils/index.js';
+import {DEFAULT_ADB_EXEC_TIMEOUT, cloneDeep, getSdkRootFromEnv, memoize, redactSecrets, zip} from '../utils/index.js';
 import type {
   ConnectedDevicesOptions,
   Device,
@@ -495,9 +495,10 @@ export async function adbExec(this: ADB, cmd: string | string[], opts?: AdbExecO
   const execFunc = async (): Promise<string | ExecResult> => {
     try {
       const args = [...this.executable.defaultArgs, ...cmd];
+      const logArgs = redactSecrets(args);
       log.debug(
         `Running '${this.executable.path} ` +
-          (args.find((arg) => /\s+/.test(arg)) ? util.quote(args) : args.join(' ')) +
+          (logArgs.find((arg) => /\s+/.test(arg)) ? util.quote(logArgs) : logArgs.join(' ')) +
           `'`,
       );
       const {stdout: rawStdout, stderr} = (await exec(
@@ -513,7 +514,7 @@ export async function adbExec(this: ADB, cmd: string | string[], opts?: AdbExecO
       const error = e as ExecError;
       const errText = `${error.message}, ${error.stdout}, ${error.stderr}`;
       if (ADB_RETRY_ERROR_PATTERNS.some((p) => p.test(errText))) {
-        log.info(`Error sending command, reconnecting device and retrying: ${cmd}`);
+        log.info(`Error sending command, reconnecting device and retrying: ${redactSecrets(cmd)}`);
         await this.getDevicesWithRetry();
 
         // try again one time
@@ -589,7 +590,7 @@ export async function shell(this: ADB, cmd: string | string[], opts?: ShellExecO
   const cmdArr = Array.isArray(cmd) ? cmd : [cmd];
   const fullCmd: string[] = ['shell'];
   if (privileged) {
-    log.info(`'adb shell ${util.quote(cmdArr)}' requires root access`);
+    log.info(`'adb shell ${util.quote(redactSecrets(cmdArr))}' requires root access`);
     if (await this.isRoot()) {
       log.info('The device already had root access');
       fullCmd.push(...cmdArr);
