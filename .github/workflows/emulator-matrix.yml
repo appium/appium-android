@@ -1,0 +1,31 @@
+name: Emulator Matrix
+
+# Single source of truth for the Android emulator matrix used by the e2e workflows.
+# Output: JSON array for `strategy.matrix.include` (via fromJSON).
+
+on:
+  workflow_call:
+    outputs:
+      matrix:
+        description: JSON array of {platformVersion, apiLevel, emuTag, arch}
+        value: ${{ jobs.generate.outputs.matrix }}
+
+permissions: {}
+
+jobs:
+  generate:
+    name: Generate emulator matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - id: matrix
+        shell: bash
+        run: |
+          matrix='[
+            {"platformVersion": "16.0", "apiLevel": 36, "emuTag": "google_apis", "arch": "x86_64"},
+            {"platformVersion": "12.0", "apiLevel": 32, "emuTag": "google_apis", "arch": "x86_64"},
+            {"platformVersion": "10.0", "apiLevel": 29, "emuTag": "default", "arch": "x86_64"},
+            {"platformVersion": "8.0", "apiLevel": 26, "emuTag": "google_apis", "arch": "x86"}
+          ]'
+          echo "matrix=$(jq -c . <<< "$matrix")" >> "$GITHUB_OUTPUT"

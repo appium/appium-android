@@ -1,0 +1,353 @@
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import path from 'node:path';
+import {describe, it, before, after, afterEach, beforeEach, type TestContext} from 'node:test';
+
+import {fs, tempDir} from '@appium/support';
+import {waitForCondition} from 'asyncbox';
+
+import {ADB} from '../../lib/adb.js';
+import {E2E_TIMEOUT, APIDEMOS_PKG, getApiDemosPath} from './setup.js';
+
+describe('general commands', {timeout: E2E_TIMEOUT}, function () {
+  let adb: ADB;
+  let apiDemosPath: string;
+  const androidInstallTimeout = 90000;
+  before(async function () {
+    adb = await ADB.createADB({adbExecTimeout: 60000});
+    apiDemosPath = await getApiDemosPath();
+  });
+  it('getApiLevel should get correct api level', async function () {
+    const actualApiLevel = await adb.getApiLevel();
+    assert.ok(actualApiLevel > 0);
+  });
+  it('getPlatformVersion should get correct platform version', async function () {
+    const actualPlatformVersion = await adb.getPlatformVersion();
+    assert.ok(parseFloat(actualPlatformVersion) > 0);
+  });
+  it('availableIMEs should get list of available IMEs', async function () {
+    assert.ok((await adb.availableIMEs()).length > 0);
+  });
+  it('enabledIMEs should get list of enabled IMEs', async function () {
+    assert.ok((await adb.enabledIMEs()).length > 0);
+  });
+  it('defaultIME should get default IME', async function () {
+    const defaultIME = await adb.defaultIME();
+    assert.strictEqual(typeof defaultIME, 'string');
+    assert.ok((defaultIME?.length ?? 0) > 0);
+  });
+  it('enableIME and disableIME should enable and disable IME', async function (ctx: TestContext) {
+    const imes = await adb.availableIMEs();
+    if (imes.length < 2) {
+      return ctx.skip();
+    }
+
+    // Get the default IME to avoid trying to disable it (which may not be allowed)
+    const defaultIme = await adb.defaultIME();
+    // Find an IME that is not the default one
+    const ime = imes.find((i) => i !== defaultIme) || imes[imes.length - 1];
+
+    // Skip if we can't find a non-default IME or if the only IME is the default
+    if (!ime || ime === defaultIme) {
+      ctx.skip();
+      return;
+    }
+
+    await adb.disableIME(ime);
+    // Wait for the IME to be disabled, or determine it can't be disabled (on some Android versions)
+    // On some Android versions (especially API 36+), some IMEs might not be fully disabled
+    let enabledAfterDisable;
+    try {
+      // Wait for the IME to be removed from the enabled list
+      await waitForCondition(
+        async () => {
+          const enabled = await adb.enabledIMEs();
+          return !enabled.includes(ime);
+        },
+        {
+          waitMs: 3000,
+          intervalMs: 500,
+        },
+      );
+      // If we get here, the IME was successfully disabled
+      enabledAfterDisable = await adb.enabledIMEs();
+      assert.ok(!enabledAfterDisable.includes(ime));
+    } catch {
+      // If timeout, the IME couldn't be disabled (system IME that can't be disabled)
+      // This is acceptable behavior on some Android versions
+      await adb.enabledIMEs();
+    }
+    // Re-enable the IME to restore state (or ensure it's enabled if disable didn't work)
+    await adb.enableIME(ime);
+    // Wait for the IME to be enabled
+    await waitForCondition(
+      async () => {
+        const enabled = await adb.enabledIMEs();
+        return enabled.includes(ime);
+      },
+      {
+        waitMs: 3000,
+        intervalMs: 500,
+      },
+    );
+    // Verify that enable works (or that it's already enabled if it couldn't be disabled)
+    assert.ok((await adb.enabledIMEs()).includes(ime));
+  });
+  it('ping should return true', async function () {
+    assert.strictEqual(await adb.ping(), true);
+  });
+  it('should forward the port', async function () {
+    await adb.forwardPort(4724, 4724);
+  });
+  it('should remove forwarded port', async function () {
+    await adb.forwardPort(8200, 6790);
+    assert.ok((await adb.adbExec([`forward`, `--list`])).includes('tcp:8200'));
+    await adb.removePortForward(8200);
+    assert.ok(!(await adb.adbExec([`forward`, `--list`])).includes('tcp:8200'));
+  });
+  it('should reverse forward the port', async function () {
+    await adb.reversePort(4724, 4724);
+  });
+  it('should remove reverse forwarded port', async function () {
+    await adb.reversePort(6790, 8200);
+    assert.ok((await adb.adbExec([`reverse`, `--list`])).includes('tcp:6790'));
+    await adb.removePortReverse(6790);
+    assert.ok(!(await adb.adbExec([`reverse`, `--list`])).includes('tcp:6790'));
+  });
+  it('should start logcat from adb', async function () {
+    await adb.startLogcat();
+    const logs = adb.logcat?.getLogs() ?? [];
+    assert.ok(logs.length > 0);
+    await adb.stopLogcat();
+  });
+  it('should get model', async function () {
+    assert.notStrictEqual(await adb.getModel(), null);
+  });
+  it('should get manufacturer', async function () {
+    assert.notStrictEqual(await adb.getManufacturer(), null);
+  });
+  it('should get screen size', async function () {
+    assert.notStrictEqual(await adb.getScreenSize(), null);
+  });
+  it('should get screen density', async function () {
+    assert.notStrictEqual(await adb.getScreenDensity(), null);
+  });
+  it('should be able to toggle gps location provider', async function () {
+    await adb.toggleGPSLocationProvider(true);
+    assert.ok((await adb.getLocationProviders()).includes('gps'));
+    await adb.toggleGPSLocationProvider(false);
+    assert.ok(!(await adb.getLocationProviders()).includes('gps'));
+
+    // To avoid side effects for other tests, especially on Android 16+
+    await adb.toggleGPSLocationProvider(true);
+  });
+  it('should be able to toggle airplane mode', async function () {
+    await adb.setAirplaneMode(true);
+    assert.strictEqual(await adb.isAirplaneModeOn(), true);
+    await adb.setAirplaneMode(false);
+    assert.strictEqual(await adb.isAirplaneModeOn(), false);
+  });
+  describe('app permissions', function () {
+    before(async function () {
+      if (await adb.isAppInstalled(APIDEMOS_PKG)) {
+        await adb.uninstallApk(APIDEMOS_PKG);
+      }
+    });
+    it('should install and grant all permission', async function () {
+      await adb.install(apiDemosPath, {timeout: androidInstallTimeout});
+      assert.strictEqual(await adb.isAppInstalled(APIDEMOS_PKG), true);
+      await adb.grantAllPermissions(APIDEMOS_PKG);
+      const requestedPermissions = await adb.getReqPermissions(APIDEMOS_PKG);
+      const grantedPermissions = await adb.getGrantedPermissions(APIDEMOS_PKG);
+      const deviceApiLevel = await adb.getApiLevel();
+
+      // Check that all requested permissions are granted
+      // Some permissions may not be grantable via adb on certain API levels:
+      // - POST_NOTIFICATIONS requires API 33+ (Android 13+)
+      // - Custom permissions may not be grantable
+      for (const permission of requestedPermissions) {
+        // Skip POST_NOTIFICATIONS on API levels < 33
+        if (permission === 'android.permission.POST_NOTIFICATIONS' && deviceApiLevel < 33) {
+          continue;
+        }
+        // Skip custom permissions that may not be grantable via adb
+        if (permission.startsWith(`${APIDEMOS_PKG}.`)) {
+          continue;
+        }
+        assert.ok(grantedPermissions.includes(permission));
+      }
+    });
+    it('should revoke permission', async function () {
+      await adb.revokePermission(APIDEMOS_PKG, 'android.permission.RECEIVE_SMS');
+      assert.ok(!(await adb.getGrantedPermissions(APIDEMOS_PKG)).includes('android.permission.RECEIVE_SMS'));
+    });
+    it('should grant permission', async function () {
+      await adb.grantPermission(APIDEMOS_PKG, 'android.permission.RECEIVE_SMS');
+      assert.ok((await adb.getGrantedPermissions(APIDEMOS_PKG)).includes('android.permission.RECEIVE_SMS'));
+    });
+  });
+
+  describe('push file', function () {
+    function getRandomDir() {
+      return `/data/local/tmp/test${Math.random()}`;
+    }
+
+    let localFile: string;
+    let tempFile: string;
+    let tempRoot: string;
+    const stringData = `random string data ${Math.random()}`;
+    before(async function () {
+      tempRoot = await tempDir.openDir();
+      localFile = path.join(tempRoot, 'local.tmp');
+      tempFile = path.join(tempRoot, 'temp.tmp');
+
+      await fs.writeFile(localFile, stringData);
+    });
+    after(async function () {
+      if (tempRoot) {
+        await fs.rimraf(tempRoot);
+      }
+    });
+    afterEach(async function () {
+      if (await fs.exists(tempFile)) {
+        await fs.unlink(tempFile);
+      }
+    });
+    for (const remotePath of [
+      `${getRandomDir()}/remote.txt`,
+      '/data/local/tmp/one two/remote file.txt',
+      '/data/local/tmp/one two/remote;file.txt',
+      '/data/local/tmp/foo&bar.txt',
+      '/data/local/tmp/foo|bar.txt',
+      '/data/local/tmp/(paren name).txt',
+      '/data/local/tmp/space and glob?.txt',
+      "/data/local/tmp/it's file.txt",
+      '/data/local/tmp/$VAR-file.txt',
+      '/data/local/tmp/brace{1}.txt',
+      '/data/local/tmp/semicolon;and&and.txt',
+      '/data/local/tmp/-dashfile.txt',
+    ]) {
+      it(`should push file to a valid location ${remotePath}`, async function () {
+        await adb.push(localFile, remotePath);
+        assert.strictEqual(await adb.fileExists(remotePath), true);
+        // get the file and its contents, to check
+        await adb.pull(remotePath, tempFile);
+        const remoteData = await fs.readFile(tempFile);
+        assert.strictEqual(remoteData.toString(), stringData);
+      });
+    }
+    it('should throw error if it cannot write to the remote file', async function () {
+      await assert.rejects(adb.push(localFile, '/foo/bar/remote.txt'), /\/foo/);
+    });
+  });
+
+  describe('bugreport', function () {
+    const BUG_REPORT_TIMEOUT = 2 * 60 * 1000; // 2 minutes
+
+    it('should return the report as a raw string', {timeout: BUG_REPORT_TIMEOUT}, async function (ctx: TestContext) {
+      if (process.env.CI) {
+        // skip the test on CI, since it takes a lot of time
+        return ctx.skip();
+      }
+      assert.strictEqual(typeof (await adb.bugreport()), 'string');
+    });
+  });
+
+  describe('features', function () {
+    it('should return the features as a list', async function () {
+      const features = await adb.listFeatures();
+      assert.ok(Array.isArray(features));
+    });
+  });
+
+  describe('launchable activity', function () {
+    it('should resolve the name of the launchable activity', async function () {
+      await adb.install(apiDemosPath, {
+        timeout: androidInstallTimeout,
+        grantPermissions: true,
+      });
+      assert.ok((await adb.resolveLaunchableActivity(APIDEMOS_PKG)).length > 0);
+    });
+  });
+
+  describe('isStreamedInstallSupported', function () {
+    it('should return boolean value', async function () {
+      const result = await adb.isStreamedInstallSupported();
+      assert.strictEqual(typeof result, 'boolean');
+    });
+  });
+
+  describe('isIncrementalInstallSupported', function () {
+    it('should return boolean value', async function () {
+      const result = await adb.isIncrementalInstallSupported();
+      assert.strictEqual(typeof result, 'boolean');
+    });
+  });
+
+  describe('addToDeviceIdleWhitelist', function () {
+    it('should add package to the whitelist', async function () {
+      await adb.install(apiDemosPath, {
+        timeout: androidInstallTimeout,
+        grantPermissions: true,
+      });
+      if (await adb.addToDeviceIdleWhitelist(APIDEMOS_PKG)) {
+        const pkgList = await adb.getDeviceIdleWhitelist();
+        assert.strictEqual(
+          pkgList.some((item) => item.includes(APIDEMOS_PKG)),
+          true,
+        );
+      }
+    });
+  });
+
+  describe('takeScreenshot', function () {
+    it('should return screenshot', async function () {
+      const screenshot = await adb.takeScreenshot();
+      assert.ok(screenshot.length > 0);
+    });
+  });
+
+  describe('listPorts', function () {
+    it('should list opened ports', async function () {
+      const ports1 = await adb.listPorts();
+      const ports2 = await adb.listPorts('6');
+      assert.ok([...ports1, ...ports2].length > 0);
+    });
+  });
+
+  describe('inputText', function () {
+    beforeEach(async function () {
+      await adb.startApp({pkg: APIDEMOS_PKG, activity: '.view.TextFields'});
+    });
+
+    const dumpPath = '/sdcard/window_dump_e2e.xml';
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const cases: Array<{name: string; textSuffix: string}> = [
+      {name: 'should input text without special characters', textSuffix: 'text'},
+      {name: 'should input text with special characters', textSuffix: 'special ()<>|;&*\\~^"\'$`'},
+    ];
+
+    cases.forEach(({name, textSuffix}) => {
+      it(name, async function () {
+        // Focus the text input field (KEYCODE_BUTTON_START; keyevent() parses with parseInt only)
+        await adb.keyevent(108);
+
+        const randomPrefix = randomUUID().split('-')[0];
+        const text = `${randomPrefix}${textSuffix}`;
+        await adb.inputText(text);
+
+        // Wait a while for the text to be reflected in the UI
+        await sleep(500);
+        await adb.shell(['uiautomator', 'dump', dumpPath]);
+        const xml = await adb.shell(['cat', dumpPath]);
+
+        const expectedXmlText = text
+          .replace(/&/g, '&amp;')
+          .replace(/'/g, '&apos;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+        assert.ok(xml.includes(expectedXmlText));
+      });
+    });
+  });
+});

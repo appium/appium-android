@@ -1,9 +1,9 @@
-name: io.appium.settings Functional Tests
+name: appium-adb Functional Tests
 
 on:
   pull_request:
     branches: [main]
-    paths: ['packages/settings/**', '.github/workflows/settings-functional-test.yml', '.github/workflows/emulator-matrix.yml']
+    paths: ['packages/adb/**', '.github/workflows/adb-functional-test.yml', '.github/workflows/emulator-matrix.yml']
 
 permissions:
   contents: read
@@ -40,12 +40,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
       - name: Setup, install and build
         uses: ./.github/actions/setup-build
         with:
           node-version: lts/*
-      - name: Build APK
-        run: npm run build:apk --workspace io.appium.settings
       - name: AVD cache
         uses: actions/cache@v6
         id: avd-cache
@@ -71,12 +71,10 @@ jobs:
       - uses: reactivecircus/android-emulator-runner@v2
         name: Run end-to-end tests
         with:
-          # adb logcat is started here, not in an earlier step, because it must attach to
-          # this emulator instance specifically - one started earlier (e.g. during the AVD
-          # snapshot generation) dies with that emulator and captures nothing useful.
+          # logcat must attach to this emulator instance, so it is started inside the script
           script: |
             nohup adb logcat > logcat.log &
-            npm run test:e2e --workspace io.appium.settings
+            npm run test:e2e --workspace appium-adb
           avd-name: $ANDROID_AVD
           force-avd-creation: false
           api-level: ${{ matrix.apiLevel }}
