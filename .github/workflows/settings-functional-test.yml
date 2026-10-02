@@ -59,7 +59,7 @@ jobs:
       - name: Build APK
         run: npm run build:apk --workspace io.appium.settings
       - name: AVD cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: avd-cache
         with:
           path: |
