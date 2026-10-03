@@ -12,6 +12,9 @@
       "path": "packages/adb"
     },
     {
+      "path": "packages/chromedriver"
+    },
+    {
       "path": "packages/settings"
     }
   ]
