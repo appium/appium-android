@@ -1,3 +1,15 @@
+# Change Log
+
+All notable changes to this project will be documented in this file.
+See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
+## 9.1.0 (2026-10-03)
+
+### Features
+
+* move appium-chromedriver into packages/chromedriver ([#13](https://github.com/appium/appium-android/issues/13)) ([a8adfcb](https://github.com/appium/appium-android/commit/a8adfcb1178253811555ff3e24643be01137038a))
+
+
 ## [9.0.22](https://github.com/appium/appium-chromedriver/compare/v9.0.21...v9.0.22) (2026-09-30)
 
 ### Miscellaneous Chores
