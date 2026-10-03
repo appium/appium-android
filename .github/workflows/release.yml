@@ -119,3 +119,33 @@ jobs:
           gh release upload "$tag" --clobber \
             packages/compose-playground/ComposePlayground-debug.apk \
             packages/compose-playground/ComposePlayground-release.apk
+
+      # Private package (not on npm): its APKs are attached to the GitHub release created by lerna.
+      # Runs on every non-dry run so a failed upload is retried by the next run.
+      - name: Ensure android-apidemos APKs are attached to its GitHub release
+        if: ${{ !(inputs.dry_run || false) }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="android-apidemos@$(jq -r .version packages/android-apidemos/package.json)"
+
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            echo "No GitHub release for ${tag}; nothing to attach the APKs to"
+            exit 0
+          fi
+          assets="$(gh release view "$tag" --json assets --jq '.assets[].name')"
+          if grep -qx ApiDemos-debug.apk <<<"$assets" && grep -qx ApiDemos-release.apk <<<"$assets"; then
+            echo "${tag} already has its APKs"
+            exit 0
+          fi
+
+          (
+            cd packages/android-apidemos
+            ./gradlew assembleDebug assembleRelease
+            cp app/build/outputs/apk/debug/app-debug.apk ApiDemos-debug.apk
+            cp app/build/outputs/apk/release/app-release-unsigned.apk ApiDemos-release.apk
+          )
+          gh release upload "$tag" --clobber \
+            packages/android-apidemos/ApiDemos-debug.apk \
+            packages/android-apidemos/ApiDemos-release.apk

@@ -1,0 +1,36 @@
+{
+  "name": "android-apidemos",
+  "version": "6.0.18",
+  "private": true,
+  "description": "A fork of Google's Android ApiDemos application, used for testing Appium",
+  "keywords": [
+    "android",
+    "apidemos",
+    "appium"
+  ],
+  "homepage": "https://appium.io",
+  "bugs": {
+    "url": "https://github.com/appium/appium-android/issues"
+  },
+  "license": "Apache-2.0",
+  "author": "Appium Contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/appium/appium-android.git",
+    "directory": "packages/android-apidemos"
+  },
+  "scripts": {
+    "bump-gradle-version": "node ./scripts/gradle-version-update.mjs --package-version=${npm_package_version} && git add app/build.gradle",
+    "build:debug": "./gradlew assembleDebug",
+    "build:release": "./gradlew assembleRelease",
+    "build:clean": "./gradlew clean",
+    "version": "npm run bump-gradle-version"
+  },
+  "devDependencies": {
+    "semver": "^7.5.4"
+  },
+  "engines": {
+    "node": "^20.19.0 || ^22.12.0 || >=24.0.0",
+    "npm": ">=10"
+  }
+}
