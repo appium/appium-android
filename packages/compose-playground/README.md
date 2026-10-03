@@ -17,7 +17,7 @@ https://github.com/appium/appium-android/releases/download/compose-playground%40
 ## Requirements
 
 - JDK 17
-- Android SDK Platform 35 (compile SDK)
+- Android SDK Platform 37 (compile SDK)
 - Node.js 20+ and npm 10+ (monorepo tooling)
 
 ## Build locally
@@ -58,7 +58,7 @@ Each Compose screen sets `testTagsAsResourceId = true` on the root so `testTag` 
 ## Compatibility
 
 - **minSdk** 26
-- **targetSdk** 34, **compileSdk** 35
+- **targetSdk** 34, **compileSdk** 37
 - Compose BOM is pinned in `gradle/libs.versions.toml`; bump it when you need newer Compose APIs.
 
 ## License
