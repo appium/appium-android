@@ -15,7 +15,9 @@ updates:
       - "dependencies"
     versioning-strategy: increase-if-necessary
   - package-ecosystem: gradle
-    directory: "/packages/settings"
+    directories:
+      - "/packages/settings"
+      - "/packages/compose-playground"
     schedule:
       interval: daily
       time: "11:00"
