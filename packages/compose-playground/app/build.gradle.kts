@@ -11,8 +11,8 @@ android {
         applicationId = "io.appium.composeplayground"
         minSdk = 26
         targetSdk = 34
-        versionCode = 14
-        versionName = "1.1.9"
+        versionCode = 15
+        versionName = "1.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

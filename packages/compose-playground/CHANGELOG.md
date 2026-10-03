@@ -1,3 +1,15 @@
+# Change Log
+
+All notable changes to this project will be documented in this file.
+See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
+## 1.2.0 (2026-10-03)
+
+### Features
+
+* move compose-playground into packages/compose-playground ([#14](https://github.com/appium/appium-android/issues/14)) ([b94378b](https://github.com/appium/appium-android/commit/b94378bdf0e583787a849cef4233297b325f209d))
+
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
