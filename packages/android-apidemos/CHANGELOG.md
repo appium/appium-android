@@ -1,3 +1,15 @@
+# Change Log
+
+All notable changes to this project will be documented in this file.
+See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
+## 6.1.0 (2026-10-03)
+
+### Features
+
+* move android-apidemos into packages/android-apidemos ([#20](https://github.com/appium/appium-android/issues/20)) ([7635bea](https://github.com/appium/appium-android/commit/7635bea93c398a4eef2cd1493d1ab2da7c599f48))
+
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
