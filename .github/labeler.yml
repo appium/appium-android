@@ -1,0 +1,64 @@
+version: v1
+
+labels:
+  - label: 'enhancement'
+    sync: true
+    matcher:
+      title: '^feat.*?:'
+
+  - label: 'bug'
+    sync: true
+    matcher:
+      title: '^fix.*?:'
+
+  - label: 'documentation'
+    sync: true
+    matcher:
+      title: '^docs.*?:'
+      files: ['**/*.md']
+
+  - label: 'chore'
+    sync: true
+    matcher:
+      title: '^(?!feat|fix|docs).*?:'
+
+  - label: 'semver:breaking'
+    sync: true
+    matcher:
+      title: '^(.+?)!:'
+      commits: '^(.+?)!:'
+
+  - label: 'dependencies'
+    sync: true
+    matcher:
+      files: ['**/package.json', 'package-lock.json']
+
+  - label: 'package:adb'
+    sync: true
+    matcher:
+      files: ['packages/adb/**']
+
+  - label: 'package:android-driver'
+    sync: true
+    matcher:
+      files: ['packages/android-driver/**']
+
+  - label: 'package:apidemos'
+    sync: true
+    matcher:
+      files: ['packages/apidemos/**']
+
+  - label: 'package:chromedriver'
+    sync: true
+    matcher:
+      files: ['packages/chromedriver/**']
+
+  - label: 'package:compose-playground'
+    sync: true
+    matcher:
+      files: ['packages/compose-playground/**']
+
+  - label: 'package:settings'
+    sync: true
+    matcher:
+      files: ['packages/settings/**']
