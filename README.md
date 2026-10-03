@@ -6,6 +6,7 @@
 
 - [`appium-adb`][]: Node.js wrapper over Android Debug Bridge (adb)
 - [`appium-chromedriver`][]: Node.js wrapper around Chromedriver
+- [`compose-playground`][]: Jetpack Compose fixture app for Android UI exploration and testing
 - [`io.appium.settings`][]: Android app for dealing with device settings, plus its Node.js client
 
 ## More Info
@@ -14,6 +15,7 @@ See the main [Appium site](https://appium.io) or [Appium GitHub repository](http
 
 [`appium-adb`]: https://github.com/appium/appium-android/tree/main/packages/adb
 [`appium-chromedriver`]: https://github.com/appium/appium-android/tree/main/packages/chromedriver
+[`compose-playground`]: https://github.com/appium/appium-android/tree/main/packages/compose-playground
 [`io.appium.settings`]: https://github.com/appium/appium-android/tree/main/packages/settings
 
 ## License

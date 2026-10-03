@@ -1,0 +1,75 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [1.1.9](https://github.com/appium/compose-playground/compare/v1.1.8...v1.1.9) (2026-09-28)
+
+### Miscellaneous Chores
+
+* **deps:** Bump androidx.core:core-ktx from 1.19.0 to 1.19.1 ([#43](https://github.com/appium/compose-playground/issues/43)) ([809bac4](https://github.com/appium/compose-playground/commit/809bac4ddd0f2319c59a631956e7661c6b29fb9d))
+* **deps:** Bump gradle-wrapper from 9.7.1 to 9.8.0 ([#42](https://github.com/appium/compose-playground/issues/42)) ([487a4ca](https://github.com/appium/compose-playground/commit/487a4ca070830312cc5abf64f19e7545c95f9ae2))
+
+## [1.1.8](https://github.com/appium/compose-playground/compare/v1.1.7...v1.1.8) (2026-09-21)
+
+### Miscellaneous Chores
+
+* **deps:** Bump org.jetbrains.kotlin.plugin.compose ([#39](https://github.com/appium/compose-playground/issues/39)) ([f29bf01](https://github.com/appium/compose-playground/commit/f29bf01af695b59b76a2e63e64b83ec402f4d061))
+
+## [1.1.7](https://github.com/appium/compose-playground/compare/v1.1.6...v1.1.7) (2026-09-21)
+
+### Miscellaneous Chores
+
+* **deps:** Bump androidx.compose:compose-bom ([#40](https://github.com/appium/compose-playground/issues/40)) ([0d72eea](https://github.com/appium/compose-playground/commit/0d72eeac26e384858829244e590de8a0464969be))
+
+## [1.1.6](https://github.com/appium/compose-playground/compare/v1.1.5...v1.1.6) (2026-09-21)
+
+### Miscellaneous Chores
+
+* **deps:** Bump com.android.application from 9.3.1 to 9.4.1 ([#41](https://github.com/appium/compose-playground/issues/41)) ([0c4327f](https://github.com/appium/compose-playground/commit/0c4327f260cc8f25b0d85af7ad4451beb0d8c84e))
+* **deps:** Bump gradle-wrapper from 9.7.0 to 9.7.1 ([#36](https://github.com/appium/compose-playground/issues/36)) ([8161822](https://github.com/appium/compose-playground/commit/816182294a9f52e4d11bc8bfe39e828be87b9d5c))
+
+## [1.1.5](https://github.com/appium/compose-playground/compare/v1.1.4...v1.1.5) (2026-08-10)
+
+### Miscellaneous Chores
+
+* **deps:** Bump gradle-wrapper from 9.6.1 to 9.7.0 ([#33](https://github.com/appium/compose-playground/issues/33)) ([cd1a77f](https://github.com/appium/compose-playground/commit/cd1a77f81db127e6de8dfc58669735132fe20652))
+
+## [1.1.4](https://github.com/appium/compose-playground/compare/v1.1.3...v1.1.4) (2026-07-27)
+
+### Miscellaneous Chores
+
+* Update various Android dependencies ([#32](https://github.com/appium/compose-playground/issues/32)) ([073d52c](https://github.com/appium/compose-playground/commit/073d52c6580df1bb621c6bbb0ffc0c038dc4c3af))
+
+## [1.1.3](https://github.com/appium/compose-playground/compare/v1.1.2...v1.1.3) (2026-07-27)
+
+### Miscellaneous Chores
+
+* Integrate oxc and release configs ([#31](https://github.com/appium/compose-playground/issues/31)) ([3f4ba17](https://github.com/appium/compose-playground/commit/3f4ba17bb490a203dd4f01f40b5f45ece3fc655f))
+
+## <small>1.1.2 (2026-05-23)</small>
+
+* chore(deps): Bump androidx.compose:compose-bom (#6) ([f9880eb](https://github.com/appium/compose-playground/commit/f9880eb)), closes [#6](https://github.com/appium/compose-playground/issues/6)
+* chore(deps): Bump androidx.test.ext:junit from 1.2.1 to 1.3.0 (#2) ([8933254](https://github.com/appium/compose-playground/commit/8933254)), closes [#2](https://github.com/appium/compose-playground/issues/2)
+
+## <small>1.1.1 (2026-05-23)</small>
+
+* chore(deps): Bump androidx.test.espresso:espresso-core (#8) ([578ddfb](https://github.com/appium/compose-playground/commit/578ddfb)), closes [#8](https://github.com/appium/compose-playground/issues/8)
+
+## 1.1.0 (2026-05-23)
+
+* feat: Ensure ESM package (#11) ([7024c0d](https://github.com/appium/compose-playground/commit/7024c0d)), closes [#11](https://github.com/appium/compose-playground/issues/11)
+
+## <small>1.0.2 (2026-05-23)</small>
+
+* chore(deps): Bump androidx.lifecycle:lifecycle-runtime-ktx (#7) ([11e2645](https://github.com/appium/compose-playground/commit/11e2645)), closes [#7](https://github.com/appium/compose-playground/issues/7)
+* chore(deps): Bump org.jetbrains.kotlin.plugin.compose (#5) ([13f0313](https://github.com/appium/compose-playground/commit/13f0313)), closes [#5](https://github.com/appium/compose-playground/issues/5)
+
+## <small>1.0.1 (2026-05-23)</small>
+
+* chore(deps): Bump gradle-wrapper from 9.5.0 to 9.5.1 (#3) ([9aa600f](https://github.com/appium/compose-playground/commit/9aa600f)), closes [#3](https://github.com/appium/compose-playground/issues/3)
+* ci: Tune workflows (#10) ([f072a14](https://github.com/appium/compose-playground/commit/f072a14)), closes [#10](https://github.com/appium/compose-playground/issues/10)
+
+## 1.0.0 (2026-05-23)
+
+* feat: First release (#1) ([6174504](https://github.com/appium/compose-playground/commit/6174504)), closes [#1](https://github.com/appium/compose-playground/issues/1)
+* Initial commit ([39749f1](https://github.com/appium/compose-playground/commit/39749f1))

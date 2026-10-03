@@ -89,3 +89,33 @@ jobs:
             npm run build:apk --workspace io.appium.settings
           fi
           gh release upload "$tag" "packages/settings/apks/${apk_name}"
+
+      # Private package (not on npm): its APKs are attached to the GitHub release created by lerna.
+      # Runs on every non-dry run so a failed upload is retried by the next run.
+      - name: Ensure compose-playground APKs are attached to its GitHub release
+        if: ${{ !(inputs.dry_run || false) }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="compose-playground@$(jq -r .version packages/compose-playground/package.json)"
+
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            echo "No GitHub release for ${tag}; nothing to attach the APKs to"
+            exit 0
+          fi
+          assets="$(gh release view "$tag" --json assets --jq '.assets[].name')"
+          if grep -qx ComposePlayground-debug.apk <<<"$assets" && grep -qx ComposePlayground-release.apk <<<"$assets"; then
+            echo "${tag} already has its APKs"
+            exit 0
+          fi
+
+          (
+            cd packages/compose-playground
+            ./gradlew assembleDebug assembleRelease
+            cp app/build/outputs/apk/debug/app-debug.apk ComposePlayground-debug.apk
+            cp app/build/outputs/apk/release/app-release-unsigned.apk ComposePlayground-release.apk
+          )
+          gh release upload "$tag" --clobber \
+            packages/compose-playground/ComposePlayground-debug.apk \
+            packages/compose-playground/ComposePlayground-release.apk
