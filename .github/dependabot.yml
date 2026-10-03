@@ -18,6 +18,7 @@ updates:
     directories:
       - "/packages/settings"
       - "/packages/compose-playground"
+      - "/packages/android-apidemos"
     schedule:
       interval: daily
       time: "11:00"
