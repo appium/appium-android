@@ -57,7 +57,7 @@
     "@appium/types": "^1.0.0-rc.1",
     "@types/async-lock": "^1.4.0",
     "@types/ini": "^4.1.0",
-    "@types/node": "^26.0.0",
+    "@types/node": "^26.6.4",
     "@types/semver": "^7.5.0",
     "@types/sinon": "^22.0.0",
     "sinon": "^22.0.0"

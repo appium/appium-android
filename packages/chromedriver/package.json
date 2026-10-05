@@ -60,7 +60,7 @@
   "devDependencies": {
     "@appium/tsconfig": "^1.2.0",
     "@types/express": "^5.0.6",
-    "@types/node": "^26.0.0",
+    "@types/node": "^26.6.4",
     "@types/semver": "^7.0.0",
     "@types/sinon": "^22.0.0",
     "sinon": "^22.0.0"
