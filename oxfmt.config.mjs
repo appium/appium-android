@@ -2,5 +2,5 @@ import appiumConfig, {defineConfig, ignorePatterns} from '@appium/oxc-config/oxf
 
 export default defineConfig({
   ...appiumConfig,
-  ignorePatterns: [...ignorePatterns, 'packages/adb/keys/**'],
+  ignorePatterns: [...ignorePatterns, 'packages/adb/keys/**', 'packages/uiautomator2-server/{app,gradle,vendor}/**'],
 });

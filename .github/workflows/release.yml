@@ -149,3 +149,33 @@ jobs:
           gh release upload "$tag" --clobber \
             packages/android-apidemos/ApiDemos-debug.apk \
             packages/android-apidemos/ApiDemos-release.apk
+
+      # Replaces semantic-release's APK upload. prepublishOnly leaves the APKs behind after a
+      # publish; runs on every non-dry run so a failed upload is retried by the next run.
+      - name: Ensure uiautomator2-server APKs are attached to its GitHub release
+        if: ${{ !(inputs.dry_run || false) }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          version="$(jq -r .version packages/uiautomator2-server/package.json)"
+          tag="appium-uiautomator2-server@${version}"
+          server_apk="appium-uiautomator2-server-v${version}.apk"
+          test_apk=appium-uiautomator2-server-debug-androidTest.apk
+
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            echo "No GitHub release for ${tag}; nothing to attach the APKs to"
+            exit 0
+          fi
+          assets="$(gh release view "$tag" --json assets --jq '.assets[].name')"
+          if grep -qx "$server_apk" <<<"$assets" && grep -qx "$test_apk" <<<"$assets"; then
+            echo "${tag} already has its APKs"
+            exit 0
+          fi
+
+          if [ ! -f "packages/uiautomator2-server/apks/${server_apk}" ] || [ ! -f "packages/uiautomator2-server/apks/${test_apk}" ]; then
+            npm run build --workspace appium-uiautomator2-server
+          fi
+          gh release upload "$tag" --clobber \
+            "packages/uiautomator2-server/apks/${server_apk}" \
+            "packages/uiautomator2-server/apks/${test_apk}"
