@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [9.1.1](https://github.com/appium/appium-android/compare/appium-chromedriver@9.1.0...appium-chromedriver@9.1.1) (2026-10-06)
+
+### Miscellaneous Chores
+
+* **deps:** bump axios from 1.18.1 to 1.20.0 ([#16](https://github.com/appium/appium-android/issues/16)) ([794640a](https://github.com/appium/appium-android/commit/794640a6f18f97270a50fc041ccb406673f4b384))
+
+
 ## 9.1.0 (2026-10-03)
 
 ### Features
