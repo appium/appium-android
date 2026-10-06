@@ -1,0 +1,14 @@
+.gradle
+.idea
+.settings
+.classpath
+.DS_Store
+*.iml
+local.properties
+/build
+app/build
+/captures
+apks/
+app/libs/org.eclipse.wst.xml.xpath2.processor*.jar
+vendor/build/
+vendor/.upstream/

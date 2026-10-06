@@ -28,6 +28,28 @@ updates:
       include: "scope"
     labels:
       - "dependencies"
+  - package-ecosystem: gradle
+    directory: "/packages/uiautomator2-server"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "11:00"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    labels:
+      - "dependencies"
+    ignore:
+      # Netty majors are breaking; ICU4J is pinned for stability
+      - dependency-name: "netty-*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "icu4j"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
+    groups:
+      gradle-dependencies:
+        patterns: ["*"]
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
   - package-ecosystem: github-actions
     directory: "/"
     schedule:

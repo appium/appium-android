@@ -62,3 +62,8 @@ labels:
     sync: true
     matcher:
       files: ['packages/settings/**']
+
+  - label: 'package:uiautomator2-server'
+    sync: true
+    matcher:
+      files: ['packages/uiautomator2-server/**']

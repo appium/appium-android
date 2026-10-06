@@ -1,0 +1,296 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package io.appium.uiautomator2.utils;
+
+import android.content.ComponentName;
+import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
+import android.os.ParcelFileDescriptor;
+import android.view.accessibility.AccessibilityEvent;
+
+import androidx.annotation.Nullable;
+
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import io.appium.uiautomator2.core.UiAutomation;
+import io.appium.uiautomator2.model.AppiumUIA2Driver;
+import io.appium.uiautomator2.model.Session;
+import io.appium.uiautomator2.model.internal.CustomUiDevice;
+
+import static android.app.UiAutomation.OnAccessibilityEventListener;
+import static androidx.test.core.app.ApplicationProvider.getApplicationContext;
+import static io.appium.uiautomator2.utils.StringHelpers.isBlank;
+
+/**
+ * Tracks the foreground activity primarily from {@link AccessibilityEvent#TYPE_WINDOW_STATE_CHANGED}
+ * and resolves its manifest-declared {@link ActivityInfo#screenOrientation}. Runtime
+ * {@link android.app.Activity#setRequestedOrientation} overrides are not visible via this API.
+ * That accessibility event is not always delivered promptly (or at all), and some apps (e.g. ones
+ * using a {@code ListView}) also emit it for non-Activity source views, so any event-provided
+ * component is validated against {@link PackageManager} before being trusted. Whenever no
+ * validated component is available, the foreground component is instead resolved synchronously
+ * via {@code dumpsys window windows}.
+ */
+public class ActivityOrientationListener implements OnAccessibilityEventListener {
+    private static final Pattern CURRENT_FOCUS_PATTERN = Pattern.compile(
+            "mCurrentFocus=Window\\{\\S+\\s+\\S+\\s+([^/\\s]+)/(\\S+)\\}"
+    );
+
+    private static ActivityOrientationListener INSTANCE;
+
+    private final UiAutomation uiAutomation;
+    // Guards the one-time registration bootstrap and the isListening transition.
+    private final Object listenerStateGuard = new Object();
+    private final Object currentComponentGuard = new Object();
+    // Set once on the first start() and never touched again; re-registering on every
+    // start()/stop() risks a capture cycle with NotificationListener (#797).
+    private volatile OnAccessibilityEventListener originalListener = null;
+    private volatile boolean isListening;
+    private boolean registered = false;
+    @Nullable
+    private ComponentName currentComponent;
+
+    protected ActivityOrientationListener() {
+        uiAutomation = UiAutomation.getInstance();
+    }
+
+    public static synchronized ActivityOrientationListener getInstance() {
+        if (INSTANCE == null) {
+            INSTANCE = new ActivityOrientationListener();
+        }
+        return INSTANCE;
+    }
+
+    public void start() {
+        synchronized (listenerStateGuard) {
+            if (isListening) {
+                Logger.debug("Activity orientation listener is already started.");
+                return;
+            }
+            Logger.debug("Starting activity orientation listener.");
+            isListening = true;
+            seedInitialComponentFromSessionCaps();
+            if (!registered) {
+                OnAccessibilityEventListener currentListener = uiAutomation.getOnAccessibilityEventListener();
+                // Defense-in-depth against self-capture; unreachable since this only runs once.
+                originalListener = currentListener == this ? null : currentListener;
+                Logger.debug("Original listener: " + originalListener);
+                uiAutomation.setOnAccessibilityEventListener(this);
+                registered = true;
+            }
+        }
+    }
+
+    public void stop() {
+        synchronized (listenerStateGuard) {
+            if (!isListening) {
+                Logger.debug("Activity orientation listener is already stopped.");
+                return;
+            }
+            Logger.debug("Stopping activity orientation listener.");
+            isListening = false;
+        }
+        synchronized (currentComponentGuard) {
+            currentComponent = null;
+        }
+    }
+
+    @Override
+    public void onAccessibilityEvent(AccessibilityEvent event) {
+        boolean listening = isListening;
+        OnAccessibilityEventListener delegate = originalListener;
+        if (listening && event.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            CharSequence packageName = event.getPackageName();
+            CharSequence className = event.getClassName();
+            if (packageName != null && className != null) {
+                ComponentName candidate = new ComponentName(packageName.toString(), className.toString());
+                // TYPE_WINDOW_STATE_CHANGED is also emitted by some apps (e.g. ones using a
+                // ListView) for non-Activity source views, so only trust components that
+                // actually resolve to a manifest-declared Activity.
+                if (activityInfoOf(candidate) != null) {
+                    synchronized (currentComponentGuard) {
+                        currentComponent = candidate;
+                    }
+                }
+            }
+        }
+
+        if (delegate != null) {
+            delegate.onAccessibilityEvent(event);
+        }
+    }
+
+    /**
+     * Returns the manifest-declared screen orientation constant name (e.g.
+     * {@code SCREEN_ORIENTATION_PORTRAIT}), or {@code null} if unknown.
+     */
+    @Nullable
+    public String currentScreenOrientationConstant() {
+        ComponentName staleComponent;
+        synchronized (currentComponentGuard) {
+            staleComponent = currentComponent;
+        }
+        ActivityInfo activityInfo = staleComponent == null ? null : activityInfoOf(staleComponent);
+        if (activityInfo != null) {
+            return screenOrientationConstantName(activityInfo.screenOrientation);
+        }
+
+        ComponentName resolvedComponent = resolveForegroundComponentViaDumpsys();
+        activityInfo = resolvedComponent == null ? null : activityInfoOf(resolvedComponent);
+        if (activityInfo == null) {
+            return null;
+        }
+        // Only cache the dumpsys-resolved component if the listener is still running and the
+        // accessibility event listener hasn't concurrently produced a fresher, validated one
+        // in the meantime; otherwise a concurrent stop() could have its cleared currentComponent
+        // resurrected by this stale write.
+        boolean listening = isListening;
+        synchronized (currentComponentGuard) {
+            if (listening && Objects.equals(currentComponent, staleComponent)) {
+                currentComponent = resolvedComponent;
+            }
+        }
+        return screenOrientationConstantName(activityInfo.screenOrientation);
+    }
+
+    /**
+     * Resolves the manifest-declared {@link ActivityInfo} for the given component.
+     *
+     * @return the activity info, or {@code null} if the component is not a registered Activity
+     */
+    @Nullable
+    private static ActivityInfo activityInfoOf(ComponentName component) {
+        try {
+            return getApplicationContext().getPackageManager().getActivityInfo(component, 0);
+        } catch (PackageManager.NameNotFoundException e) {
+            return null;
+        }
+    }
+
+    @Nullable
+    public static String screenOrientationConstantName(int value) {
+        ScreenOrientationConstant constant = ScreenOrientationConstant.fromValue(value);
+        return constant == null ? null : constant.constantName();
+    }
+
+    public boolean isListening() {
+        return isListening;
+    }
+
+    private void seedInitialComponentFromSessionCaps() {
+        Session session = AppiumUIA2Driver.getInstance().getSession();
+        if (session == null) {
+            return;
+        }
+        String appPackage = session.getCapability("appPackage", "");
+        String appActivity = session.getCapability("appActivity", "");
+        if (isBlank(appPackage) || isBlank(appActivity)) {
+            return;
+        }
+        if (appActivity.startsWith(".")) {
+            appActivity = appPackage + appActivity;
+        }
+        synchronized (currentComponentGuard) {
+            currentComponent = new ComponentName(appPackage, appActivity);
+        }
+    }
+
+    /**
+     * Resolves the currently focused window's component by parsing 'dumpsys window windows'
+     * output. This is a fallback for when no validated {@link AccessibilityEvent#TYPE_WINDOW_STATE_CHANGED}
+     * event has been observed yet.
+     *
+     * @return the foreground component, or {@code null} if it could not be resolved
+     */
+    @Nullable
+    private static ComponentName resolveForegroundComponentViaDumpsys() {
+        android.app.UiAutomation automation = CustomUiDevice.getInstance().getUiAutomation();
+        try (
+                ParcelFileDescriptor pfd = automation.executeShellCommand("dumpsys window windows");
+                InputStream is = new FileInputStream(pfd.getFileDescriptor());
+                BufferedReader br = new BufferedReader(new InputStreamReader(is))
+        ) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                Matcher matcher = CURRENT_FOCUS_PATTERN.matcher(line);
+                if (matcher.find()) {
+                    String packageName = matcher.group(1);
+                    String className = matcher.group(2);
+                    if (className.startsWith(".")) {
+                        className = packageName + className;
+                    }
+                    ComponentName component = new ComponentName(packageName, className);
+                    Logger.debug("Resolved the foreground component via dumpsys: " + component);
+                    return component;
+                }
+            }
+        } catch (Exception e) {
+            Logger.debug("Unable to resolve the foreground component via dumpsys", e);
+        }
+        return null;
+    }
+
+    private enum ScreenOrientationConstant {
+        UNSPECIFIED(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED),
+        LANDSCAPE(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE),
+        PORTRAIT(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT),
+        USER(ActivityInfo.SCREEN_ORIENTATION_USER),
+        BEHIND(ActivityInfo.SCREEN_ORIENTATION_BEHIND),
+        SENSOR(ActivityInfo.SCREEN_ORIENTATION_SENSOR),
+        NOSENSOR(ActivityInfo.SCREEN_ORIENTATION_NOSENSOR),
+        SENSOR_LANDSCAPE(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE),
+        SENSOR_PORTRAIT(ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT),
+        REVERSE_LANDSCAPE(ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE),
+        REVERSE_PORTRAIT(ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT),
+        FULL_SENSOR(ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR),
+        USER_LANDSCAPE(ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE),
+        USER_PORTRAIT(ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT),
+        LOCKED(ActivityInfo.SCREEN_ORIENTATION_LOCKED),
+        FULL_USER(ActivityInfo.SCREEN_ORIENTATION_FULL_USER);
+
+        private static final Map<Integer, ScreenOrientationConstant> BY_VALUE = new HashMap<>();
+
+        static {
+            for (ScreenOrientationConstant constant : values()) {
+                BY_VALUE.put(constant.value, constant);
+            }
+        }
+
+        private final int value;
+
+        ScreenOrientationConstant(int value) {
+            this.value = value;
+        }
+
+        @Nullable
+        static ScreenOrientationConstant fromValue(int value) {
+            return BY_VALUE.get(value);
+        }
+
+        String constantName() {
+            return "SCREEN_ORIENTATION_" + name();
+        }
+    }
+}

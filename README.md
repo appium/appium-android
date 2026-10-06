@@ -8,6 +8,7 @@
 - [`android-apidemos`][]: Fork of Google's ApiDemos Android app, used for testing Appium
 - [`appium-chromedriver`][]: Node.js wrapper around Chromedriver
 - [`compose-playground`][]: Jetpack Compose fixture app for Android UI exploration and testing
+- [`appium-uiautomator2-server`][]: Netty server running on the device that executes UiAutomator2 commands
 - [`io.appium.settings`][]: Android app for dealing with device settings, plus its Node.js client
 
 ## More Info
@@ -18,6 +19,7 @@ See the main [Appium site](https://appium.io) or [Appium GitHub repository](http
 [`appium-adb`]: https://github.com/appium/appium-android/tree/main/packages/adb
 [`appium-chromedriver`]: https://github.com/appium/appium-android/tree/main/packages/chromedriver
 [`compose-playground`]: https://github.com/appium/appium-android/tree/main/packages/compose-playground
+[`appium-uiautomator2-server`]: https://github.com/appium/appium-android/tree/main/packages/uiautomator2-server
 [`io.appium.settings`]: https://github.com/appium/appium-android/tree/main/packages/settings
 
 ## License

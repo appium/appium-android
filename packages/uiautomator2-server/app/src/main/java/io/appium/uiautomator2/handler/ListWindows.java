@@ -1,0 +1,320 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package io.appium.uiautomator2.handler;
+
+import static androidx.test.platform.app.InstrumentationRegistry.getInstrumentation;
+import static io.appium.uiautomator2.core.AxNodeInfoHelper.UNDEFINED_WINDOW_ID;
+import static io.appium.uiautomator2.utils.ReflectionUtils.getField;
+
+import android.app.Service;
+import android.app.UiAutomation;
+import android.graphics.Bitmap;
+import android.graphics.Rect;
+import android.hardware.display.DisplayManager;
+import android.os.Build;
+import android.util.SparseArray;
+import android.view.Display;
+import android.view.Window;
+import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityWindowInfo;
+
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import io.appium.uiautomator2.common.exceptions.TakeScreenshotException;
+import io.appium.uiautomator2.handler.request.SafeRequestHandler;
+import io.appium.uiautomator2.http.AppiumResponse;
+import io.appium.uiautomator2.http.IHttpRequest;
+import io.appium.uiautomator2.model.api.ListWindowsModel;
+import io.appium.uiautomator2.model.api.WindowModel;
+import io.appium.uiautomator2.model.internal.CustomUiDevice;
+import io.appium.uiautomator2.utils.DisplayIdHelper;
+import io.appium.uiautomator2.utils.GlobMatcher;
+import io.appium.uiautomator2.utils.Logger;
+import io.appium.uiautomator2.utils.ScreenshotHelper;
+import io.appium.uiautomator2.utils.StringHelpers;
+
+import static io.appium.uiautomator2.utils.ModelUtils.toModel;
+
+/**
+ * Get list of windows on all displays.
+ * For Android API 30+ (R), uses getWindowsOnAllDisplays().
+ * For older APIs, uses getWindows().
+ */
+public class ListWindows extends SafeRequestHandler {
+    public ListWindows(String mappedUri) {
+        super(mappedUri);
+    }
+
+    @Override
+    protected AppiumResponse safeHandle(IHttpRequest request) {
+        ListWindowsModel model = toModel(request, ListWindowsModel.class);
+        boolean skipScreenshots = Boolean.TRUE.equals(model.skipScreenshots);
+        DisplayManager displayManager = getDisplayManager();
+        Map<String, String> virtualDisplayMap = DisplayIdHelper.parseVirtualDisplays();
+        List<WindowModel> windows = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                ? listWindowsOnApiLevel30(displayManager, virtualDisplayMap, skipScreenshots)
+                : listWindowsOnApiLevelBelow30(displayManager, virtualDisplayMap, skipScreenshots);
+
+        if (model.filters != null && !model.filters.isEmpty()) {
+            windows = filterWindows(windows, model.filters);
+        }
+
+        return new AppiumResponse(getSessionId(request), windows);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.R)
+    private List<WindowModel> listWindowsOnApiLevel30(
+            @Nullable DisplayManager displayManager,
+            Map<String, String> virtualDisplayMap,
+            boolean skipScreenshots
+    ) {
+        SparseArray<List<AccessibilityWindowInfo>> windowsOnAllDisplays = CustomUiDevice
+                .getInstance()
+                .getUiAutomation()
+                .getWindowsOnAllDisplays();
+
+        return IntStream.range(0, windowsOnAllDisplays.size())
+                .mapToObj(windowsOnAllDisplays::keyAt)
+                .filter(displayId -> windowsOnAllDisplays.get(displayId) != null)
+                .flatMap(displayId -> {
+                    Display display = displayManager != null ? displayManager.getDisplay(displayId) : null;
+                    return windowsOnAllDisplays.get(displayId).stream()
+                            .map(window -> createWindowModel(window, display, virtualDisplayMap, skipScreenshots));
+                })
+                .collect(Collectors.toList());
+    }
+
+    private List<WindowModel> listWindowsOnApiLevelBelow30(
+            @Nullable DisplayManager displayManager,
+            Map<String, String> virtualDisplayMap,
+            boolean skipScreenshots
+    ) {
+        List<AccessibilityWindowInfo> windowList = CustomUiDevice
+                .getInstance()
+                .getUiAutomation()
+                .getWindows();
+
+        // For API < 30, getWindows() only returns windows from the default display
+        Display display = displayManager != null ? displayManager.getDisplay(Display.DEFAULT_DISPLAY) : null;
+
+        return windowList.stream()
+                .map(window -> createWindowModel(window, display, virtualDisplayMap, skipScreenshots))
+                .collect(Collectors.toList());
+    }
+
+    @Nullable
+    private DisplayManager getDisplayManager() {
+        return (DisplayManager) getInstrumentation().getTargetContext()
+                .getSystemService(Service.DISPLAY_SERVICE);
+    }
+
+    private WindowModel createWindowModel(
+        AccessibilityWindowInfo window,
+        @Nullable Display display,
+        Map<String, String> virtualDisplayMap,
+        boolean skipScreenshots
+    ) {
+        Integer windowId = window.getId() == UNDEFINED_WINDOW_ID ? null : window.getId();
+        Rect bounds = new Rect();
+        window.getBoundsInScreen(bounds);
+
+        String packageName = null;
+        AccessibilityNodeInfo root = window.getRoot();
+        if (root != null) {
+            packageName = StringHelpers.charSequenceToNullableString(root.getPackageName());
+        }
+
+        String screenshot = skipScreenshots ? null : takeWindowScreenshot(window);
+
+        int displayId = display != null ? display.getDisplayId() : Display.DEFAULT_DISPLAY;
+        Long physicalDisplayIdLong = display != null ? DisplayIdHelper.getPhysicalDisplayId(display) : null;
+        String physicalDisplayIdString = physicalDisplayIdLong != null ? String.valueOf(physicalDisplayIdLong) : null;
+        String virtualDisplayId = null;
+        if (display != null && physicalDisplayIdLong == null) {
+            String displayName = display.getName();
+            if (displayName != null) {
+                virtualDisplayId = virtualDisplayMap.get(displayName);
+            }
+        }
+
+        return new WindowModel(
+                windowId,
+                displayId,
+                physicalDisplayIdString,
+                virtualDisplayId,
+                bounds,
+                packageName,
+                screenshot,
+                window.getType(),
+                StringHelpers.charSequenceToNullableString(window.getTitle()),
+                window.getLayer(),
+                window.isAccessibilityFocused(),
+                window.isActive(),
+                window.isFocused(),
+                window.isInPictureInPictureMode()
+        );
+    }
+
+    @Nullable
+    private String takeWindowScreenshot(AccessibilityWindowInfo windowInfo) {
+        // Screenshot API is only available from API 34
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            return null;
+        }
+
+        try {
+            Window window = getWindowFromAccessibilityWindowInfo(windowInfo);
+            if (window == null) {
+                return null;
+            }
+
+            UiAutomation uiAutomation = CustomUiDevice.getInstance().getUiAutomation();
+            Bitmap screenshot = uiAutomation.takeScreenshot(window);
+
+            if (screenshot == null) {
+                return null;
+            }
+
+            try {
+                return ScreenshotHelper.bitmapToBase64Png(screenshot);
+            } catch (TakeScreenshotException e) {
+                Logger.debug("Failed to convert screenshot to base64", e);
+                return null;
+            } finally {
+                screenshot.recycle();
+            }
+        } catch (Exception e) {
+            Logger.debug("Failed to take window screenshot", e);
+            return null;
+        }
+    }
+
+    @Nullable
+    private Window getWindowFromAccessibilityWindowInfo(AccessibilityWindowInfo windowInfo) {
+        try {
+            // AccessibilityWindowInfo has a private field "mWindow" that contains the Window object
+            Object window = getField(AccessibilityWindowInfo.class, "mWindow", windowInfo);
+            return window instanceof Window ? (Window) window : null;
+        } catch (Exception e) {
+            Logger.debug("Failed to get Window from AccessibilityWindowInfo", e);
+            return null;
+        }
+    }
+
+    private List<WindowModel> filterWindows(List<WindowModel> windows, Map<String, Object> filters) {
+        return windows.stream()
+                .filter(window -> matchesFilters(window, filters))
+                .collect(Collectors.toList());
+    }
+
+    private boolean matchesFilters(WindowModel window, Map<String, Object> filters) {
+        // Apply AND logic: all provided filters must match
+        return filters.entrySet().stream()
+                .filter(entry -> entry.getValue() != null)
+                .allMatch(entry -> matchesFilter(window, entry.getKey(), entry.getValue()));
+    }
+
+    private boolean matchesFilter(WindowModel window, String key, Object value) {
+        switch (key) {
+            case "packageName":
+                return matchesGlobString(window.packageName, value);
+            case "windowId":
+                return matchesInteger(window.windowId, value);
+            case "displayId":
+                return matchesInteger(window.displayId, value);
+            case "physicalDisplayId":
+                return matchesString(window.physicalDisplayId, value);
+            case "type":
+                return matchesInteger(window.type, value);
+            case "title":
+                return matchesGlobString(window.title, value);
+            case "layer":
+                return matchesInteger(window.layer, value);
+            case "isAccessibilityFocused":
+                return matchesBoolean(window.isAccessibilityFocused, value);
+            case "isActive":
+                return matchesBoolean(window.isActive, value);
+            case "isFocused":
+                return matchesBoolean(window.isFocused, value);
+            case "isInPictureInPictureMode":
+                return matchesBoolean(window.isInPictureInPictureMode, value);
+            default:
+                Logger.debug(String.format("Unknown filter key: %s", key));
+                return true; // Unknown filters don't exclude the window
+        }
+    }
+
+    private boolean matchesGlobString(String str, Object filterValue) {
+        if (str == null) {
+            return false;
+        }
+
+        String filterStr = filterValue.toString();
+        // Support wildcard matching using GlobMatcher
+        return GlobMatcher.matches(filterStr, str);
+    }
+
+    private boolean matchesInteger(Integer value, Object filterValue) {
+        if (value == null) {
+            return false;
+        }
+
+        if (filterValue instanceof Number) {
+            return value.equals(((Number) filterValue).intValue());
+        }
+
+        try {
+            int filterInt = Integer.parseInt(filterValue.toString());
+            return value.equals(filterInt);
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    private boolean matchesString(String value, Object filterValue) {
+        if (value == null) {
+            return false;
+        }
+
+        return filterValue.toString().equals(value);
+    }
+
+    private boolean matchesBoolean(boolean value, Object filterValue) {
+        if (filterValue instanceof Boolean) {
+            return value == (Boolean) filterValue;
+        }
+
+        if (filterValue instanceof String) {
+            String filterStr = ((String) filterValue).toLowerCase().trim();
+            if ("true".equals(filterStr) || "1".equals(filterStr)) {
+                return value;
+            }
+            if ("false".equals(filterStr) || "0".equals(filterStr)) {
+                return !value;
+            }
+        }
+
+        return false;
+    }
+}
+
