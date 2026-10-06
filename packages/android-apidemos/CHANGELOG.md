@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [6.1.1](https://github.com/appium/appium-android/compare/android-apidemos@6.1.0...android-apidemos@6.1.1) (2026-10-06)
+
+### Miscellaneous Chores
+
+* **deps:** bump androidx.appcompat:appcompat from 1.6.1 to 1.8.0 in /packages/android-apidemos ([#21](https://github.com/appium/appium-android/issues/21)) ([8c25f16](https://github.com/appium/appium-android/commit/8c25f16a19d225a51e9ce7c44292c8869262419c))
+
+
 ## 6.1.0 (2026-10-03)
 
 ### Features

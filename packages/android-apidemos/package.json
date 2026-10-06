@@ -1,6 +1,6 @@
 {
   "name": "android-apidemos",
-  "version": "6.1.0",
+  "version": "6.1.1",
   "private": true,
   "description": "A fork of Google's Android ApiDemos application, used for testing Appium",
   "keywords": [
