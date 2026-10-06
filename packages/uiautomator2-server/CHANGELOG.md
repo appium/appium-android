@@ -1,3 +1,15 @@
+# Change Log
+
+All notable changes to this project will be documented in this file.
+See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
+## 10.7.0 (2026-10-06)
+
+### Features
+
+* move appium-uiautomator2-server into packages/uiautomator2-server ([#23](https://github.com/appium/appium-android/issues/23)) ([5217015](https://github.com/appium/appium-android/commit/5217015dd2bc0c9b4a7285acebfb844d836dcde4))
+
+
 ## [10.6.6](https://github.com/appium/appium-uiautomator2-server/compare/v10.6.5...v10.6.6) (2026-09-10)
 
 ### Miscellaneous Chores
