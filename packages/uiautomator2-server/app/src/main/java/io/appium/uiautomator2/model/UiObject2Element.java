@@ -160,7 +160,9 @@ public class UiObject2Element extends BaseElement {
                 result = AxNodeInfoHelper.getCollectionItemInfoAsString(toAxNodeInfo(element));
                 break;
             default:
-                throw generateNoAttributeException(attr);
+                // The remaining attributes are read the same way the page source reads them
+                result = UiElementSnapshot.getAttributeValue(toAxNodeInfo(element), dstAttribute);
+                break;
         }
         if (result == null) {
             return null;
