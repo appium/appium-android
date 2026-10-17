@@ -31,7 +31,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # `lerna publish` fails with EBEHIND if main moved on after this run was triggered (e.g. while
+  # queued behind another release), so a stale push-triggered run bows out; the run for the
+  # newer commit releases everything this one would have.
+  check-head:
+    runs-on: ubuntu-latest
+    outputs:
+      stale: ${{ steps.head.outputs.stale }}
+    steps:
+      - name: Compare with the current head of main
+        id: head
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          stale=false
+          if [ "$EVENT_NAME" = "push" ]; then
+            head_sha="$(gh api "repos/${GITHUB_REPOSITORY}/commits/main" --jq .sha)"
+            if [ "$head_sha" != "$GITHUB_SHA" ]; then
+              stale=true
+              echo "::notice::main moved to ${head_sha} since ${GITHUB_SHA}; skipping, the run for the newer commit will release"
+            fi
+          fi
+          echo "stale=${stale}" >> "$GITHUB_OUTPUT"
+
   release:
+    needs: check-head
+    if: ${{ needs.check-head.outputs.stale != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
