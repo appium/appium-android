@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [8.4.2](https://github.com/appium/appium-android/compare/io.appium.settings@8.4.1...io.appium.settings@8.4.2) (2026-10-17)
+
+### Miscellaneous Chores
+
+* **deps:** bump gradle-wrapper in /packages/settings ([#33](https://github.com/appium/appium-android/issues/33)) ([628e7f6](https://github.com/appium/appium-android/commit/628e7f6ae849ea1e0da0ddad968c12d17730c47b))
+
+
 ## [8.4.1](https://github.com/appium/appium-android/compare/io.appium.settings@8.4.0...io.appium.settings@8.4.1) (2026-10-06)
 
 ### Miscellaneous Chores
