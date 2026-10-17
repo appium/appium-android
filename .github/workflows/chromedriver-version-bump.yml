@@ -34,5 +34,6 @@ jobs:
         uses: peter-evans/create-pull-request@v8
         with:
           branch: ${{ steps.release_check.outputs.cd_release }}
+          commit-message: 'chore(chromedriver): ChromeDriver Bump to v${{ steps.release_check.outputs.cd_release }}'
           title: 'chore(chromedriver): ChromeDriver Bump to v${{ steps.release_check.outputs.cd_release }}'
           body: ''
