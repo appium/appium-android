@@ -1,6 +1,6 @@
 {
   "name": "io.appium.settings",
-  "version": "8.4.1",
+  "version": "8.4.2",
   "description": "App for dealing with Android settings",
   "keywords": [
     "android",

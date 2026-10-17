@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.2.1](https://github.com/appium/appium-android/compare/compose-playground@1.2.0...compose-playground@1.2.1) (2026-10-17)
+
+### Miscellaneous Chores
+
+* **deps:** bump gradle-wrapper in /packages/compose-playground ([#32](https://github.com/appium/appium-android/issues/32)) ([aa39df1](https://github.com/appium/appium-android/commit/aa39df15598fd9976995ef68d612b0f0c0fb56fd))
+* **deps:** bump org.jetbrains.kotlin.plugin.compose ([#31](https://github.com/appium/appium-android/issues/31)) ([8c9178a](https://github.com/appium/appium-android/commit/8c9178a04392e1def6ed5464a494c8b62dc6436c))
+
+
 ## 1.2.0 (2026-10-03)
 
 ### Features
