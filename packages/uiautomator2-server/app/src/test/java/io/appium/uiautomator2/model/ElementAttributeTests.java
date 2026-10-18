@@ -92,6 +92,18 @@ public class ElementAttributeTests {
     }
 
     @Test
+    public void originalTextStillFails() {
+        assertThrows(NoSuchAttributeException.class, () -> uiObject2Element.getAttribute("original-text"));
+        assertThrows(NoSuchAttributeException.class, () -> uiObjectElement.getAttribute("original-text"));
+    }
+
+    @Test
+    public void indexStillFails() {
+        assertThrows(NoSuchAttributeException.class, () -> uiObject2Element.getAttribute("index"));
+        assertThrows(NoSuchAttributeException.class, () -> uiObjectElement.getAttribute("index"));
+    }
+
+    @Test
     public void unknownAttributeStillFails() {
         assertThrows(NoSuchAttributeException.class, () -> uiObject2Element.getAttribute("no-such-attribute"));
         assertThrows(NoSuchAttributeException.class, () -> uiObjectElement.getAttribute("no-such-attribute"));
