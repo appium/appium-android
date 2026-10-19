@@ -44,6 +44,7 @@ import static io.appium.uiautomator2.unittest.test.internal.TestUtils.waitForEle
 import static io.appium.uiautomator2.unittest.test.internal.commands.DeviceCommands.createSession;
 import static io.appium.uiautomator2.unittest.test.internal.commands.DeviceCommands.deleteSession;
 import static io.appium.uiautomator2.unittest.test.internal.commands.DeviceCommands.findElements;
+import static io.appium.uiautomator2.unittest.test.internal.commands.DeviceCommands.setRotation;
 import static io.appium.uiautomator2.unittest.test.internal.commands.ElementCommands.click;
 import static io.appium.uiautomator2.utils.Device.getUiDevice;
 import static org.junit.Assert.assertNotNull;
@@ -80,6 +81,9 @@ public abstract class BaseTest {
 
     @Before
     public void launchAUT() throws JSONException {
+        // Rotation tests leave the screen rotated and the test order is not fixed,
+        // so put the device back to its natural portrait rotation before each test.
+        setRotation(new JSONObject().put("x", 0).put("y", 0).put("z", 0));
         dismissSystemAlert();
         startActivity(Config.APP_NAME);
         waitForElement(By.accessibilityId("Accessibility"));

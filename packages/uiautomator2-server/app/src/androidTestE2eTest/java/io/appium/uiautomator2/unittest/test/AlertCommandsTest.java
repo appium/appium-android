@@ -31,6 +31,7 @@ import static io.appium.uiautomator2.unittest.test.internal.commands.DeviceComma
 import static io.appium.uiautomator2.unittest.test.internal.commands.DeviceCommands.dismissAlert;
 import static io.appium.uiautomator2.unittest.test.internal.commands.DeviceCommands.findElement;
 import static io.appium.uiautomator2.unittest.test.internal.commands.DeviceCommands.getAlertText;
+import static io.appium.uiautomator2.unittest.test.internal.commands.ElementCommands.getText;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
@@ -65,11 +66,14 @@ public class AlertCommandsTest extends BaseTest {
         Response response = findElement(By.accessibilityId("OK Cancel dialog with a long message"));
         clickAndWaitForStaleness(response.getElementId());
 
-        if (Build.VERSION.SDK_INT > 28) {
-            response = dismissAlert("Cancel");
-        } else {
-            response = dismissAlert("CANCEL");
-        }
+        // The button label case depends on the platform theme ("CANCEL" or "Cancel"),
+        // so read the negative button label from the alert instead of guessing it
+        // from the API level.
+        response = waitForElement(By.id("android:id/button2"));
+        String cancelLabel = getText(response.getElementId()).getValue();
+        assertTrue("Cancel".equalsIgnoreCase(cancelLabel));
+
+        response = dismissAlert(cancelLabel);
         assertTrue(response.isSuccessful());
     }
 
