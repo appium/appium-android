@@ -159,6 +159,30 @@ public class UiObject2Element extends BaseElement {
             case COLLECTION_ITEM_INFO:
                 result = AxNodeInfoHelper.getCollectionItemInfoAsString(toAxNodeInfo(element));
                 break;
+            case IMPORTANT_FOR_ACCESSIBILITY:
+            case SCREEN_READER_FOCUSABLE:
+            case INPUT_TYPE:
+            case DRAWING_ORDER:
+            case SHOWING_HINT_TEXT:
+            case TEXT_ENTRY_KEY:
+            case MULTI_LINE:
+            case DISMISSABLE:
+            case ACCESSIBILITY_FOCUSED:
+            case HEADING:
+            case LIVE_REGION:
+            case CONTEXT_CLICKABLE:
+            case MAX_TEXT_LENGTH:
+            case CONTENT_INVALID:
+            case ERROR_TEXT:
+            case PANE_TITLE:
+            case TOOLTIP_TEXT:
+            case TEXT_HAS_CLICKABLE_SPAN:
+            case ACTIONS:
+            case WINDOW_ID:
+            case TEXT_SIZE:
+            case TEXT_UNIT:
+                result = UiElementSnapshot.getAttributeValue(toAxNodeInfo(element), dstAttribute);
+                break;
             default:
                 throw generateNoAttributeException(attr);
         }

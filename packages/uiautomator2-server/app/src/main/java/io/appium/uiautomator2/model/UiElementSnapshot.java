@@ -136,7 +136,11 @@ public class UiElementSnapshot extends UiElement<AccessibilityNodeInfo, UiElemen
     }
 
     private @Nullable Object getNodeAttributeValue(Attribute attr) {
-        AccessibilityNodeInfo node = Objects.requireNonNull(getNode());
+        return getNodeAttributeValue(Objects.requireNonNull(getNode()), attr, index);
+    }
+
+    private static @Nullable Object getNodeAttributeValue(AccessibilityNodeInfo node, Attribute attr,
+                                                          int index) {
         switch (attr) {
             case CHECKABLE:
                 return node.isCheckable();
@@ -255,8 +259,21 @@ public class UiElementSnapshot extends UiElement<AccessibilityNodeInfo, UiElemen
         }
     }
 
+    /**
+     * Reads a single attribute of the given node the same way the page source does.
+     *
+     * @param node the node to read the attribute from
+     * @param attribute the attribute to read
+     * @return the attribute value or null if the node does not expose it
+     */
     @Nullable
-    private TextData extractTextData(AccessibilityNodeInfo node) {
+    public static Object getAttributeValue(AccessibilityNodeInfo node, Attribute attribute) {
+        int index = attribute == Attribute.INDEX ? AxNodeInfoHelper.calculateIndex(node) : 0;
+        return getNodeAttributeValue(node, attribute, index);
+    }
+
+    @Nullable
+    private static TextData extractTextData(AccessibilityNodeInfo node) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R
                 || node.getText() == null
                 || node.getText().length() == 0) {
