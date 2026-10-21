@@ -23,6 +23,7 @@ import android.util.Base64;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -72,6 +73,12 @@ import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings("JavaDoc")
 public class DeviceCommandsTest extends BaseTest {
+    @After
+    public void resetRotation() throws JSONException {
+        assertTrue(setRotation(new JSONObject().put("x", 0).put("y", 0).put("z", 0))
+                .isSuccessful());
+    }
+
     /**
      * Test for findElement
      *
