@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [10.7.1](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@10.7.0...appium-uiautomator2-server@10.7.1) (2026-10-21)
+
+### Bug Fixes
+
+* **uiautomator2-server:** return every advertised attribute from getAttribute ([#25](https://github.com/appium/appium-android/issues/25)) ([12adbbf](https://github.com/appium/appium-android/commit/12adbbfd0c4581e775ca04fab230fc170c4b83ab)), closes [appium/appium-uiautomator2-driver#893](https://github.com/appium/appium-uiautomator2-driver/issues/893)
+
+
 ## 10.7.0 (2026-10-06)
 
 ### Features
