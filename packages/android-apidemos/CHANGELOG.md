@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [6.1.3](https://github.com/appium/appium-android/compare/android-apidemos@6.1.2...android-apidemos@6.1.3) (2026-10-23)
+
+### Miscellaneous Chores
+
+* **deps:** bump gradle-wrapper in /packages/android-apidemos ([#41](https://github.com/appium/appium-android/issues/41)) ([32af35c](https://github.com/appium/appium-android/commit/32af35c1390961148d7b3c85f774f7b6299a84d7))
+
+
 ## [6.1.2](https://github.com/appium/appium-android/compare/android-apidemos@6.1.1...android-apidemos@6.1.2) (2026-10-17)
 
 ### Miscellaneous Chores
