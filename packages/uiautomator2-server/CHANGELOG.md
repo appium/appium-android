@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [10.7.2](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@10.7.1...appium-uiautomator2-server@10.7.2) (2026-10-23)
+
+**Note:** Version bump only for package appium-uiautomator2-server
+
+
+
+
+
 ## [10.7.1](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@10.7.0...appium-uiautomator2-server@10.7.1) (2026-10-21)
 
 ### Bug Fixes

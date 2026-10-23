@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [8.4.4](https://github.com/appium/appium-android/compare/io.appium.settings@8.4.3...io.appium.settings@8.4.4) (2026-10-23)
+
+### Bug Fixes
+
+* **adb:** use AsyncLock from asyncbox instead of async-lock ([#45](https://github.com/appium/appium-android/issues/45)) ([fe41904](https://github.com/appium/appium-android/commit/fe4190403e1bc3f66a2ead346caf7eb16002626b))
+
+
 ## [8.4.3](https://github.com/appium/appium-android/compare/io.appium.settings@8.4.2...io.appium.settings@8.4.3) (2026-10-23)
 
 ### Miscellaneous Chores

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [9.1.7](https://github.com/appium/appium-android/compare/appium-chromedriver@9.1.6...appium-chromedriver@9.1.7) (2026-10-23)
+
+### Bug Fixes
+
+* **adb:** use AsyncLock from asyncbox instead of async-lock ([#45](https://github.com/appium/appium-android/issues/45)) ([fe41904](https://github.com/appium/appium-android/commit/fe4190403e1bc3f66a2ead346caf7eb16002626b))
+
+
 ## [9.1.6](https://github.com/appium/appium-android/compare/appium-chromedriver@9.1.5...appium-chromedriver@9.1.6) (2026-10-23)
 
 ### Bug Fixes
