@@ -1,7 +1,7 @@
 import path from 'node:path';
 
 import {fs, tempDir, util} from '@appium/support';
-import AsyncLock from 'async-lock';
+import {AsyncLock} from 'asyncbox';
 import {LRUCache} from 'lru-cache';
 import {exec} from 'teen_process';
 

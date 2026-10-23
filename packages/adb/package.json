@@ -45,8 +45,7 @@
   },
   "dependencies": {
     "@appium/support": "^7.2.6",
-    "async-lock": "^1.0.0",
-    "asyncbox": "^6.4.3",
+    "asyncbox": "^6.5.0",
     "ini": "^6.0.0",
     "lru-cache": "^11.1.0",
     "semver": "^7.0.0",
@@ -55,7 +54,6 @@
   "devDependencies": {
     "@appium/tsconfig": "^1.2.0",
     "@appium/types": "^1.0.0-rc.1",
-    "@types/async-lock": "^1.4.0",
     "@types/ini": "^4.1.0",
     "@types/node": "^26.6.5",
     "@types/semver": "^7.5.0",
