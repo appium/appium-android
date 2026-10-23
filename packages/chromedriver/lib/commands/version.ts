@@ -1,9 +1,11 @@
 import * as semver from 'semver';
 
 import {getChromeVersion} from '../utils.js';
+import {getCapValue} from './session.js';
 import type {ChromedriverCommandContext} from './types.js';
 
 const CHROME_BUNDLE_ID = 'com.android.chrome';
+const CHROME_BROWSER_BUNDLE_IDS = [CHROME_BUNDLE_ID, 'com.chrome.beta', 'com.chrome.dev', 'com.chrome.canary'] as const;
 const WEBVIEW_SHELL_BUNDLE_ID = 'org.chromium.webview_shell';
 const WEBVIEW_BUNDLE_IDS = ['com.google.android.webview', 'com.android.webview'] as const;
 const VERSION_PATTERN = /([\d.]+)/;
@@ -18,6 +20,14 @@ export async function getChromeVersionForAutodetection(
   const fromDetails = tryCoerceVersionFromCdpDetails(this);
   if (fromDetails) {
     return fromDetails;
+  }
+
+  // A Chrome browser session names its package, whose version may differ from the system WebView's.
+  if (!this.bundleId) {
+    const androidPackage = getCapValue(this.capabilities, 'chromeOptions')?.androidPackage;
+    if (CHROME_BROWSER_BUNDLE_IDS.includes(androidPackage)) {
+      this.bundleId = androidPackage;
+    }
   }
 
   // In WebView shell mode, probe known system webview packages first.
