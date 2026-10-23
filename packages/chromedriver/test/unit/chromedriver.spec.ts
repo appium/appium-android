@@ -285,6 +285,63 @@ describe('chromedriver', function () {
         const binPath = await (cd as any).getCompatibleChromedriver();
         assert.strictEqual(binPath, '/path/to/chromedriver-42');
       });
+
+      describe('Chrome and system WebView with different versions', function () {
+        const installedVersions: Record<string, string> = {
+          'com.google.android.webview': '155.0.7000.1',
+          'com.android.chrome': '149.0.7827.5',
+          'io.appium.android.apis': '6.0.0',
+        };
+
+        async function selectChromedriver(opts: Record<string, any>, caps: Record<string, any>): Promise<string> {
+          const cd = new Chromedriver({adb: {getApiLevel: async () => 34} as any, ...opts});
+          cd.capabilities = caps;
+          currentGetChromeVersion = sandbox
+            .stub()
+            .callsFake(async (_adb, bundleId: string) => installedVersions[bundleId]);
+          sandbox.stub(fs, 'glob').resolves(['/path/to/chromedriver-155', '/path/to/chromedriver-149']);
+          sandbox.stub(cd, '_execFunc').callsFake(
+            async (executable: string) =>
+              ({
+                stdout: executable.endsWith('155')
+                  ? 'ChromeDriver 155.0.7000.0 (1881fd7f8641508feb5166b7cae561d87723cfa8)'
+                  : 'ChromeDriver 149.0.7827.0 (1881fd7f8641508feb5166b7cae561d87723cfa8)',
+              }) as any,
+          );
+          return await (cd as any).getCompatibleChromedriver();
+        }
+
+        it('should use the Chrome version for a Chrome browser session', async function () {
+          const binPath = await selectChromedriver({}, {chromeOptions: {androidPackage: 'com.android.chrome'}});
+          assert.strictEqual(binPath, '/path/to/chromedriver-149');
+        });
+
+        it('should use the Chrome version for a Chrome browser session with W3C capability names', async function () {
+          const binPath = await selectChromedriver({}, {'goog:chromeOptions': {androidPackage: 'com.android.chrome'}});
+          assert.strictEqual(binPath, '/path/to/chromedriver-149');
+        });
+
+        it('should use the WebView version for an app WebView session', async function () {
+          const binPath = await selectChromedriver({}, {chromeOptions: {androidPackage: 'io.appium.android.apis'}});
+          assert.strictEqual(binPath, '/path/to/chromedriver-155');
+        });
+
+        it('should prefer an explicit bundle id over the session package', async function () {
+          const binPath = await selectChromedriver(
+            {bundleId: 'com.google.android.webview'},
+            {chromeOptions: {androidPackage: 'com.android.chrome'}},
+          );
+          assert.strictEqual(binPath, '/path/to/chromedriver-155');
+        });
+
+        it('should prefer the browser version from CDP details', async function () {
+          const binPath = await selectChromedriver(
+            {details: {info: {Browser: 'Chrome/155.0.7000.1'}}},
+            {chromeOptions: {androidPackage: 'com.android.chrome'}},
+          );
+          assert.strictEqual(binPath, '/path/to/chromedriver-155');
+        });
+      });
     });
   });
 
