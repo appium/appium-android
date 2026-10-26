@@ -40,7 +40,7 @@ You may also consider using the latest [Android Studio](https://developer.androi
 ### Enable access to non-SDK interfaces
 
 [Restrictions on non-SDK interfaces](https://developer.android.com/guide/app-compatibility/restrictions-non-sdk-interfaces#test-for-non-sdk) could affect some functionalities.
-Changing of the system locale in API Level 34 or later demonstrates the above restriction. Please [enable access to non-SDK interfaces](https://developer.android.com/guide/app-compatibility/restrictions-non-sdk-interfaces#how_can_i_enable_access_to_non-sdk_interfaces) via `adb`. [This issue comment](https://github.com/appium/io.appium.settings/issues/180#issuecomment-2156279885) is adb logcat output when the non-SDK interfaces are enabled, or disabled (system default). Please try out a device reboot if the same logcat continues even after setting the hidden api policy.
+Changing of the system locale in API Level 34 or later demonstrates the above restriction. Please [enable access to non-SDK interfaces](https://developer.android.com/guide/app-compatibility/restrictions-non-sdk-interfaces#how_can_i_enable_access_to_non-sdk_interfaces) via `adb`. [This issue comment](https://github.com/appium/io.appium.settings/issues/180#issuecomment-2156279885) is adb logcat output when the non-SDK interfaces are enabled, or disabled (system default). If `io.appium.settings` was already running before the hidden API policy was updated, restart the app process (`adb shell am force-stop io.appium.settings && adb shell am start -n io.appium.settings/.Settings -a android.intent.action.MAIN -c android.intent.category.LAUNCHER`) or reboot the device so the updated policy takes effect.
 
 ## Building
 
@@ -72,7 +72,7 @@ $ adb uninstall io.appium.settings
 
 ## Using the JavaScript wrapper
 
-This module exports the [SettingsApp](./lib/client.js) class, which allows you to automate the below interactions with JavaScript.
+This module exports the [SettingsApp](./lib/client.ts) class, which allows you to automate the below interactions with JavaScript.
 The wrapper expects you to also have the [appium-adb](https://github.com/appium/appium-adb) module listed
 in your dependencies. The actual version of the appium-adb module must satisfy the same semver requirement this module
 has in its [devDependencies](./package.json).
@@ -104,7 +104,7 @@ main();
 ```
 
 The module also exports various constants containing its service and action names, that could be useful in your
-scripts. Check [constants.js](./lib/constants.js) for more details.
+scripts. Check [constants.ts](./lib/constants.ts) for more details.
 
 ## Changing of system settings
 
@@ -291,8 +291,9 @@ $ adb shell am broadcast -a io.appium.settings.notifications
 The notifications listener service is running in the background and collects
 all the active and newly created notifications into the internal buffer with maximum
 size of `100`. The collected data (e.g. the properties and texts of each notification)
-is returned as JSON-formatted string. An error description string is returned instead if the
-notifications list cannot be retrieved.
+is returned as JSON-formatted string (with `result=-1`, which corresponds to Android's
+`Activity.RESULT_OK` on ordered broadcasts). An error description string is returned with
+`result=0` (`Activity.RESULT_CANCELED`) if the notifications list cannot be retrieved.
 The example of the resulting data:
 ```json
 {
@@ -434,7 +435,7 @@ either a sequence of JPEG frames or an H.264/HEVC video (with an optional interl
 audio track), instead of writing a file. This is a **raw local-socket protocol**, not an
 HTTP/MJPEG server: the app opens a local abstract socket on-device, and the consumer is
 expected to `adb forward` it to a host TCP port and parse the (simple, length-prefixed)
-frame protocol itself. The [SettingsApp](./lib/client.js) wrapper (`makeJpegStreamSession()` /
+frame protocol itself. The [SettingsApp](./lib/client.ts) wrapper (`makeJpegStreamSession()` /
 `makeVideoStreamSession()`) already does this for you and is the recommended way to consume
 either stream; talking to the socket directly is only needed for other languages/tools.
 
@@ -562,7 +563,7 @@ Voila!
 
 ## Caveats
 
-There are certain system services which cannot be accessed through an application. Two ones central here are `airplane_mode` and `gps`.
+There are certain system services which cannot be accessed through an application. Two ones central here are `airplane_mode` and `gps`. Wi-Fi hotspot (tethering) is also not managed by Appium Settings; on supported Android versions it can be invoked via `adb shell cmd wifi start-softap`.
 
 
 ## License
