@@ -1,7 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import {util} from '@appium/support';
 import type {ADB} from 'appium-adb';
 import {waitForCondition} from 'asyncbox';
 
@@ -92,7 +91,7 @@ export class MediaProjectionRecorder {
     if (resolution) {
       args.push('--es', 'resolution', resolution);
     }
-    await this.adb.shell(args.map((arg) => util.quote(arg)));
+    await this.adb.shellArgs(args);
     try {
       await waitForCondition(async () => await this.isRunning(), {
         waitMs: RECORDING_STARTUP_TIMEOUT_MS,

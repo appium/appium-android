@@ -210,6 +210,8 @@ export class ADB implements ADBOptions {
   EXEC_OUTPUT_FORMAT: typeof systemCommands.EXEC_OUTPUT_FORMAT = systemCommands.EXEC_OUTPUT_FORMAT;
   adbExec = systemCommands.adbExec;
   shell = systemCommands.shell;
+  shellArgs = systemCommands.shellArgs;
+  shellArgsChunks = systemCommands.shellArgsChunks;
   shellChunks = systemCommands.shellChunks;
   createSubProcess = systemCommands.createSubProcess;
   getEmulatorPort = systemCommands.getEmulatorPort;

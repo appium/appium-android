@@ -612,6 +612,38 @@ export async function shell(this: ADB, cmd: string | string[], opts?: ShellExecO
 }
 
 /**
+ * Execute a command whose elements are literal arguments, not shell expressions.
+ * adb joins arguments before the device's POSIX shell parses them, even on Windows
+ * hosts. Quote each element exactly once here; callers must pass unquoted values.
+ * Use `shell` instead when intentional shell syntax is required.
+ *
+ * @param args - Executable followed by its literal arguments
+ * @param opts - Execution options with `outputFormat: 'full'`
+ * @returns Command stdout and stderr
+ */
+export async function shellArgs(
+  this: ADB,
+  args: readonly string[],
+  opts: ShellExecOptions & {outputFormat: 'full'},
+): Promise<ExecResult>;
+/**
+ * Execute a command with literal arguments. See the full-output overload.
+ *
+ * @param args - Executable followed by its literal arguments
+ * @param opts - Execution options
+ * @returns Command stdout
+ */
+export async function shellArgs(this: ADB, args: readonly string[], opts?: ShellExecOptions): Promise<string>;
+export async function shellArgs(
+  this: ADB,
+  args: readonly string[],
+  opts?: ShellExecOptions,
+): Promise<string | ExecResult> {
+  const command = args.map((arg) => util.quote(arg));
+  return opts === undefined ? await this.shell(command) : await this.shell(command, opts);
+}
+
+/**
  * Create a new ADB subprocess with the given arguments
  *
  * @param args - Array of command arguments (default: empty array)
@@ -1358,6 +1390,29 @@ export async function isMitmCertificateInstalled(this: ADB, cert: Buffer | strin
   const dstPath = path.posix.resolve(CERTS_ROOT, `${certHash}.0`);
   log.debug(`Checking if the certificate is already installed at '${dstPath}'`);
   return await this.fileExists(dstPath);
+}
+
+/**
+ * Batch commands with literal arguments. Each transformed command is quoted
+ * before `shellChunks` measures its length and inserts shell separators.
+ * Unlike `shellChunks`, a trailing semicolon is treated as argument data.
+ *
+ * @param argTransformer - Function producing an executable and unquoted arguments
+ * @param args - Values to transform into commands
+ * @throws {Error} If the transformer returns an invalid result or execution fails
+ */
+export async function shellArgsChunks(
+  this: ADB,
+  argTransformer: (x: string) => string[],
+  args: string[],
+): Promise<void> {
+  await this.shellChunks((arg) => {
+    const command = argTransformer(arg);
+    if (!Array.isArray(command)) {
+      throw new Error('Argument transformer must result in an array');
+    }
+    return command.map((value) => util.quote(value));
+  }, args);
 }
 
 /**
