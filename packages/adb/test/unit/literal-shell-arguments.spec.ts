@@ -33,6 +33,35 @@ describe('literal shell arguments', {skip: process.platform === 'win32'}, () => 
   afterEach(() => sandbox.restore());
 
   for (const value of values) {
+    it(`startApp quotes builder output once: ${JSON.stringify(value)}`, async () => {
+      sandbox.stub(adb, 'getApiLevel').resolves(30);
+      const shell = sandbox.stub(adb, 'shell').resolves('');
+      await adb.startApp({
+        pkg: 'com.example',
+        activity: '.Main$Inner',
+        action: value,
+        category: value,
+        stopApp: false,
+        waitForLaunch: false,
+      });
+      assert.deepEqual(await parse(shell.firstCall.args[0]), [
+        'am',
+        'start-activity',
+        '-n',
+        'com.example/.Main$Inner',
+        '-a',
+        value,
+        '-c',
+        value,
+      ]);
+    });
+
+    it(`settings arguments remain literal: ${JSON.stringify(value)}`, async () => {
+      const shell = sandbox.stub(adb, 'shell').resolves('');
+      await adb.setSetting(value, value, value);
+      assert.deepEqual(await parse(shell.firstCall.args[0]), ['settings', 'put', value, value, value]);
+    });
+
     for (const method of ['grantPermission', 'revokePermission'] as const) {
       it(`${method} preserves package and permission: ${JSON.stringify(value)}`, async () => {
         const shell = sandbox.stub(adb, 'shell').resolves('');

@@ -39,7 +39,7 @@ export async function isLockManagementSupported(this: ADB): Promise<boolean> {
  */
 export async function verifyLockCredential(this: ADB, credential: string | null = null): Promise<boolean> {
   try {
-    const {stdout, stderr} = await this.shell(buildCommand('verify', credential), {
+    const {stdout, stderr} = await this.shellArgs(buildCommand('verify', credential), {
       outputFormat: this.EXEC_OUTPUT_FORMAT.FULL,
     });
     if (stdout?.includes('verified successfully')) {
@@ -76,7 +76,7 @@ export async function verifyLockCredential(this: ADB, credential: string | null 
  */
 export async function clearLockCredential(this: ADB, credential: string | null = null): Promise<void> {
   try {
-    const {stdout, stderr} = await this.shell(buildCommand('clear', credential), {
+    const {stdout, stderr} = await this.shellArgs(buildCommand('clear', credential), {
       outputFormat: this.EXEC_OUTPUT_FORMAT.FULL,
     });
     if (!['user has no password', 'Lock credential cleared'].some((x) => (stderr || stdout)?.includes(x))) {
@@ -104,7 +104,7 @@ export async function clearLockCredential(this: ADB, credential: string | null =
  */
 export async function isLockEnabled(this: ADB): Promise<boolean> {
   try {
-    const {stdout, stderr} = await this.shell(buildCommand('get-disabled'), {
+    const {stdout, stderr} = await this.shellArgs(buildCommand('get-disabled'), {
       outputFormat: this.EXEC_OUTPUT_FORMAT.FULL,
     });
     if (
@@ -158,7 +158,7 @@ export async function setLockCredential(
   }
   const cmd = buildCommand(`set-${credentialType}`, oldCredential, credential);
   try {
-    const {stdout, stderr} = await this.shell(cmd, {
+    const {stdout, stderr} = await this.shellArgs(cmd, {
       outputFormat: this.EXEC_OUTPUT_FORMAT.FULL,
     });
     if (!stdout?.includes('set to')) {
@@ -302,10 +302,10 @@ export function isScreenStateOff(dumpsys: string): boolean {
 function buildCommand(verb: string, oldCredential: string | null = null, ...args: string[]): string[] {
   const cmd = ['locksettings', verb];
   if (oldCredential && !util.isEmpty(oldCredential)) {
-    cmd.push('--old', util.quote(`${oldCredential}`));
+    cmd.push('--old', `${oldCredential}`);
   }
   if (args.length > 0) {
-    cmd.push(...args.map((arg) => util.quote(`${arg}`)));
+    cmd.push(...args.map((arg) => `${arg}`));
   }
   return cmd;
 }

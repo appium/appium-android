@@ -132,7 +132,7 @@ export async function resolveLaunchableActivity(
  */
 export async function forceStop(this: ADB, pkg: string): Promise<string> {
   assertSafeComponentName(pkg, 'application package name');
-  return await this.shell(['am', 'force-stop', util.quote(pkg)]);
+  return await this.shellArgs(['am', 'force-stop', pkg]);
 }
 
 /**
@@ -561,16 +561,14 @@ export async function startUri(
   if (waitForLaunch) {
     args.push('-W');
   }
-  // adb joins these arguments into a command parsed by the device's shell,
-  // regardless of the host operating system.
-  args.push('-a', 'android.intent.action.VIEW', '-d', util.quote(uri));
+  args.push('-a', 'android.intent.action.VIEW', '-d', uri);
   if (pkg) {
     assertSafeComponentName(pkg, 'application package name');
-    args.push(util.quote(pkg));
+    args.push(pkg);
   }
 
   try {
-    const res = await this.shell(args);
+    const res = await this.shellArgs(args);
     if (res.toLowerCase().includes('unable to resolve intent')) {
       throw new Error(res);
     }
@@ -616,7 +614,7 @@ export async function startApp(this: ADB, startAppOptions: StartAppOptions): Pro
     if (options.waitDuration !== undefined && Number.isInteger(options.waitDuration) && options.waitDuration >= 0) {
       shellOpts.timeout = options.waitDuration;
     }
-    const stdout = await this.shell(cmd, shellOpts);
+    const stdout = await this.shellArgs(cmd, shellOpts);
     if (stdout.includes('Error: Activity class') && stdout.includes('does not exist')) {
       if (options.retry && options.activity && !options.activity.startsWith('.')) {
         log.debug(
@@ -886,41 +884,41 @@ export async function waitForNotActivity(this: ADB, pkg: string, act: string, wa
 }
 
 /**
- * Builds command line representation for the given
- * application startup options
+ * Builds literal arguments for the given application startup options.
+ * Execute the result with `shellArgs`, not `shell`.
  *
  * @param startAppOptions - Application options mapping
  * @param apiLevel - The actual OS API level
- * @returns The actual command line array
+ * @returns Unquoted command arguments
  */
 export function buildStartCmd(startAppOptions: StartCmdOptions, apiLevel: number): string[] {
   const {user, waitForLaunch, pkg, activity, action, category, stopApp, flags, optionalIntentArguments} =
     startAppOptions;
   const cmd = ['am', apiLevel < 26 ? 'start' : 'start-activity'];
   if (util.hasValue(user)) {
-    cmd.push('--user', util.quote(`${user}`));
+    cmd.push('--user', `${user}`);
   }
   if (waitForLaunch) {
     cmd.push('-W');
   }
   if (activity && pkg) {
     const component = activity.startsWith(`${pkg}/`) ? activity : `${pkg}/${activity}`;
-    cmd.push('-n', util.quote(component));
+    cmd.push('-n', component);
   }
   if (stopApp && apiLevel >= 15) {
     cmd.push('-S');
   }
   if (action) {
-    cmd.push('-a', util.quote(action));
+    cmd.push('-a', action);
   }
   if (category) {
-    cmd.push('-c', util.quote(category));
+    cmd.push('-c', category);
   }
   if (flags) {
-    cmd.push('-f', util.quote(flags));
+    cmd.push('-f', flags);
   }
   if (optionalIntentArguments) {
-    cmd.push(...parseOptionalIntentArguments(optionalIntentArguments).map((arg) => util.quote(arg)));
+    cmd.push(...parseOptionalIntentArguments(optionalIntentArguments));
   }
   return cmd;
 }
@@ -1023,7 +1021,7 @@ export function matchComponentName(classString: string): RegExpExecArray | null 
 /**
  * Asserts a package/activity name has only legal component characters, rejecting shell
  * metacharacters to prevent command injection. The permitted `$` and `*` are still
- * shell-expansion characters and are escaped separately in `buildStartCmd`.
+ * shell-expansion characters and are quoted at execution time by `shellArgs`.
  *
  * @param value - The package or activity name to verify
  * @param kind - A human-readable label for the value used in the error message

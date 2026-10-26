@@ -4,7 +4,7 @@ import net from 'node:net';
 import {describe, it, beforeEach, afterEach} from 'node:test';
 import {promisify} from 'node:util';
 
-import {fs, util} from '@appium/support';
+import {fs} from '@appium/support';
 import sinon from 'sinon';
 import * as teen_process from 'teen_process';
 
@@ -333,7 +333,7 @@ package:com.android.chrome`;
       async function () {
         for (const value of ["a'b", 'two words', '$APPIUM_QUOTE_TEST', 'a;b', 'a\nb', '*', '$(printf unexpected)']) {
           const cmd = buildStartCmd({action: value, category: value, flags: value, user: value}, 26);
-          assert.deepEqual(await parseDeviceCommand(cmd), [
+          assert.deepEqual(await parseLiteralDeviceCommand(cmd), [
             'am',
             'start-activity',
             '--user',
@@ -347,7 +347,7 @@ package:com.android.chrome`;
           ]);
         }
         assert.deepEqual(
-          await parseDeviceCommand(buildStartCmd({user: 0, pkg: 'com.example', activity: '.Main$Inner'}, 26)),
+          await parseLiteralDeviceCommand(buildStartCmd({user: 0, pkg: 'com.example', activity: '.Main$Inner'}, 26)),
           ['am', 'start-activity', '--user', '0', '-n', 'com.example/.Main$Inner'],
         );
       },
@@ -355,7 +355,7 @@ package:com.android.chrome`;
 
     it('preserves quoted and escaped optional arguments', {skip: process.platform === 'win32'}, async function () {
       const optionalIntentArguments = String.raw`--es title "two words" --es apostrophe 'it'"'"'s' --es empty "" --es path a\ b --ei count -1 --es dash "a -b c"`;
-      assert.deepEqual(await parseDeviceCommand(buildStartCmd({optionalIntentArguments}, 26)), [
+      assert.deepEqual(await parseLiteralDeviceCommand(buildStartCmd({optionalIntentArguments}, 26)), [
         'am',
         'start-activity',
         '--es',
@@ -385,7 +385,7 @@ package:com.android.chrome`;
       async function () {
         const optionalIntentArguments =
           '--es value "$APPIUM_QUOTE_TEST ${APPIUM_QUOTE_TEST} $(printf unexpected) `printf unexpected`" --es glob * --es punctuation a;b --es url https://example.test/?a=1&b=2';
-        assert.deepEqual(await parseDeviceCommand(buildStartCmd({optionalIntentArguments}, 26)), [
+        assert.deepEqual(await parseLiteralDeviceCommand(buildStartCmd({optionalIntentArguments}, 26)), [
           'am',
           'start-activity',
           '--es',
@@ -409,7 +409,7 @@ package:com.android.chrome`;
       {skip: process.platform === 'win32'},
       async function () {
         const optionalIntentArguments = '--es\tkey\t"a\\q" \\\n--es other "line\nbreak"';
-        assert.deepEqual(await parseDeviceCommand(buildStartCmd({optionalIntentArguments}, 26)), [
+        assert.deepEqual(await parseLiteralDeviceCommand(buildStartCmd({optionalIntentArguments}, 26)), [
           'am',
           'start-activity',
           '--es',
@@ -485,7 +485,7 @@ package:com.android.chrome`;
       const arg = 'http://some-url-with-hyphens.com/';
       const cmd = buildStartCmd({...startOptions, optionalIntentArguments: `-d ${arg}`}, 20);
       assert.strictEqual(cmd[cmd.length - 2], '-d');
-      assert.strictEqual(cmd[cmd.length - 1], util.quote(arg));
+      assert.strictEqual(cmd[cmd.length - 1], arg);
     });
     it('should parse optionalIntentArguments with multiple arguments with hyphens', function () {
       const arg1 = 'http://some-url-with-hyphens.com/';
@@ -498,10 +498,10 @@ package:com.android.chrome`;
         20,
       );
       assert.strictEqual(cmd[cmd.length - 5], '-d');
-      assert.strictEqual(cmd[cmd.length - 4], util.quote(arg1));
+      assert.strictEqual(cmd[cmd.length - 4], arg1);
       assert.strictEqual(cmd[cmd.length - 3], '-e');
       assert.strictEqual(cmd[cmd.length - 2], 'key');
-      assert.strictEqual(cmd[cmd.length - 1], util.quote(arg2));
+      assert.strictEqual(cmd[cmd.length - 1], arg2);
     });
     it('should have -S option when stopApp is set', function () {
       const cmd = buildStartCmd({...startOptions, stopApp: true}, 20);
@@ -895,4 +895,16 @@ async function parseDeviceCommand(command: string | string[]): Promise<string[]>
     },
   );
   return stdout.toString().split('\0').slice(0, -1);
+}
+
+// Pass builder output through the public execution boundary to catch double quoting.
+async function parseLiteralDeviceCommand(command: string[]): Promise<string[]> {
+  const adb = new ADB();
+  const shell = sinon.stub(adb, 'shell').resolves('');
+  try {
+    await adb.shellArgs(command);
+    return await parseDeviceCommand(shell.firstCall.args[0]);
+  } finally {
+    shell.restore();
+  }
 }

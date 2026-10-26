@@ -195,7 +195,7 @@ export async function setSetting(
   setting: string,
   value: string | number,
 ): Promise<string> {
-  return await this.shell(['settings', 'put', util.quote(namespace), util.quote(setting), util.quote(`${value}`)]);
+  return await this.shellArgs(['settings', 'put', namespace, setting, `${value}`]);
 }
 
 /**
