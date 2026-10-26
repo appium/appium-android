@@ -514,7 +514,7 @@ export async function addToDeviceIdleWhitelist(this: ADB, ...packages: string[])
   }
 
   log.info(`Adding ${util.pluralize('package', packages.length)} ${JSON.stringify(packages)} to Doze whitelist`);
-  await this.shellChunks((pkg) => ['dumpsys', 'deviceidle', 'whitelist', `+${pkg}`], packages);
+  await this.shellChunks((pkg) => ['dumpsys', 'deviceidle', 'whitelist', util.quote(`+${pkg}`)], packages);
   return true;
 }
 

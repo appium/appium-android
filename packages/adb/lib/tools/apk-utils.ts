@@ -82,7 +82,7 @@ export async function installFromDevicePath(
   apkPathOnDevice: string,
   opts: ShellExecOptions = {},
 ): Promise<void> {
-  const stdout = await this.shell(['pm', 'install', '-r', apkPathOnDevice], opts);
+  const stdout = await this.shell(['pm', 'install', '-r', util.quote(apkPathOnDevice)], opts);
   if (stdout.includes('Failure')) {
     throw new Error(`Remote install failed: ${stdout}`);
   }
@@ -141,7 +141,7 @@ export async function cacheApk(this: ADB, apkPath: string, options: CachingOptio
     // Update the application timestamp asynchronously in order to bump its position
     // in the sorted ls output
     // eslint-disable-next-line promise/prefer-await-to-then
-    this.shell(['touch', '-am', remotePath]).catch(() => {});
+    this.shell(['touch', '-am', util.quote(remotePath)]).catch(() => {});
   } else {
     log.info(`Caching the application at '${apkPath}' to '${remotePath}'`);
     const timer = new timing.Timer().start();
@@ -171,7 +171,7 @@ export async function cacheApk(this: ADB, apkPath: string, options: CachingOptio
     .slice((this.remoteAppsCacheLimit as number) - [...this.remoteAppsCache.keys()].length);
   if (!util.isEmpty(entriesToCleanup)) {
     try {
-      await this.shell(['rm', '-f', ...entriesToCleanup]);
+      await this.shell(['rm', '-f', ...entriesToCleanup.map((entry) => util.quote(entry))]);
       log.debug(`Deleted ${entriesToCleanup.length} expired application cache entries`);
     } catch (e) {
       const err = e as Error;

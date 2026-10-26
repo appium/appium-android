@@ -1,5 +1,6 @@
 import {randomUUID} from 'node:crypto';
 
+import {util} from '@appium/support';
 import type {ADB} from 'appium-adb';
 import {waitForCondition} from 'asyncbox';
 
@@ -108,7 +109,7 @@ export class VideoStreamSession {
       args.push('--es', 'audio', audio ? 'true' : 'false');
     }
 
-    await this.adb.shell(args);
+    await this.adb.shell(args.map((arg) => util.quote(arg)));
     try {
       await waitForCondition(async () => await this.isRunning(), {
         waitMs: STREAM_STARTUP_TIMEOUT_MS,

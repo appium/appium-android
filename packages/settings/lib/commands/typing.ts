@@ -1,3 +1,5 @@
+import {util} from '@appium/support';
+
 import type {SettingsApp} from '../client.js';
 import {APPIUM_IME, UNICODE_IME} from '../constants.js';
 import {LOG_PREFIX} from '../logger.js';
@@ -14,7 +16,10 @@ import {imap} from './utf7.js';
  */
 export async function performEditorAction(this: SettingsApp, action: string | number): Promise<void> {
   this.log.debug(LOG_PREFIX, `Performing editor action: ${action}`);
-  await this.adb.runInImeContext(APPIUM_IME, async () => await this.adb.shell(['input', 'text', `/${action}/`]));
+  await this.adb.runInImeContext(
+    APPIUM_IME,
+    async () => await this.adb.shell(['input', 'text', util.quote(`/${action}/`)]),
+  );
 }
 
 /**

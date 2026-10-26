@@ -1,4 +1,5 @@
 import type {Logger} from '@appium/logger';
+import {util} from '@appium/support';
 import type {ADB} from 'appium-adb';
 import {waitForCondition} from 'asyncbox';
 
@@ -152,7 +153,8 @@ export class SettingsApp {
       await this.requireRunning({shouldRestoreCurrentApp: true});
     }
 
-    const output = await this.adb.shell(['am', 'broadcast', ...args]);
+    // These are literal intent arguments, not shell expressions.
+    const output = await this.adb.shell(['am', 'broadcast', ...args.map((arg) => util.quote(arg))]);
     if (!output.includes('result=-1')) {
       this.log.debug(LOG_PREFIX, output);
       const error = new Error(

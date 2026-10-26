@@ -80,7 +80,7 @@ export async function resolveLaunchableActivity(
 ): Promise<string> {
   const {preferCmd = true} = opts;
   if (!preferCmd || (await this.getApiLevel()) < 24) {
-    const stdout = await this.shell(['dumpsys', 'package', pkg]);
+    const stdout = await this.shell(['dumpsys', 'package', util.quote(pkg)]);
     const names = parseLaunchableActivityNames(stdout);
     if (util.isEmpty(names)) {
       log.debug(stdout);
@@ -108,7 +108,7 @@ export async function resolveLaunchableActivity(
       await fs.rimraf(tmpRoot);
     }
   }
-  const {stdout, stderr} = await this.shell(['cmd', 'package', 'resolve-activity', '--brief', pkg], {
+  const {stdout, stderr} = await this.shell(['cmd', 'package', 'resolve-activity', '--brief', util.quote(pkg)], {
     outputFormat: this.EXEC_OUTPUT_FORMAT.FULL,
   });
   for (const line of (stdout || '').split('\n').map((x) => x.trim())) {
@@ -147,7 +147,7 @@ export async function forceStop(this: ADB, pkg: string): Promise<string> {
  * @returns The output of the corresponding adb command.
  */
 export async function killPackage(this: ADB, pkg: string): Promise<string> {
-  return await this.shell(['am', 'kill', pkg]);
+  return await this.shell(['am', 'kill', util.quote(pkg)]);
 }
 
 /**
@@ -158,7 +158,7 @@ export async function killPackage(this: ADB, pkg: string): Promise<string> {
  * @returns The output of the corresponding adb command.
  */
 export async function clear(this: ADB, pkg: string): Promise<string> {
-  return await this.shell(['pm', 'clear', pkg]);
+  return await this.shell(['pm', 'clear', util.quote(pkg)]);
 }
 
 /**
@@ -180,7 +180,7 @@ export async function grantAllPermissions(this: ADB, pkg: string, apk?: string):
        * If apk not provided, considering apk already installed on the device
        * and fetching targetSdk using package name.
        */
-      dumpsysOutput = await this.shell(['dumpsys', 'package', pkg]);
+      dumpsysOutput = await this.shell(['dumpsys', 'package', util.quote(pkg)]);
       targetSdk = await this.targetSdkVersionUsingPKG(pkg, dumpsysOutput);
     } else {
       targetSdk = await this.targetSdkVersionFromManifest(apk);
@@ -195,7 +195,7 @@ export async function grantAllPermissions(this: ADB, pkg: string, apk?: string):
      * The app has to list the permissions in the manifest.
      * refer: https://developer.android.com/training/permissions/requesting.html
      */
-    dumpsysOutput = dumpsysOutput || (await this.shell(['dumpsys', 'package', pkg]));
+    dumpsysOutput = dumpsysOutput || (await this.shell(['dumpsys', 'package', util.quote(pkg)]));
     const requestedPermissions = await this.getReqPermissions(pkg, dumpsysOutput);
     const grantedPermissions = await this.getGrantedPermissions(pkg, dumpsysOutput);
     const permissionsToGrant = requestedPermissions.filter((x) => !grantedPermissions.includes(x));
@@ -233,8 +233,9 @@ export async function grantPermissions(this: ADB, pkg: string, permissions: stri
   // Also, it is necessary to split long commands into chunks, since the maximum length of
   // adb shell buffer is limited
   log.debug(`Granting permissions ${JSON.stringify(permissions)} to '${pkg}'`);
+  // adb joins argv before the device shell parses it; quote data before batching.
   try {
-    await this.shellChunks((perm) => ['pm', 'grant', pkg, perm], permissions);
+    await this.shellChunks((perm) => ['pm', 'grant', util.quote(pkg), util.quote(perm)], permissions);
   } catch (e) {
     const err = e as ExecError;
     if (!IGNORED_PERM_ERRORS.some((pattern) => pattern.test(err.stderr || err.message))) {
@@ -252,7 +253,7 @@ export async function grantPermissions(this: ADB, pkg: string, permissions: stri
  */
 export async function grantPermission(this: ADB, pkg: string, permission: string): Promise<void> {
   try {
-    await this.shell(['pm', 'grant', pkg, permission]);
+    await this.shell(['pm', 'grant', util.quote(pkg), util.quote(permission)]);
   } catch (e) {
     const err = e as ExecError;
     if (!NOT_CHANGEABLE_PERM_ERROR.test(err.stderr || err.message)) {
@@ -270,7 +271,7 @@ export async function grantPermission(this: ADB, pkg: string, permission: string
  */
 export async function revokePermission(this: ADB, pkg: string, permission: string): Promise<void> {
   try {
-    await this.shell(['pm', 'revoke', pkg, permission]);
+    await this.shell(['pm', 'revoke', util.quote(pkg), util.quote(permission)]);
   } catch (e) {
     const err = e as ExecError;
     if (!NOT_CHANGEABLE_PERM_ERROR.test(err.stderr || err.message)) {
@@ -294,7 +295,7 @@ export async function getGrantedPermissions(
   cmdOutput: string | null = null,
 ): Promise<string[]> {
   log.debug('Retrieving granted permissions');
-  const stdout = cmdOutput || (await this.shell(['dumpsys', 'package', pkg]));
+  const stdout = cmdOutput || (await this.shell(['dumpsys', 'package', util.quote(pkg)]));
   return extractMatchingPermissions(stdout, ['install', 'runtime'], true);
 }
 
@@ -308,7 +309,7 @@ export async function getGrantedPermissions(
  */
 export async function getDeniedPermissions(this: ADB, pkg: string, cmdOutput: string | null = null): Promise<string[]> {
   log.debug('Retrieving denied permissions');
-  const stdout = cmdOutput || (await this.shell(['dumpsys', 'package', pkg]));
+  const stdout = cmdOutput || (await this.shell(['dumpsys', 'package', util.quote(pkg)]));
   return extractMatchingPermissions(stdout, ['install', 'runtime'], false);
 }
 
@@ -322,7 +323,7 @@ export async function getDeniedPermissions(this: ADB, pkg: string, cmdOutput: st
  */
 export async function getReqPermissions(this: ADB, pkg: string, cmdOutput: string | null = null): Promise<string[]> {
   log.debug('Retrieving requested permissions');
-  const stdout = cmdOutput || (await this.shell(['dumpsys', 'package', pkg]));
+  const stdout = cmdOutput || (await this.shell(['dumpsys', 'package', util.quote(pkg)]));
   return extractMatchingPermissions(stdout, ['requested']);
 }
 
@@ -352,7 +353,7 @@ export async function getPackageInfo(this: ADB, pkg: string): Promise<AppInfo> {
   const result: AppInfo = {name: pkg};
   let stdout: string;
   try {
-    stdout = await this.shell(['dumpsys', 'package', pkg]);
+    stdout = await this.shell(['dumpsys', 'package', util.quote(pkg)]);
   } catch (err) {
     const error = err as Error;
     log.debug(error.stack);
@@ -386,7 +387,7 @@ export async function getPackageInfo(this: ADB, pkg: string): Promise<AppInfo> {
  * @throws {Error} If there was an error while fetching the .apk
  */
 export async function pullApk(this: ADB, pkg: string, tmpDir: string): Promise<string> {
-  const stdout = (await this.shell(['pm', 'path', pkg])).trim();
+  const stdout = (await this.shell(['pm', 'path', util.quote(pkg)])).trim();
   const packageMarker = 'package:';
   if (!stdout.startsWith(packageMarker)) {
     throw new Error(`Cannot pull the .apk package for '${pkg}'. Original error: ${stdout}`);
@@ -414,7 +415,7 @@ export async function activateApp(this: ADB, appId: string): Promise<void> {
   if (apiLevel < 24) {
     // The monkey command could raise an issue as https://stackoverflow.com/questions/44860475/how-to-use-the-monkey-command-with-an-android-system-that-doesnt-have-physical
     // but '--pct-syskeys 0' could cause another background process issue. https://github.com/appium/appium/issues/16941#issuecomment-1129837285
-    const cmd = ['monkey', '-p', appId, '-c', 'android.intent.category.LAUNCHER', '1'];
+    const cmd = ['monkey', '-p', util.quote(appId), '-c', 'android.intent.category.LAUNCHER', '1'];
     let output: string;
     try {
       output = await this.shell(cmd);
@@ -452,7 +453,7 @@ export async function activateApp(this: ADB, appId: string): Promise<void> {
     '-f',
     '0x10200000',
     '-n',
-    activityName,
+    util.quote(activityName),
   ]);
   log.debug(stdout);
   if (/^error:/im.test(stdout)) {
@@ -476,9 +477,9 @@ export async function isAppInstalled(this: ADB, pkg: string, opts: IsAppInstalle
     try {
       const cmd = ['pm', 'path'];
       if (util.hasValue(user)) {
-        cmd.push('--user', user);
+        cmd.push('--user', util.quote(user));
       }
-      cmd.push(pkg);
+      cmd.push(util.quote(pkg));
       const stdout = await this.shell(cmd);
       isInstalled = /^package:/m.test(stdout);
     } catch {
@@ -514,7 +515,7 @@ export async function listInstalledPackages(
   }
 
   if (util.hasValue(user)) {
-    cmd.push('--user', user);
+    cmd.push('--user', util.quote(user));
   }
 
   let stdout: string;
@@ -1112,7 +1113,7 @@ export async function broadcast(this: ADB, intent: string): Promise<void> {
     throw new Error(`Invalid intent ${intent}`);
   }
   log.debug(`Broadcasting: ${intent}`);
-  await this.shell(['am', 'broadcast', '-a', intent]);
+  await this.shell(['am', 'broadcast', '-a', util.quote(intent)]);
 }
 
 /**
