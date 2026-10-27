@@ -16,6 +16,8 @@
 
 package io.appium.uiautomator2.handler;
 
+import android.text.TextUtils;
+
 import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObjectNotFoundException;
 
@@ -31,13 +33,14 @@ import io.appium.uiautomator2.model.AndroidElement;
 import io.appium.uiautomator2.model.api.SendKeysModel;
 import io.appium.uiautomator2.utils.Device;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({Device.class})
+@PrepareForTest({Device.class, TextUtils.class})
 public class SendKeysToElementTests {
 
     @Mock
@@ -57,6 +60,11 @@ public class SendKeysToElementTests {
     public void setUp() {
         PowerMockito.mockStatic(Device.class);
         when(Device.getUiDevice()).thenReturn(uiDevice);
+        PowerMockito.mockStatic(TextUtils.class);
+        when(TextUtils.isEmpty(any())).thenAnswer(invocation -> {
+            CharSequence str = invocation.getArgument(0);
+            return str == null || str.length() == 0;
+        });
         when(element.setText(anyString())).thenReturn(true);
     }
 
