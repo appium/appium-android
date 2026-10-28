@@ -398,11 +398,12 @@ public class UiElementSnapshot extends UiElement<AccessibilityNodeInfo, UiElemen
                 continue;
             }
 
-            // Ignore if the element is not visible on the screen
+            // Match the child being filtered, not its parent. An invisible matching child
+            // may contain visible descendants that would otherwise be lost.
             if (
                 areInvisibleElementsAllowed
                 || child.isVisibleToUser()
-                || shouldTraverseIfRequested(node)) {
+                || shouldTraverseIfRequested(child)) {
                 children.add(take(child, index, depth + 1, includedAttributes));
             } else {
                 // This child is dropped from the snapshot, so it would never be reachable for
