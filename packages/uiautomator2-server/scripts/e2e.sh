@@ -7,7 +7,7 @@ adb shell settings put global hidden_api_policy_p_apps 1
 # bottom edge then becomes the system home gesture, which breaks scroll tests in landscape.
 adb shell cmd overlay enable com.android.internal.systemui.navbar.threebutton || true
 
-classes=(AlertCommandsTest ActionsCommandsTest ElementCommandsTest DeviceCommandsTest)
+classes=(AlertCommandsTest ActionsCommandsTest ElementCommandsTest DeviceCommandsTest ClassRegexCommandsTest)
 did_fail=0
 for cls_name in "${classes[@]}"; do
   if ! ./gradlew connectedE2eTestDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.appium.uiautomator2.unittest.test.$cls_name; then
