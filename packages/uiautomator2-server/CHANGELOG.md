@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [10.7.4](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@10.7.3...appium-uiautomator2-server@10.7.4) (2026-10-28)
+
+### Bug Fixes
+
+* **uiautomator2-server:** strip trailing escaped newline in SendKeysToElement ([#53](https://github.com/appium/appium-android/issues/53)) ([a51cdd8](https://github.com/appium/appium-android/commit/a51cdd887a0a281d5586cd1d77a36aaccdb41ac6))
+
+
 ## [10.7.3](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@10.7.2...appium-uiautomator2-server@10.7.3) (2026-10-28)
 
 ### Bug Fixes
