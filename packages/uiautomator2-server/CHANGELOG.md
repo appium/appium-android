@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [10.7.3](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@10.7.2...appium-uiautomator2-server@10.7.3) (2026-10-28)
+
+### Bug Fixes
+
+* **uiautomator2-server:** enumerate class regex matches with regression coverage ([#52](https://github.com/appium/appium-android/issues/52)) ([bf17663](https://github.com/appium/appium-android/commit/bf176639c60fbdb57477f2ca434518f1e292c8ce))
+
+
 ## [10.7.2](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@10.7.1...appium-uiautomator2-server@10.7.2) (2026-10-23)
 
 **Note:** Version bump only for package appium-uiautomator2-server
