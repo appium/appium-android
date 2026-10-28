@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [8.4.5](https://github.com/appium/appium-android/compare/io.appium.settings@8.4.4...io.appium.settings@8.4.5) (2026-10-28)
+
+**Note:** Version bump only for package io.appium.settings
+
+
+
+
+
 ## [8.4.4](https://github.com/appium/appium-android/compare/io.appium.settings@8.4.3...io.appium.settings@8.4.4) (2026-10-23)
 
 ### Bug Fixes

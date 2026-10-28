@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [16.1.2](https://github.com/appium/appium-android/compare/appium-adb@16.1.1...appium-adb@16.1.2) (2026-10-28)
+
+### Bug Fixes
+
+* **adb:** check all displays for mScreenOnFully in dumpsys window ([#58](https://github.com/appium/appium-android/issues/58)) ([eb46956](https://github.com/appium/appium-android/commit/eb46956794348ceb8d12dacc220fc375e982223b))
+
+
 ## [16.1.1](https://github.com/appium/appium-android/compare/appium-adb@16.1.0...appium-adb@16.1.1) (2026-10-23)
 
 ### Bug Fixes
