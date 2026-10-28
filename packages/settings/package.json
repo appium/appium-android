@@ -59,7 +59,7 @@
     "@appium/tsconfig": "^1.2.0",
     "@appium/types": "^1.0.0-rc.1",
     "@types/node": "^26.6.5",
-    "@types/sinon": "^22.0.0",
+    "@types/sinon": "^22.0.2",
     "appium-adb": "^16.1.2",
     "sinon": "^22.0.0"
   },
