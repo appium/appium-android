@@ -292,6 +292,22 @@ export function isScreenStateOff(dumpsys: string): boolean {
   return /\s+screenState=SCREEN_STATE_OFF/i.test(dumpsys);
 }
 
+/**
+ * Checks mScreenOnFully in dumpsys output to determine if screen is showing.
+ * Default is true.
+ *
+ * @param dumpsys - The output of dumpsys window command.
+ * @return True if screen is showing.
+ */
+export function isScreenOnFully(dumpsys: string): boolean {
+  const matches = dumpsys.match(/mScreenOnFully=\w+/gi);
+  if (!matches) {
+    // if information is missing we assume screen is fully on
+    return true;
+  }
+  return matches.some((m) => m.split('=')[1]?.toLowerCase() === 'true');
+}
+
 // #region Private functions
 
 /**
@@ -328,23 +344,6 @@ async function swipeUp(this: ADB, windowDumpsys: string): Promise<void> {
   const x1 = x0;
   const y1 = displayHeight / 5;
   await this.shell(['input', 'touchscreen', 'swipe', ...[x0, y0, x1, y1].map((c) => `${Math.trunc(c)}`)]);
-}
-
-/**
- * Checks mScreenOnFully in dumpsys output to determine if screen is showing
- * Default is true.
- * Note: this key
- *
- * @param dumpsys
- * @returns
- */
-function isScreenOnFully(dumpsys: string): boolean {
-  const m = /mScreenOnFully=\w+/gi.exec(dumpsys);
-  return (
-    !m || // if information is missing we assume screen is fully on
-    (m && m.length > 0 && m[0].split('=')[1] === 'true') ||
-    false
-  );
 }
 
 /**

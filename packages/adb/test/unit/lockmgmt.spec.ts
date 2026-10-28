@@ -6,7 +6,7 @@ import {promisify} from 'node:util';
 import sinon from 'sinon';
 
 import {ADB} from '../../lib/adb.js';
-import {isShowingLockscreen, isScreenStateOff} from '../../lib/tools/lockmgmt.js';
+import {isShowingLockscreen, isScreenStateOff, isScreenOnFully} from '../../lib/tools/lockmgmt.js';
 
 describe('lock management', function () {
   let sandbox: sinon.SinonSandbox;
@@ -204,6 +204,74 @@ describe('lock management', function () {
           ...
       `;
       assert.strictEqual(await isShowingLockscreen(dumpsys), false);
+    });
+  });
+
+  describe('isScreenOnFully', function () {
+    it('should return true if mScreenOnFully is absent from dumpsys', function () {
+      assert.strictEqual(isScreenOnFully('mShowingLockscreen=false'), true);
+    });
+
+    it('should return true when single display has mScreenOnFully=true', function () {
+      assert.strictEqual(isScreenOnFully('mScreenOnEarly=true mScreenOnFully=true'), true);
+    });
+
+    it('should return false when single display has mScreenOnFully=false', function () {
+      assert.strictEqual(isScreenOnFully('mScreenOnEarly=false mScreenOnFully=false'), false);
+    });
+
+    it('should return true on multi-display devices when at least one display has mScreenOnFully=true', function () {
+      const dumpsys = `
+    DisplayPolicy (displayId=1):
+      mScreenOnEarly=false mScreenOnFully=false mKeyguardDrawComplete=false
+    DisplayPolicy (displayId=0):
+      mScreenOnEarly=true mScreenOnFully=true mKeyguardDrawComplete=true
+      `;
+      assert.strictEqual(isScreenOnFully(dumpsys), true);
+    });
+
+    it('should return false on multi-display devices when all displays have mScreenOnFully=false', function () {
+      const dumpsys = `
+    DisplayPolicy (displayId=1):
+      mScreenOnEarly=false mScreenOnFully=false mKeyguardDrawComplete=false
+    DisplayPolicy (displayId=0):
+      mScreenOnEarly=false mScreenOnFully=false mKeyguardDrawComplete=false
+      `;
+      assert.strictEqual(isScreenOnFully(dumpsys), false);
+    });
+  });
+
+  describe('isScreenLocked', function () {
+    it('should return false on a closed foldable when inner display is off and default display is on', async function () {
+      const adb = new ADB();
+      const shell = sandbox.stub(adb, 'shell');
+      shell.withArgs(['dumpsys', 'window']).resolves(`
+    DisplayPolicy (displayId=1):
+      mScreenOnEarly=false mScreenOnFully=false
+    DisplayPolicy (displayId=0):
+      mScreenOnEarly=true mScreenOnFully=true
+      mShowingLockscreen=false mDreamingLockscreen=false
+      screenState=SCREEN_STATE_ON
+      KeyguardStateMonitor
+        mIsShowing=false
+        mInputRestricted=false
+      `);
+      shell.withArgs(['dumpsys', 'power']).resolves('  mWakefulness=Awake\n');
+      assert.strictEqual(await adb.isScreenLocked(), false);
+    });
+
+    it('should return true on a multi-display device when all displays have mScreenOnFully=false', async function () {
+      const adb = new ADB();
+      const shell = sandbox.stub(adb, 'shell');
+      shell.withArgs(['dumpsys', 'window']).resolves(`
+    DisplayPolicy (displayId=1):
+      mScreenOnEarly=false mScreenOnFully=false
+    DisplayPolicy (displayId=0):
+      mScreenOnEarly=false mScreenOnFully=false
+      mShowingLockscreen=false mDreamingLockscreen=false
+      `);
+      shell.withArgs(['dumpsys', 'power']).resolves('  mWakefulness=Awake\n');
+      assert.strictEqual(await adb.isScreenLocked(), true);
     });
   });
 });
