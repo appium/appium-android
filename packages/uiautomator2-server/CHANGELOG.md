@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [10.7.6](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@10.7.5...appium-uiautomator2-server@10.7.6) (2026-10-28)
+
+### Bug Fixes
+
+* **uiautomator2:** match traversable classes against child nodes ([#59](https://github.com/appium/appium-android/issues/59)) ([29fbe05](https://github.com/appium/appium-android/commit/29fbe054ef791f5f7dd46d424c9dfb252d21b43b))
+
+
 ## [10.7.5](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@10.7.4...appium-uiautomator2-server@10.7.5) (2026-10-28)
 
 **Note:** Version bump only for package appium-uiautomator2-server
