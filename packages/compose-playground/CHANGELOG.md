@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.2.3](https://github.com/appium/appium-android/compare/compose-playground@1.2.2...compose-playground@1.2.3) (2026-10-29)
+
+### Miscellaneous Chores
+
+* **deps:** bump com.android.application ([#61](https://github.com/appium/appium-android/issues/61)) ([abd23c3](https://github.com/appium/appium-android/commit/abd23c3893c9f8ad74a8cd8a93e2e17aa6084865))
+
+
 ## [1.2.2](https://github.com/appium/appium-android/compare/compose-playground@1.2.1...compose-playground@1.2.2) (2026-10-23)
 
 ### Miscellaneous Chores
