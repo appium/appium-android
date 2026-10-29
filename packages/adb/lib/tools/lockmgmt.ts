@@ -39,8 +39,9 @@ export async function isLockManagementSupported(this: ADB): Promise<boolean> {
  */
 export async function verifyLockCredential(this: ADB, credential: string | null = null): Promise<boolean> {
   try {
-    const {stdout, stderr} = await this.shellArgs(buildCommand('verify', credential), {
+    const {stdout, stderr} = await this.shell(buildCommand('verify', credential), {
       outputFormat: this.EXEC_OUTPUT_FORMAT.FULL,
+      quoteArgs: true,
     });
     if (stdout?.includes('verified successfully')) {
       return true;
@@ -76,8 +77,9 @@ export async function verifyLockCredential(this: ADB, credential: string | null 
  */
 export async function clearLockCredential(this: ADB, credential: string | null = null): Promise<void> {
   try {
-    const {stdout, stderr} = await this.shellArgs(buildCommand('clear', credential), {
+    const {stdout, stderr} = await this.shell(buildCommand('clear', credential), {
       outputFormat: this.EXEC_OUTPUT_FORMAT.FULL,
+      quoteArgs: true,
     });
     if (!['user has no password', 'Lock credential cleared'].some((x) => (stderr || stdout)?.includes(x))) {
       throw new Error(stderr || stdout);
@@ -104,8 +106,9 @@ export async function clearLockCredential(this: ADB, credential: string | null =
  */
 export async function isLockEnabled(this: ADB): Promise<boolean> {
   try {
-    const {stdout, stderr} = await this.shellArgs(buildCommand('get-disabled'), {
+    const {stdout, stderr} = await this.shell(buildCommand('get-disabled'), {
       outputFormat: this.EXEC_OUTPUT_FORMAT.FULL,
+      quoteArgs: true,
     });
     if (
       /\bfalse\b/.test(stdout) ||
@@ -158,8 +161,9 @@ export async function setLockCredential(
   }
   const cmd = buildCommand(`set-${credentialType}`, oldCredential, credential);
   try {
-    const {stdout, stderr} = await this.shellArgs(cmd, {
+    const {stdout, stderr} = await this.shell(cmd, {
       outputFormat: this.EXEC_OUTPUT_FORMAT.FULL,
+      quoteArgs: true,
     });
     if (!stdout?.includes('set to')) {
       throw new Error(stderr || stdout);

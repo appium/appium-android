@@ -638,6 +638,14 @@ export interface SpecialAdbExecOptions {
 
 export interface ShellExecOptions {
   /**
+   * Quote each command argument as literal data for the device shell.
+   * Pass unquoted arguments when enabled. A string command is treated as one
+   * literal argument; use an array for an executable and its arguments.
+   * Defaults to false for compatibility with existing shell expressions.
+   * TODO: Enable by default in the next breaking release.
+   */
+  quoteArgs?: boolean;
+  /**
    * The name of the corresponding Appium's timeout capability
    * (used in the error messages).
    */

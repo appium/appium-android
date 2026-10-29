@@ -86,7 +86,7 @@ ProcessRecord{def456 456:io.appium.android.apis/u0a123}`;
 
   describe('killPackage', function () {
     it('should call shell with correct args', async function () {
-      mocks.adb.expects('shell').once().withExactArgs(['am', 'kill', apiDemosPackage]).returns('');
+      mocks.adb.expects('shell').once().withExactArgs(['am', 'kill', apiDemosPackage], {quoteArgs: true}).returns('');
       await adb.killPackage(apiDemosPackage);
     });
   });
@@ -94,7 +94,7 @@ ProcessRecord{def456 456:io.appium.android.apis/u0a123}`;
   describe('forceStop', function () {
     for (const pkg of ['com.example;:', 'com.example app', 'com.example\napp']) {
       it(`rejects invalid package names before invoking shell: ${JSON.stringify(pkg)}`, async function () {
-        const shell = sandbox.stub(adb, 'shell');
+        const shell = sandbox.stub(adb, 'adbExec');
         await assert.rejects(adb.forceStop(pkg), /illegal characters/);
         assert.strictEqual(shell.called, false);
       });
@@ -105,21 +105,25 @@ ProcessRecord{def456 456:io.appium.android.apis/u0a123}`;
       {skip: process.platform === 'win32'},
       async function () {
         const pkg = 'com.example.$APPIUM_QUOTE_TEST*';
-        const shell = sandbox.stub(adb, 'shell').resolves('');
+        const shell = sandbox.stub(adb, 'adbExec').resolves('');
         await adb.forceStop(pkg);
         assert.deepStrictEqual(await parseDeviceCommand(shell.firstCall.args[0]), ['am', 'force-stop', pkg]);
       },
     );
 
     it('should call shell with correct args', async function () {
-      mocks.adb.expects('shell').once().withExactArgs(['am', 'force-stop', apiDemosPackage]).returns('');
+      mocks.adb
+        .expects('shell')
+        .once()
+        .withExactArgs(['am', 'force-stop', apiDemosPackage], {quoteArgs: true})
+        .returns('');
       await adb.forceStop(apiDemosPackage);
     });
   });
 
   describe('clear', function () {
     it('should call shell with correct args', async function () {
-      mocks.adb.expects('shell').once().withExactArgs(['pm', 'clear', apiDemosPackage]).returns('');
+      mocks.adb.expects('shell').once().withExactArgs(['pm', 'clear', apiDemosPackage], {quoteArgs: true}).returns('');
       await adb.clear(apiDemosPackage);
     });
   });
@@ -141,7 +145,7 @@ package:com.android.chrome versionCode:636771932`;
       mocks.adb
         .expects('shell')
         .once()
-        .withExactArgs(['cmd', 'package', 'list', 'packages', '--show-versioncode'])
+        .withExactArgs(['cmd', 'package', 'list', 'packages', '--show-versioncode'], {quoteArgs: true})
         .returns(mockOutput);
       const result = await adb.listInstalledPackages();
       assert.deepStrictEqual(result, [
@@ -155,7 +159,11 @@ package:com.android.chrome versionCode:636771932`;
       const mockOutput = `package:com.android.managedprovisioning
 package:com.google.android.apps.wallpaper.nexus
 package:com.android.chrome`;
-      mocks.adb.expects('shell').once().withExactArgs(['cmd', 'package', 'list', 'packages']).returns(mockOutput);
+      mocks.adb
+        .expects('shell')
+        .once()
+        .withExactArgs(['cmd', 'package', 'list', 'packages'], {quoteArgs: true})
+        .returns(mockOutput);
       const result = await adb.listInstalledPackages();
       assert.deepStrictEqual(result, [
         {appPackage: 'com.android.managedprovisioning', versionCode: null},
@@ -169,7 +177,7 @@ package:com.android.chrome`;
       mocks.adb
         .expects('shell')
         .once()
-        .withExactArgs(['cmd', 'package', 'list', 'packages', '--user', '10'])
+        .withExactArgs(['cmd', 'package', 'list', 'packages', '--user', '10'], {quoteArgs: true})
         .returns(mockOutput);
       const result = await adb.listInstalledPackages({user: '10'});
       assert.deepStrictEqual(result, [{appPackage: 'com.android.chrome', versionCode: null}]);
@@ -180,7 +188,7 @@ package:com.android.chrome`;
       mocks.adb
         .expects('shell')
         .once()
-        .withExactArgs(['cmd', 'package', 'list', 'packages', '--show-versioncode', '--user', '10'])
+        .withExactArgs(['cmd', 'package', 'list', 'packages', '--show-versioncode', '--user', '10'], {quoteArgs: true})
         .returns(mockOutput);
       const result = await adb.listInstalledPackages({user: '10'});
       assert.deepStrictEqual(result, [{appPackage: 'com.android.chrome', versionCode: '636771932'}]);
@@ -198,7 +206,7 @@ package:com.android.chrome`;
         `preserves the complete URI as one shell argument: ${JSON.stringify(uri)}`,
         {skip: process.platform === 'win32'},
         async function () {
-          const shell = sandbox.stub(adb, 'shell').resolves('');
+          const shell = sandbox.stub(adb, 'adbExec').resolves('');
           const pkg = 'com.example.$APPIUM_QUOTE_TEST';
           await adb.startUri(uri, pkg, {waitForLaunch: false});
           assert.deepStrictEqual(await parseDeviceCommand(shell.firstCall.args[0]), [
@@ -215,7 +223,7 @@ package:com.android.chrome`;
     }
 
     it('rejects invalid package names before invoking shell', async function () {
-      const shell = sandbox.stub(adb, 'shell');
+      const shell = sandbox.stub(adb, 'adbExec');
       await assert.rejects(adb.startUri('https://example.com', 'com.example;:'), /illegal characters/);
       assert.strictEqual(shell.called, false);
     });
@@ -225,7 +233,9 @@ package:com.android.chrome`;
       mocks.adb
         .expects('shell')
         .once()
-        .withExactArgs(['am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d', 'https\\://example.com'])
+        .withExactArgs(['am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d', 'https://example.com'], {
+          quoteArgs: true,
+        })
         .returns('');
       await adb.startUri(uri);
     });
@@ -234,16 +244,10 @@ package:com.android.chrome`;
       mocks.adb
         .expects('shell')
         .once()
-        .withExactArgs([
-          'am',
-          'start',
-          '-W',
-          '-a',
-          'android.intent.action.VIEW',
-          '-d',
-          'https\\://example.com',
-          apiDemosPackage,
-        ])
+        .withExactArgs(
+          ['am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d', 'https://example.com', apiDemosPackage],
+          {quoteArgs: true},
+        )
         .returns('');
       await adb.startUri(uri, apiDemosPackage);
     });
@@ -887,6 +891,9 @@ package:com.android.chrome`;
 
 // Model remote POSIX shell parsing independently of the quoting helper.
 async function parseDeviceCommand(command: string | string[]): Promise<string[]> {
+  if (Array.isArray(command) && command[0] === 'shell') {
+    command = command.slice(1);
+  }
   const {stdout} = await promisify(execFile)(
     '/bin/sh',
     ['-c', `set -- ${Array.isArray(command) ? command.join(' ') : command}; printf '%s\\0' "$@"`],
@@ -900,9 +907,9 @@ async function parseDeviceCommand(command: string | string[]): Promise<string[]>
 // Pass builder output through the public execution boundary to catch double quoting.
 async function parseLiteralDeviceCommand(command: string[]): Promise<string[]> {
   const adb = new ADB();
-  const shell = sinon.stub(adb, 'shell').resolves('');
+  const shell = sinon.stub(adb, 'adbExec').resolves('');
   try {
-    await adb.shellArgs(command);
+    await adb.shell(command, {quoteArgs: true});
     return await parseDeviceCommand(shell.firstCall.args[0]);
   } finally {
     shell.restore();

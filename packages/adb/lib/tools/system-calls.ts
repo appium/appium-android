@@ -593,9 +593,10 @@ export async function shell(
  */
 export async function shell(this: ADB, cmd: string | string[], opts?: ShellExecOptions): Promise<string>;
 export async function shell(this: ADB, cmd: string | string[], opts?: ShellExecOptions): Promise<string | ExecResult> {
-  const {privileged} = opts ?? {};
-
-  const cmdArr = Array.isArray(cmd) ? cmd : [cmd];
+  const {quoteArgs = false, ...execOpts} = opts ?? {};
+  const {privileged} = execOpts;
+  const args = Array.isArray(cmd) ? cmd : [cmd];
+  const cmdArr = quoteArgs ? args.map((arg) => util.quote(arg)) : args;
   const fullCmd: string[] = ['shell'];
   if (privileged) {
     log.info(`'adb shell ${util.quote(redactSecrets(cmdArr))}' requires root access`);
@@ -608,39 +609,7 @@ export async function shell(this: ADB, cmd: string | string[], opts?: ShellExecO
   } else {
     fullCmd.push(...cmdArr);
   }
-  return await this.adbExec(fullCmd, opts);
-}
-
-/**
- * Execute a command whose elements are literal arguments, not shell expressions.
- * adb joins arguments before the device's POSIX shell parses them, even on Windows
- * hosts. Quote each element exactly once here; callers must pass unquoted values.
- * Use `shell` instead when intentional shell syntax is required.
- *
- * @param args - Executable followed by its literal arguments
- * @param opts - Execution options with `outputFormat: 'full'`
- * @returns Command stdout and stderr
- */
-export async function shellArgs(
-  this: ADB,
-  args: readonly string[],
-  opts: ShellExecOptions & {outputFormat: 'full'},
-): Promise<ExecResult>;
-/**
- * Execute a command with literal arguments. See the full-output overload.
- *
- * @param args - Executable followed by its literal arguments
- * @param opts - Execution options
- * @returns Command stdout
- */
-export async function shellArgs(this: ADB, args: readonly string[], opts?: ShellExecOptions): Promise<string>;
-export async function shellArgs(
-  this: ADB,
-  args: readonly string[],
-  opts?: ShellExecOptions,
-): Promise<string | ExecResult> {
-  const command = args.map((arg) => util.quote(arg));
-  return opts === undefined ? await this.shell(command) : await this.shell(command, opts);
+  return await this.adbExec(fullCmd, opts === undefined ? undefined : execOpts);
 }
 
 /**
@@ -1393,29 +1362,6 @@ export async function isMitmCertificateInstalled(this: ADB, cert: Buffer | strin
 }
 
 /**
- * Batch commands with literal arguments. Each transformed command is quoted
- * before `shellChunks` measures its length and inserts shell separators.
- * Unlike `shellChunks`, a trailing semicolon is treated as argument data.
- *
- * @param argTransformer - Function producing an executable and unquoted arguments
- * @param args - Values to transform into commands
- * @throws {Error} If the transformer returns an invalid result or execution fails
- */
-export async function shellArgsChunks(
-  this: ADB,
-  argTransformer: (x: string) => string[],
-  args: string[],
-): Promise<void> {
-  await this.shellChunks((arg) => {
-    const command = argTransformer(arg);
-    if (!Array.isArray(command)) {
-      throw new Error('Argument transformer must result in an array');
-    }
-    return command.map((value) => util.quote(value));
-  }, args);
-}
-
-/**
  * Creates chunks for the given arguments and executes them in `adb shell`.
  * This is faster than calling `adb shell` separately for each arg, however
  * there is a limit for a maximum length of a single adb command. that is why
@@ -1423,16 +1369,25 @@ export async function shellArgsChunks(
  *
  * @param argTransformer - Function to transform each argument into command array
  * @param args - Array of arguments to process
+ * @param opts - Set quoteArgs to true for unquoted literal command arguments (default false)
  * @throws {Error} If argument transformer returns invalid result or command execution fails
  */
-export async function shellChunks(this: ADB, argTransformer: (x: string) => string[], args: string[]): Promise<void> {
+export async function shellChunks(
+  this: ADB,
+  argTransformer: (x: string) => string[],
+  args: string[],
+  opts: Pick<ShellExecOptions, 'quoteArgs'> = {},
+): Promise<void> {
   const commands: string[][] = [];
   let cmdChunk: string[] = [];
   for (const arg of args) {
-    const nextCmd = argTransformer(arg);
-    if (!Array.isArray(nextCmd)) {
+    const command = argTransformer(arg);
+    if (!Array.isArray(command)) {
       throw new Error('Argument transformer must result in an array');
     }
+    // Quote before measuring chunks and adding separators. A caller-supplied
+    // semicolon is literal data when quoting is enabled.
+    const nextCmd = opts.quoteArgs ? command.map((value) => util.quote(value)) : command;
     if (nextCmd.at(-1) !== ';') {
       nextCmd.push(';');
     }

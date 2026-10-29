@@ -195,7 +195,7 @@ export async function setSetting(
   setting: string,
   value: string | number,
 ): Promise<string> {
-  return await this.shellArgs(['settings', 'put', namespace, setting, `${value}`]);
+  return await this.shell(['settings', 'put', namespace, setting, `${value}`], {quoteArgs: true});
 }
 
 /**
@@ -514,7 +514,7 @@ export async function addToDeviceIdleWhitelist(this: ADB, ...packages: string[])
   }
 
   log.info(`Adding ${util.pluralize('package', packages.length)} ${JSON.stringify(packages)} to Doze whitelist`);
-  await this.shellArgsChunks((pkg) => ['dumpsys', 'deviceidle', 'whitelist', `+${pkg}`], packages);
+  await this.shellChunks((pkg) => ['dumpsys', 'deviceidle', 'whitelist', `+${pkg}`], packages, {quoteArgs: true});
   return true;
 }
 

@@ -91,7 +91,7 @@ export class MediaProjectionRecorder {
     if (resolution) {
       args.push('--es', 'resolution', resolution);
     }
-    await this.adb.shellArgs(args);
+    await this.adb.shell(args, {quoteArgs: true});
     try {
       await waitForCondition(async () => await this.isRunning(), {
         waitMs: RECORDING_STARTUP_TIMEOUT_MS,

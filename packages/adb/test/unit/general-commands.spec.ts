@@ -551,7 +551,11 @@ describe('general commands', function () {
     describe('broadcast', function () {
       it('should broadcast intent correctly', async function () {
         mocks.adb.expects('isValidClass').once().withExactArgs('com.test.intent').returns(true);
-        mocks.adb.expects('shell').once().withExactArgs(['am', 'broadcast', '-a', 'com.test.intent']).returns('');
+        mocks.adb
+          .expects('shell')
+          .once()
+          .withExactArgs(['am', 'broadcast', '-a', 'com.test.intent'], {quoteArgs: true})
+          .returns('');
         await adb.broadcast('com.test.intent');
       });
       it('should throw error for invalid intent', async function () {
@@ -877,7 +881,7 @@ describe('general commands', function () {
       'preserves literal setting arguments and numeric values',
       {skip: process.platform === 'win32'},
       async function () {
-        const shell = sandbox.stub(adb, 'shell').resolves('');
+        const shell = sandbox.stub(adb, 'adbExec').resolves('');
         const values = ['', 0, -1, 1.5, "a'b", 'two words', '$APPIUM_QUOTE_TEST', 'a;b', 'a\nb', '*'];
         for (const value of values) {
           await adb.setSetting('global', "setting'name", value);
@@ -901,7 +905,7 @@ describe('general commands', function () {
     );
 
     it('preserves proxy values through setSetting', {skip: process.platform === 'win32'}, async function () {
-      const shell = sandbox.stub(adb, 'shell').resolves('');
+      const shell = sandbox.stub(adb, 'adbExec').resolves('');
       const host = "proxy' host;$APPIUM_QUOTE_TEST";
       await adb.setHttpProxy(host, 8080);
       assert.deepEqual(
@@ -915,7 +919,10 @@ describe('general commands', function () {
     });
 
     it('should call shell settings put', async function () {
-      mocks.adb.expects('shell').once().withExactArgs(['settings', 'put', 'namespace', 'setting', 'value']);
+      mocks.adb
+        .expects('shell')
+        .once()
+        .withExactArgs(['settings', 'put', 'namespace', 'setting', 'value'], {quoteArgs: true});
       await adb.setSetting('namespace', 'setting', 'value');
     });
   });
@@ -965,6 +972,9 @@ describe('general commands', function () {
 
 // Model remote POSIX shell parsing independently of the quoting helper.
 async function parseDeviceCommand(command: string | string[]): Promise<string[]> {
+  if (Array.isArray(command) && command[0] === 'shell') {
+    command = command.slice(1);
+  }
   const {stdout} = await promisify(execFile)(
     '/bin/sh',
     ['-c', `set -- ${Array.isArray(command) ? command.join(' ') : command}; printf '%s\\0' "$@"`],

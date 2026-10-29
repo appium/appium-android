@@ -25,7 +25,7 @@ describe('lock management', function () {
       it(`checks and caches support using only the API level (API ${apiLevel})`, async function () {
         const adb = new ADB();
         const getApiLevel = sandbox.stub(adb, 'getApiLevel').resolves(apiLevel);
-        const shell = sandbox.stub(adb, 'shell');
+        const shell = sandbox.stub(adb, 'adbExec');
         assert.strictEqual(await adb.isLockManagementSupported(), apiLevel >= 27);
         assert.strictEqual(await adb.isLockManagementSupported(), apiLevel >= 27);
         sinon.assert.calledOnce(getApiLevel);
@@ -49,7 +49,7 @@ describe('lock management', function () {
 
     it('preserves old credentials when verifying and clearing a lock', async function () {
       const adb = new ADB();
-      const shell = sandbox.stub(adb, 'shell');
+      const shell = sandbox.stub(adb, 'adbExec');
       for (const credential of credentials) {
         shell.resolves({stdout: 'verified successfully', stderr: ''} as any);
         assert.equal(await adb.verifyLockCredential(credential), true);
@@ -72,7 +72,7 @@ describe('lock management', function () {
 
     it('preserves new and old credentials when setting a lock', async function () {
       const adb = new ADB();
-      const shell = sandbox.stub(adb, 'shell').resolves({stdout: 'Password set to value', stderr: ''} as any);
+      const shell = sandbox.stub(adb, 'adbExec').resolves({stdout: 'Password set to value', stderr: ''} as any);
       for (const credential of credentials) {
         await adb.setLockCredential('password', credential, "old' password");
         assert.deepEqual(await parseDeviceCommand(shell.lastCall.args[0] as string[]), [
@@ -210,6 +210,9 @@ describe('lock management', function () {
 
 // Model remote POSIX shell parsing independently of the quoting helper.
 async function parseDeviceCommand(command: string | string[]): Promise<string[]> {
+  if (Array.isArray(command) && command[0] === 'shell') {
+    command = command.slice(1);
+  }
   const {stdout} = await promisify(execFile)(
     '/bin/sh',
     ['-c', `set -- ${Array.isArray(command) ? command.join(' ') : command}; printf '%s\\0' "$@"`],
