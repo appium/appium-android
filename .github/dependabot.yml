@@ -1,24 +1,5 @@
 version: 2
 updates:
-  - package-ecosystem: npm
-    directories:
-      - "/"
-      - "/packages/*"
-    schedule:
-      interval: daily
-      time: "11:00"
-    open-pull-requests-limit: 10
-    commit-message:
-      prefix: "chore"
-      include: "scope"
-    labels:
-      - "dependencies"
-    versioning-strategy: increase-if-necessary
-    groups:
-      # base-driver pins @appium/support exactly, so they must be updated together
-      appium:
-        patterns:
-          - "@appium/*"
   - package-ecosystem: gradle
     directories:
       - "/packages/settings"
@@ -55,14 +36,3 @@ updates:
       gradle-dependencies:
         patterns: ["*"]
         update-types: ["version-update:semver-minor", "version-update:semver-patch"]
-  - package-ecosystem: github-actions
-    directory: "/"
-    schedule:
-      interval: daily
-      time: "11:00"
-    open-pull-requests-limit: 5
-    commit-message:
-      prefix: "ci"
-      include: "scope"
-    labels:
-      - "dependencies"
