@@ -465,7 +465,12 @@ export const EXEC_OUTPUT_FORMAT = {
 } as const;
 
 /**
- * Execute the given adb command.
+ * Execute the given adb command without automatically quoting its arguments.
+ *
+ * When invoking `adb shell`, the device shell interprets the command.
+ * Unquoted values may be expanded or interpreted as shell syntax.
+ * For literal shell arguments, prefer `shell(args, {quoteArgs: true})`
+ * and pass unquoted argument values. `adbExec` itself does not apply `quoteArgs`.
  *
  * @param cmd - Command string or array of command arguments
  * @param opts - Execution options with `outputFormat: 'full'`
@@ -478,7 +483,12 @@ export async function adbExec(
   opts: AdbExecOptions & {outputFormat: 'full'},
 ): Promise<ExecResult>;
 /**
- * Execute the given adb command.
+ * Execute the given adb command without automatically quoting its arguments.
+ *
+ * When invoking `adb shell`, the device shell interprets the command.
+ * Unquoted values may be expanded or interpreted as shell syntax.
+ * For literal shell arguments, prefer `shell(args, {quoteArgs: true})`
+ * and pass unquoted argument values. `adbExec` itself does not apply `quoteArgs`.
  *
  * @param cmd - Command string or array of command arguments
  * @param opts - Execution options
