@@ -14,7 +14,10 @@ import {imap} from './utf7.js';
  */
 export async function performEditorAction(this: SettingsApp, action: string | number): Promise<void> {
   this.log.debug(LOG_PREFIX, `Performing editor action: ${action}`);
-  await this.adb.runInImeContext(APPIUM_IME, async () => await this.adb.shell(['input', 'text', `/${action}/`]));
+  await this.adb.runInImeContext(
+    APPIUM_IME,
+    async () => await this.adb.shell(['input', 'text', `/${action}/`], {quoteArgs: true}),
+  );
 }
 
 /**

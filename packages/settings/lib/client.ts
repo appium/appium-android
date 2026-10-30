@@ -152,7 +152,8 @@ export class SettingsApp {
       await this.requireRunning({shouldRestoreCurrentApp: true});
     }
 
-    const output = await this.adb.shell(['am', 'broadcast', ...args]);
+    // These are literal intent arguments, not shell expressions.
+    const output = await this.adb.shell(['am', 'broadcast', ...args], {quoteArgs: true});
     if (!output.includes('result=-1')) {
       this.log.debug(LOG_PREFIX, output);
       const error = new Error(

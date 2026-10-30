@@ -272,7 +272,7 @@ describe('System calls 2', function () {
     assert.strictEqual(await adb.fileExists('foo'), true);
   });
   it('ls should return list', async function () {
-    mocks.adb.expects('shell').once().withExactArgs(['ls', 'foo']).returns('bar');
+    mocks.adb.expects('shell').once().withExactArgs(['ls', 'foo'], {quoteArgs: true}).returns('bar');
     const list = await adb.ls('foo');
     assert.deepStrictEqual(list, ['bar']);
   });
@@ -281,7 +281,7 @@ describe('System calls 2', function () {
     mocks.adb
       .expects('shell')
       .once()
-      .withExactArgs(['ls', '-la', remotePath])
+      .withExactArgs(['ls', '-la', remotePath], {quoteArgs: true})
       .returns(`-rw-rw---- 1 root sdcard_rw 39571 2017-06-23 07:33 ${remotePath}`);
     const size = await adb.fileSize(remotePath);
     assert.strictEqual(size, 39571);
@@ -291,7 +291,7 @@ describe('System calls 2', function () {
     mocks.adb
       .expects('shell')
       .once()
-      .withExactArgs(['ls', '-la', remotePath])
+      .withExactArgs(['ls', '-la', remotePath], {quoteArgs: true})
       .returns(`-rw-rw---- root sdcard_rw 39571 2017-06-23 07:33 ${remotePath}`);
     const size = await adb.fileSize(remotePath);
     assert.strictEqual(size, 39571);

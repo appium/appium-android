@@ -465,7 +465,12 @@ export const EXEC_OUTPUT_FORMAT = {
 } as const;
 
 /**
- * Execute the given adb command.
+ * Execute the given adb command without automatically quoting its arguments.
+ *
+ * When invoking `adb shell`, the device shell interprets the command.
+ * Unquoted values may be expanded or interpreted as shell syntax.
+ * For literal shell arguments, prefer `shell(args, {quoteArgs: true})`
+ * and pass unquoted argument values. `adbExec` itself does not apply `quoteArgs`.
  *
  * @param cmd - Command string or array of command arguments
  * @param opts - Execution options with `outputFormat: 'full'`
@@ -478,7 +483,12 @@ export async function adbExec(
   opts: AdbExecOptions & {outputFormat: 'full'},
 ): Promise<ExecResult>;
 /**
- * Execute the given adb command.
+ * Execute the given adb command without automatically quoting its arguments.
+ *
+ * When invoking `adb shell`, the device shell interprets the command.
+ * Unquoted values may be expanded or interpreted as shell syntax.
+ * For literal shell arguments, prefer `shell(args, {quoteArgs: true})`
+ * and pass unquoted argument values. `adbExec` itself does not apply `quoteArgs`.
  *
  * @param cmd - Command string or array of command arguments
  * @param opts - Execution options
@@ -593,9 +603,10 @@ export async function shell(
  */
 export async function shell(this: ADB, cmd: string | string[], opts?: ShellExecOptions): Promise<string>;
 export async function shell(this: ADB, cmd: string | string[], opts?: ShellExecOptions): Promise<string | ExecResult> {
-  const {privileged} = opts ?? {};
-
-  const cmdArr = Array.isArray(cmd) ? cmd : [cmd];
+  const {quoteArgs = false, ...execOpts} = opts ?? {};
+  const {privileged} = execOpts;
+  const args = Array.isArray(cmd) ? cmd : [cmd];
+  const cmdArr = quoteArgs ? args.map((arg) => util.quote(arg)) : args;
   const fullCmd: string[] = ['shell'];
   if (privileged) {
     log.info(`'adb shell ${util.quote(redactSecrets(cmdArr))}' requires root access`);
@@ -608,7 +619,7 @@ export async function shell(this: ADB, cmd: string | string[], opts?: ShellExecO
   } else {
     fullCmd.push(...cmdArr);
   }
-  return await this.adbExec(fullCmd, opts);
+  return await this.adbExec(fullCmd, opts === undefined ? undefined : execOpts);
 }
 
 /**
@@ -1368,16 +1379,25 @@ export async function isMitmCertificateInstalled(this: ADB, cert: Buffer | strin
  *
  * @param argTransformer - Function to transform each argument into command array
  * @param args - Array of arguments to process
+ * @param opts - Set quoteArgs to true for unquoted literal command arguments (default false)
  * @throws {Error} If argument transformer returns invalid result or command execution fails
  */
-export async function shellChunks(this: ADB, argTransformer: (x: string) => string[], args: string[]): Promise<void> {
+export async function shellChunks(
+  this: ADB,
+  argTransformer: (x: string) => string[],
+  args: string[],
+  opts: Pick<ShellExecOptions, 'quoteArgs'> = {},
+): Promise<void> {
   const commands: string[][] = [];
   let cmdChunk: string[] = [];
   for (const arg of args) {
-    const nextCmd = argTransformer(arg);
-    if (!Array.isArray(nextCmd)) {
+    const command = argTransformer(arg);
+    if (!Array.isArray(command)) {
       throw new Error('Argument transformer must result in an array');
     }
+    // Quote before measuring chunks and adding separators. A caller-supplied
+    // semicolon is literal data when quoting is enabled.
+    const nextCmd = opts.quoteArgs ? command.map((value) => util.quote(value)) : command;
     if (nextCmd.at(-1) !== ';') {
       nextCmd.push(';');
     }

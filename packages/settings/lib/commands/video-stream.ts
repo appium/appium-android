@@ -108,7 +108,7 @@ export class VideoStreamSession {
       args.push('--es', 'audio', audio ? 'true' : 'false');
     }
 
-    await this.adb.shell(args);
+    await this.adb.shell(args, {quoteArgs: true});
     try {
       await waitForCondition(async () => await this.isRunning(), {
         waitMs: STREAM_STARTUP_TIMEOUT_MS,

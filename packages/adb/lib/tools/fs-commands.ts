@@ -32,7 +32,7 @@ export async function fileExists(this: ADB, remotePath: string): Promise<boolean
 export async function ls(this: ADB, remotePath: string, opts: string[] = []): Promise<string[]> {
   try {
     const args = ['ls', ...opts, remotePath];
-    const stdout = await this.shell(args);
+    const stdout = await this.shell(args, {quoteArgs: true});
     const lines = stdout.split('\n');
     return lines
       .map((l) => l.trim())
@@ -79,7 +79,7 @@ export async function fileSize(this: ADB, remotePath: string): Promise<number> {
  * @param path - The path to be removed recursively.
  */
 export async function rimraf(this: ADB, path: string): Promise<void> {
-  await this.shell(['rm', '-rf', path]);
+  await this.shell(['rm', '-rf', path], {quoteArgs: true});
 }
 
 /**

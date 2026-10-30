@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {describe, it, beforeEach, afterEach} from 'node:test';
 
-import {fs, util} from '@appium/support';
+import {fs} from '@appium/support';
 import sinon from 'sinon';
 import * as teen_process from 'teen_process';
 
@@ -76,14 +76,14 @@ describe('Apk-utils', function () {
       mocks.adb
         .expects('shell')
         .once()
-        .withExactArgs(['pm', 'path', pkg])
+        .withExactArgs(['pm', 'path', pkg], {quoteArgs: true})
         .returns(`package:/system/priv-app/TeleService/TeleService.apk`);
       assert.strictEqual(await adb.isAppInstalled(pkg), true);
     });
     it('should parse correctly and return false for older versions', async function () {
       const pkg = 'dummy.package';
       mocks.adb.expects('getApiLevel').returns(25);
-      mocks.adb.expects('shell').once().withExactArgs(['pm', 'path', pkg]).throws();
+      mocks.adb.expects('shell').once().withExactArgs(['pm', 'path', pkg], {quoteArgs: true}).throws();
       assert.strictEqual(await adb.isAppInstalled(pkg), false);
     });
     it('should parse correctly and return true for api level 26-27', async function () {
@@ -92,7 +92,7 @@ describe('Apk-utils', function () {
       mocks.adb
         .expects('shell')
         .once()
-        .withExactArgs(['cmd', 'package', 'list', 'packages'])
+        .withExactArgs(['cmd', 'package', 'list', 'packages'], {quoteArgs: true})
         .returns(`package:dummy.package\npackage:other.package\n`);
       assert.strictEqual(await adb.isAppInstalled(pkg), true);
     });
@@ -102,7 +102,7 @@ describe('Apk-utils', function () {
       mocks.adb
         .expects('shell')
         .once()
-        .withExactArgs(['cmd', 'package', 'list', 'packages'])
+        .withExactArgs(['cmd', 'package', 'list', 'packages'], {quoteArgs: true})
         .returns(`package:dummy.package1`);
       assert.strictEqual(await adb.isAppInstalled(pkg), false);
     });
@@ -112,7 +112,7 @@ describe('Apk-utils', function () {
       mocks.adb
         .expects('shell')
         .once()
-        .withExactArgs(['cmd', 'package', 'list', 'packages', '--show-versioncode'])
+        .withExactArgs(['cmd', 'package', 'list', 'packages', '--show-versioncode'], {quoteArgs: true})
         .returns(`package:dummy.package versionCode:1\npackage:other.package versionCode:2\n`);
       assert.strictEqual(await adb.isAppInstalled(pkg), true);
     });
@@ -122,7 +122,7 @@ describe('Apk-utils', function () {
       mocks.adb
         .expects('shell')
         .once()
-        .withExactArgs(['cmd', 'package', 'list', 'packages', '--show-versioncode'])
+        .withExactArgs(['cmd', 'package', 'list', 'packages', '--show-versioncode'], {quoteArgs: true})
         .returns(`package:dummy.package1 versionCode:1`);
       assert.strictEqual(await adb.isAppInstalled(pkg), false);
     });
@@ -132,14 +132,14 @@ describe('Apk-utils', function () {
       mocks.adb
         .expects('shell')
         .once()
-        .withExactArgs(['pm', 'path', '--user', '1', pkg])
+        .withExactArgs(['pm', 'path', '--user', '1', pkg], {quoteArgs: true})
         .returns(`package:/system/priv-app/TeleService/TeleService.apk with user`);
       assert.strictEqual(await adb.isAppInstalled(pkg, {user: '1'}), true);
     });
     it('should parse correctly and return false for older versions for user', async function () {
       const pkg = 'dummy.package';
       mocks.adb.expects('getApiLevel').returns(25);
-      mocks.adb.expects('shell').once().withExactArgs(['pm', 'path', '--user', '1', pkg]).throws();
+      mocks.adb.expects('shell').once().withExactArgs(['pm', 'path', '--user', '1', pkg], {quoteArgs: true}).throws();
       assert.strictEqual(await adb.isAppInstalled(pkg, {user: '1'}), false);
     });
 
@@ -149,7 +149,7 @@ describe('Apk-utils', function () {
       mocks.adb
         .expects('shell')
         .once()
-        .withExactArgs(['cmd', 'package', 'list', 'packages', '--show-versioncode', '--user', '1'])
+        .withExactArgs(['cmd', 'package', 'list', 'packages', '--show-versioncode', '--user', '1'], {quoteArgs: true})
         .returns(`package:dummy.package versionCode:1\npackage:other.package versionCode:2\n`);
       assert.strictEqual(await adb.isAppInstalled(pkg, {user: '1'}), true);
     });
@@ -159,7 +159,7 @@ describe('Apk-utils', function () {
       mocks.adb
         .expects('shell')
         .once()
-        .withExactArgs(['cmd', 'package', 'list', 'packages', '--show-versioncode', '--user', '1'])
+        .withExactArgs(['cmd', 'package', 'list', 'packages', '--show-versioncode', '--user', '1'], {quoteArgs: true})
         .returns(`package:dummy.package1 versionCode:1`);
       assert.strictEqual(await adb.isAppInstalled(pkg, {user: '1'}), false);
     });
@@ -503,7 +503,7 @@ describe('Apk-utils', function () {
   });
   describe('installFromDevicePath', function () {
     it('should call shell with correct arguments', async function () {
-      mocks.adb.expects('shell').once().withExactArgs(['pm', 'install', '-r', 'foo'], {}).returns('');
+      mocks.adb.expects('shell').once().withExactArgs(['pm', 'install', '-r', 'foo'], {quoteArgs: true}).returns('');
       await adb.installFromDevicePath('foo');
     });
   });
@@ -523,18 +523,21 @@ describe('Apk-utils', function () {
       mocks.adb
         .expects('shell')
         .once()
-        .withExactArgs(['touch', '-am', '/data/local/tmp/appium_cache/1.apk'])
+        .withExactArgs(['touch', '-am', '/data/local/tmp/appium_cache/1.apk'], {quoteArgs: true})
         .returns(Promise.resolve());
       mocks.fs.expects('hash').withExactArgs(apkPath).returns('1');
       mocks.adb
         .expects('shell')
         .once()
-        .withExactArgs([
-          'rm',
-          '-f',
-          `${REMOTE_CACHE_ROOT}/${adb.remoteAppsCacheLimit!}.apk`,
-          `${REMOTE_CACHE_ROOT}/${adb.remoteAppsCacheLimit! + 1}.apk`,
-        ]);
+        .withExactArgs(
+          [
+            'rm',
+            '-f',
+            `${REMOTE_CACHE_ROOT}/${adb.remoteAppsCacheLimit!}.apk`,
+            `${REMOTE_CACHE_ROOT}/${adb.remoteAppsCacheLimit! + 1}.apk`,
+          ],
+          {quoteArgs: true},
+        );
       await adb.cacheApk(apkPath);
     });
     it('should add apk into the cache if it is not there yet', async function () {
@@ -596,7 +599,7 @@ describe('Apk-utils', function () {
       mocks.adb
         .expects('shell')
         .once()
-        .withExactArgs(['am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d', util.quote(uri), pkg])
+        .withExactArgs(['am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d', uri, pkg], {quoteArgs: true})
         .returns('Something something something Unable to resolve intent something something');
 
       await assert.rejects(adb.startUri(uri, pkg), /Unable to resolve intent/);
@@ -605,7 +608,7 @@ describe('Apk-utils', function () {
       mocks.adb
         .expects('shell')
         .once()
-        .withExactArgs(['am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d', util.quote(uri)])
+        .withExactArgs(['am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d', uri], {quoteArgs: true})
         .returns('Passable result');
 
       await adb.startUri(uri);
@@ -614,7 +617,7 @@ describe('Apk-utils', function () {
       mocks.adb
         .expects('shell')
         .once()
-        .withExactArgs(['am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d', util.quote(uri), pkg])
+        .withExactArgs(['am', 'start', '-W', '-a', 'android.intent.action.VIEW', '-d', uri, pkg], {quoteArgs: true})
         .returns('Passable result');
 
       await adb.startUri(uri, pkg);
@@ -649,7 +652,7 @@ describe('Apk-utils', function () {
         '-c',
         'android.intent.category.DEFAULT',
         '-d',
-        util.quote('scheme://127.0.0.1'),
+        'scheme://127.0.0.1',
       ];
 
       mocks.adb.expects('getApiLevel').once().withExactArgs().returns(17);
@@ -685,7 +688,7 @@ describe('Apk-utils', function () {
     });
     it('should call getApiLevel and shell with correct arguments when activity is inner class', async function () {
       const startAppOptionsWithInnerClass = {pkg: 'pkg', activity: 'act$InnerAct'},
-        cmdWithInnerClass = ['am', 'start', '-W', '-n', 'pkg/act\\$InnerAct', '-S'];
+        cmdWithInnerClass = ['am', 'start', '-W', '-n', 'pkg/act$InnerAct', '-S'];
 
       mocks.adb.expects('getApiLevel').once().withExactArgs().returns(17);
       mocks.adb.expects('shell').once().withArgs(cmdWithInnerClass).returns('');

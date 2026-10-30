@@ -65,7 +65,7 @@ export async function targetSdkVersionUsingPKG(
   pkg: string,
   cmdOutput: string | null = null,
 ): Promise<number> {
-  const stdout = cmdOutput || (await this.shell(['dumpsys', 'package', pkg]));
+  const stdout = cmdOutput || (await this.shell(['dumpsys', 'package', pkg], {quoteArgs: true}));
   const targetSdkVersionMatch = new RegExp(/targetSdk=([^\s\s]+)/g).exec(stdout);
   return targetSdkVersionMatch && targetSdkVersionMatch.length >= 2 ? parseInt(targetSdkVersionMatch[1], 10) : 0;
 }
