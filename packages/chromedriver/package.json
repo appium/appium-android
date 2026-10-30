@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "@appium/base-driver": "^10.8.0",
-    "@appium/support": "^7.2.6",
+    "@appium/support": "^7.2.9",
     "@xmldom/xmldom": "^0.x",
     "appium-adb": "^16.2.0",
     "asyncbox": "^6.5.0",
