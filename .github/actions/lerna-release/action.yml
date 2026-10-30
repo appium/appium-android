@@ -1,9 +1,7 @@
 name: Lerna Release
 description: |
-  Runs `lerna publish` (independent versioning) across workspace packages. Supports a dry-run
-  mode and a recovery mode that publishes only package versions missing from npm. Falls back to
-  scoped recovery when `lerna publish` fails because its release tag already exists or
-  because of a Sigstore transparency-log 409 (TLOG_CREATE_ENTRY_ERROR).
+  Runs `lerna publish` across workspace packages, with dry-run and recovery modes. Recovers by
+  publishing what's missing on npm if the release tag already exists or Sigstore returns a 409.
 
 inputs:
   github-token:

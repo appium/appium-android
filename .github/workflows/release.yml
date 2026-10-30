@@ -1,4 +1,4 @@
-name: Appium Android Automated Release
+name: Appium Android Release
 
 on:
   push:
