@@ -1,9 +1,31 @@
 import assert from 'node:assert/strict';
-import {describe, it} from 'node:test';
+import {afterEach, describe, it} from 'node:test';
 
 import {ADB, DEFAULT_ADB_PORT} from '../../lib/adb.js';
+import {log} from '../../lib/logger.js';
 
 describe('ADB', function () {
+  describe('logLevel', function () {
+    const originalLogLevel = log.level;
+
+    afterEach(function () {
+      log.level = originalLogLevel;
+    });
+
+    it('should configure logger level when logLevel option is provided', function () {
+      const adb = new ADB({logLevel: 'warn'});
+      assert.strictEqual(adb.logLevel, 'warn');
+      assert.strictEqual(log.level, 'warn');
+    });
+
+    it('should preserve logLevel when cloning', function () {
+      const original = new ADB({logLevel: 'error'});
+      const clone = original.clone();
+      assert.strictEqual(clone.logLevel, 'error');
+      assert.strictEqual(log.level, 'error');
+    });
+  });
+
   describe('clone', function () {
     it('should copy all options', function () {
       const original = new ADB({
