@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [16.2.0](https://github.com/appium/appium-android/compare/appium-adb@16.1.2...appium-adb@16.2.0) (2026-10-30)
+
+### Features
+
+* preserve literal arguments in Android shell commands ([#46](https://github.com/appium/appium-android/issues/46)) ([f616350](https://github.com/appium/appium-android/commit/f616350ed46ea64564f186b78637c5eb0cba7887))
+
+
 ## [16.1.2](https://github.com/appium/appium-android/compare/appium-adb@16.1.1...appium-adb@16.1.2) (2026-10-28)
 
 ### Bug Fixes

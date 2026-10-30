@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [8.5.0](https://github.com/appium/appium-android/compare/io.appium.settings@8.4.5...io.appium.settings@8.5.0) (2026-10-30)
+
+### Features
+
+* preserve literal arguments in Android shell commands ([#46](https://github.com/appium/appium-android/issues/46)) ([f616350](https://github.com/appium/appium-android/commit/f616350ed46ea64564f186b78637c5eb0cba7887))
+
+
 ## [8.4.5](https://github.com/appium/appium-android/compare/io.appium.settings@8.4.4...io.appium.settings@8.4.5) (2026-10-28)
 
 **Note:** Version bump only for package io.appium.settings
