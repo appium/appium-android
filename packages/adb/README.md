@@ -50,4 +50,4 @@ console.log(await adb.getProcessIdsByName('com.android.phone'));
 ```
 
 `logLevel` affects the shared Appium logger, not an individual ADB instance.
-See [`ADBOptions.logLevel`](./lib/types.ts#L33) for details.
+See [`ADBOptions.logLevel`](./lib/types.ts) for details.
