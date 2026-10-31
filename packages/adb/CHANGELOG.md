@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [16.3.0](https://github.com/appium/appium-android/compare/appium-adb@16.2.0...appium-adb@16.3.0) (2026-10-31)
+
+### Features
+
+* **adb:** support logLevel option in ADBOptions and createADB ([#47](https://github.com/appium/appium-android/issues/47)) ([579dc5b](https://github.com/appium/appium-android/commit/579dc5bbf82372ffc952eb404f07e0781160d726))
+
+
 ## [16.2.0](https://github.com/appium/appium-android/compare/appium-adb@16.1.2...appium-adb@16.2.0) (2026-10-30)
 
 ### Features
