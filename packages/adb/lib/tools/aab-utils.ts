@@ -71,7 +71,7 @@ export async function extractUniversalApk(this: ADB, aabPath: string, opts: ApkC
       keyAliasHash.update(keyAlias);
       cacheHash = [cacheHash, keystoreHash, keyAliasHash.digest('hex')].join(':');
     }
-    log.debug(`Calculated the cache key for '${aabPath}': ${cacheHash}`);
+    this.log.debug(`Calculated the cache key for '${aabPath}': ${cacheHash}`);
     if (AAB_CACHE.has(cacheHash)) {
       const cachedRoot = AAB_CACHE.get(cacheHash);
       if (cachedRoot) {
@@ -110,11 +110,11 @@ export async function extractUniversalApk(this: ADB, aabPath: string, opts: ApkC
           : []),
         '--mode=universal',
       ];
-      log.debug(`Preparing universal .apks bundle from '${aabPath}'`);
+      this.log.debug(`Preparing universal .apks bundle from '${aabPath}'`);
       await this.execBundletool(args, `Cannot build a universal .apks bundle from '${aabPath}'`);
 
-      log.debug(`Unpacking universal application bundle at '${tmpApksPath}' to '${tmpRoot}'`);
-      await unzipFile(tmpApksPath, tmpRoot);
+      this.log.debug(`Unpacking universal application bundle at '${tmpApksPath}' to '${tmpRoot}'`);
+      await unzipFile(tmpApksPath, tmpRoot, this.log);
       let universalApkPath: string | undefined;
       const fileDeletionPromises: Promise<void>[] = [];
       const allFileNames = await fs.readdir(tmpRoot);
@@ -130,14 +130,14 @@ export async function extractUniversalApk(this: ADB, aabPath: string, opts: ApkC
         await Promise.all(fileDeletionPromises);
       } catch {}
       if (!universalApkPath) {
-        log.debug(`The following items were extracted from the .aab bundle: ${allFileNames}`);
+        this.log.debug(`The following items were extracted from the .aab bundle: ${allFileNames}`);
         throw new Error(
           `${UNIVERSAL_APK} cannot be found in '${aabPath}' bundle. ` +
             `Does the archive contain a valid application bundle?`,
         );
       }
       const resultPath = path.join(tmpRoot, apkName);
-      log.debug(`Found ${UNIVERSAL_APK} at '${universalApkPath}'. Caching it to '${resultPath}'`);
+      this.log.debug(`Found ${UNIVERSAL_APK} at '${universalApkPath}'. Caching it to '${resultPath}'`);
       await fs.mv(universalApkPath, resultPath);
       AAB_CACHE.set(cacheHash, tmpRoot);
       return resultPath;

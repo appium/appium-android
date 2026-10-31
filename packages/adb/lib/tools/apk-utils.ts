@@ -7,7 +7,7 @@ import * as semver from 'semver';
 import {exec, type ExecError} from 'teen_process';
 
 import type {ADB} from '../adb.js';
-import {log} from '../logger.js';
+import {log, type ADBLogger} from '../logger.js';
 import {
   APKS_EXTENSION,
   APK_INSTALL_TIMEOUT,
@@ -41,9 +41,9 @@ export const REMOTE_CACHE_ROOT = '/data/local/tmp/appium_cache';
  *                   successfully uninstalled.
  */
 export async function uninstallApk(this: ADB, pkg: string, options: UninstallOptions = {}): Promise<boolean> {
-  log.debug(`Uninstalling ${pkg}`);
+  this.log.debug(`Uninstalling ${pkg}`);
   if (!options.skipInstallCheck && !(await this.isAppInstalled(pkg))) {
-    log.info(`${pkg} was not uninstalled, because it was not present on the device`);
+    this.log.info(`${pkg} was not uninstalled, because it was not present on the device`);
     return false;
   }
 
@@ -61,12 +61,12 @@ export async function uninstallApk(this: ADB, pkg: string, options: UninstallOpt
     const err = e as Error;
     throw new Error(`Unable to uninstall APK. Original error: ${err.message}`, {cause: e});
   }
-  log.debug(`'adb ${cmd.join(' ')}' command output: ${stdout}`);
+  this.log.debug(`'adb ${cmd.join(' ')}' command output: ${stdout}`);
   if (stdout.includes('Success')) {
-    log.info(`${pkg} was successfully uninstalled`);
+    this.log.info(`${pkg} was successfully uninstalled`);
     return true;
   }
-  log.info(`${pkg} was not uninstalled`);
+  this.log.info(`${pkg} was not uninstalled`);
   return false;
 }
 
@@ -109,7 +109,7 @@ export async function cacheApk(this: ADB, apkPath: string, options: CachingOptio
     }
     if (typeof lsOutput !== 'string' || (lsOutput.includes(errorMarker) && !lsOutput.includes(REMOTE_CACHE_ROOT))) {
       if (typeof this._areExtendedLsOptionsSupported !== 'boolean') {
-        log.debug('The current Android API does not support extended ls options. Defaulting to no-options call');
+        this.log.debug('The current Android API does not support extended ls options. Defaulting to no-options call');
       }
       lsOutput = await this.shell([`ls ${REMOTE_CACHE_ROOT} 2>&1 || echo ${errorMarker}`]);
       this._areExtendedLsOptionsSupported = false;
@@ -127,27 +127,27 @@ export async function cacheApk(this: ADB, apkPath: string, options: CachingOptio
     );
   } catch (e) {
     const err = e as Error;
-    log.debug(
+    this.log.debug(
       `Got an error '${err.message.trim()}' while getting the list of files in the cache. ` +
         `Assuming the cache does not exist yet`,
     );
     await this.shell(['mkdir', '-p', REMOTE_CACHE_ROOT]);
   }
-  log.debug(`The count of applications in the cache: ${remoteCachedFiles.length}`);
+  this.log.debug(`The count of applications in the cache: ${remoteCachedFiles.length}`);
   const toHash = (remotePath: string) => path.posix.parse(remotePath).name;
   // Push the apk to the remote cache if needed
   if (remoteCachedFiles.some((x) => toHash(x) === appHash)) {
-    log.info(`The application at '${apkPath}' is already cached to '${remotePath}'`);
+    this.log.info(`The application at '${apkPath}' is already cached to '${remotePath}'`);
     // Update the application timestamp asynchronously in order to bump its position
     // in the sorted ls output
     // eslint-disable-next-line promise/prefer-await-to-then
     this.shell(['touch', '-am', remotePath], {quoteArgs: true}).catch(() => {});
   } else {
-    log.info(`Caching the application at '${apkPath}' to '${remotePath}'`);
+    this.log.info(`Caching the application at '${apkPath}' to '${remotePath}'`);
     const timer = new timing.Timer().start();
     await this.push(apkPath, remotePath, {timeout: options.timeout});
     const {size} = await fs.stat(apkPath);
-    log.info(
+    this.log.info(
       `The upload of '${path.basename(apkPath)}' (${util.toReadableSizeString(size)}) ` +
         `took ${timer.getDuration().asMilliSeconds.toFixed(0)}ms`,
     );
@@ -172,10 +172,10 @@ export async function cacheApk(this: ADB, apkPath: string, options: CachingOptio
   if (!util.isEmpty(entriesToCleanup)) {
     try {
       await this.shell(['rm', '-f', ...entriesToCleanup], {quoteArgs: true});
-      log.debug(`Deleted ${entriesToCleanup.length} expired application cache entries`);
+      this.log.debug(`Deleted ${entriesToCleanup.length} expired application cache entries`);
     } catch (e) {
       const err = e as Error;
-      log.warn(
+      this.log.warn(
         `Cannot delete ${entriesToCleanup.length} expired application cache entries. ` +
           `Original error: ${err.message}`,
       );
@@ -203,7 +203,7 @@ export async function install(this: ADB, appPath: string, options: InstallOption
     timeoutCapName: 'androidInstallTimeout',
   });
 
-  const installArgs = buildInstallArgs(await this.getApiLevel(), options);
+  const installArgs = buildInstallArgs(await this.getApiLevel(), options, this.log);
   if (options.noIncremental && (await this.isIncrementalInstallSupported())) {
     // Adb throws an error if it does not know about an arg,
     // which is the case here for older adb versions.
@@ -217,12 +217,14 @@ export async function install(this: ADB, appPath: string, options: InstallOption
   try {
     const timer = new timing.Timer().start();
     const output = await this.adbExec(installCmd, installOpts);
-    log.info(`The installation of '${path.basename(appPath)}' took ${timer.getDuration().asMilliSeconds.toFixed(0)}ms`);
-    log.debug(`Install command stdout: ${util.truncateString(output, {length: 300})}`);
+    this.log.info(
+      `The installation of '${path.basename(appPath)}' took ${timer.getDuration().asMilliSeconds.toFixed(0)}ms`,
+    );
+    this.log.debug(`Install command stdout: ${util.truncateString(output, {length: 300})}`);
     if (/\[INSTALL[A-Z_]+FAILED[A-Z_]+\]/.test(output)) {
       if (this.isTestPackageOnlyError(output)) {
         const msg = `Set 'allowTestPackages' capability to true in order to allow test packages installation.`;
-        log.warn(msg);
+        this.log.warn(msg);
         throw new Error(`${output}\n${msg}`);
       }
       throw new Error(output);
@@ -234,7 +236,7 @@ export async function install(this: ADB, appPath: string, options: InstallOption
     if (!error.message.includes('INSTALL_FAILED_ALREADY_EXISTS')) {
       throw error;
     }
-    log.debug(`Application '${appPath}' already installed. Continuing.`);
+    this.log.debug(`Application '${appPath}' already installed. Continuing.`);
   }
 }
 
@@ -257,13 +259,13 @@ export async function getApplicationInstallState(
     pkg = apkInfo?.name;
   }
   if (!pkg) {
-    log.warn(`Cannot read the package name of '${appPath}'`);
+    this.log.warn(`Cannot read the package name of '${appPath}'`);
     return this.APP_INSTALL_STATE.UNKNOWN;
   }
 
   const {versionCode: pkgVersionCode, versionName: pkgVersionNameStr, isInstalled} = await this.getPackageInfo(pkg);
   if (!isInstalled) {
-    log.debug(`App '${appPath}' is not installed`);
+    this.log.debug(`App '${appPath}' is not installed`);
     return this.APP_INSTALL_STATE.NOT_INSTALLED;
   }
   const pkgVersionName = semver.valid(semver.coerce(pkgVersionNameStr));
@@ -275,15 +277,15 @@ export async function getApplicationInstallState(
   const apkVersionName = semver.valid(semver.coerce(apkVersionNameStr));
 
   if (!Number.isInteger(apkVersionCode) || !Number.isInteger(pkgVersionCode)) {
-    log.warn(`Cannot read version codes of '${appPath}' and/or '${pkg}'`);
+    this.log.warn(`Cannot read version codes of '${appPath}' and/or '${pkg}'`);
     if (typeof apkVersionName !== 'string' || typeof pkgVersionName !== 'string') {
-      log.warn(`Cannot read version names of '${appPath}' and/or '${pkg}'`);
+      this.log.warn(`Cannot read version names of '${appPath}' and/or '${pkg}'`);
       return this.APP_INSTALL_STATE.UNKNOWN;
     }
   }
   if (Number.isInteger(apkVersionCode) && Number.isInteger(pkgVersionCode)) {
     if ((pkgVersionCode as number) > (apkVersionCode as number)) {
-      log.debug(
+      this.log.debug(
         `The version code of the installed '${pkg}' is greater than the application version code (${pkgVersionCode} > ${apkVersionCode})`,
       );
       return this.APP_INSTALL_STATE.NEWER_VERSION_INSTALLED;
@@ -295,7 +297,7 @@ export async function getApplicationInstallState(
         typeof pkgVersionName === 'string' &&
         semver.satisfies(pkgVersionName, `>=${apkVersionName}`)
       ) {
-        log.debug(
+        this.log.debug(
           `The version name of the installed '${pkg}' is greater or equal to the application version name ('${pkgVersionName}' >= '${apkVersionName}')`,
         );
         return semver.satisfies(pkgVersionName, `>${apkVersionName}`)
@@ -303,7 +305,7 @@ export async function getApplicationInstallState(
           : this.APP_INSTALL_STATE.SAME_VERSION_INSTALLED;
       }
       if (typeof apkVersionName !== 'string' || typeof pkgVersionName !== 'string') {
-        log.debug(
+        this.log.debug(
           `The version name of the installed '${pkg}' is equal to application version name (${pkgVersionCode} === ${apkVersionCode})`,
         );
         return this.APP_INSTALL_STATE.SAME_VERSION_INSTALLED;
@@ -314,7 +316,7 @@ export async function getApplicationInstallState(
     typeof pkgVersionName === 'string' &&
     semver.satisfies(pkgVersionName, `>=${apkVersionName}`)
   ) {
-    log.debug(
+    this.log.debug(
       `The version name of the installed '${pkg}' is greater or equal to the application version name ('${pkgVersionName}' >= '${apkVersionName}')`,
     );
     return semver.satisfies(pkgVersionName, `>${apkVersionName}`)
@@ -322,7 +324,7 @@ export async function getApplicationInstallState(
       : this.APP_INSTALL_STATE.SAME_VERSION_INSTALLED;
   }
 
-  log.debug(
+  this.log.debug(
     `The installed '${pkg}' package is older than '${appPath}' (${pkgVersionCode} < ${apkVersionCode} or '${pkgVersionName}' < '${apkVersionName}')'`,
   );
   return this.APP_INSTALL_STATE.OLDER_VERSION_INSTALLED;
@@ -349,7 +351,7 @@ export async function installOrUpgrade(
     if ('name' in apkInfo) {
       pkg = apkInfo.name;
     } else {
-      log.warn(`Cannot determine the package name of '${appPath}'. Continuing with the install anyway`);
+      this.log.warn(`Cannot determine the package name of '${appPath}'. Continuing with the install anyway`);
     }
   }
 
@@ -364,7 +366,7 @@ export async function installOrUpgrade(
   };
   switch (appState) {
     case this.APP_INSTALL_STATE.NOT_INSTALLED:
-      log.debug(`Installing '${appPath}'`);
+      this.log.debug(`Installing '${appPath}'`);
       await this.install(appPath, {...options, replace: false});
       return {
         appState,
@@ -372,11 +374,11 @@ export async function installOrUpgrade(
       };
     case this.APP_INSTALL_STATE.NEWER_VERSION_INSTALLED:
       if (enforceCurrentBuild) {
-        log.info(`Downgrading '${pkg}' as requested`);
+        this.log.info(`Downgrading '${pkg}' as requested`);
         await uninstallPackage();
         break;
       }
-      log.debug(`There is no need to downgrade '${pkg}'`);
+      this.log.debug(`There is no need to downgrade '${pkg}'`);
       return {
         appState,
         wasUninstalled,
@@ -385,16 +387,16 @@ export async function installOrUpgrade(
       if (enforceCurrentBuild) {
         break;
       }
-      log.debug(`There is no need to install/upgrade '${appPath}'`);
+      this.log.debug(`There is no need to install/upgrade '${appPath}'`);
       return {
         appState,
         wasUninstalled,
       };
     case this.APP_INSTALL_STATE.OLDER_VERSION_INSTALLED:
-      log.debug(`Executing upgrade of '${appPath}'`);
+      this.log.debug(`Executing upgrade of '${appPath}'`);
       break;
     default:
-      log.debug(`The current install state of '${appPath}' is unknown. Installing anyway`);
+      this.log.debug(`The current install state of '${appPath}' is unknown. Installing anyway`);
       break;
   }
 
@@ -402,7 +404,7 @@ export async function installOrUpgrade(
     await this.install(appPath, {...options, replace: true});
   } catch (err) {
     const error = err as Error;
-    log.warn(`Cannot install/upgrade '${pkg}' because of '${error.message}'. Trying full reinstall`);
+    this.log.warn(`Cannot install/upgrade '${pkg}' because of '${error.message}'. Trying full reinstall`);
     await uninstallPackage();
     await this.install(appPath, {...options, replace: false});
   }
@@ -428,7 +430,7 @@ export async function extractStringsFromApk(
   language: string | null = null,
   outRoot: string | null = null,
 ): Promise<ApkStrings> {
-  log.debug(`Extracting strings from for language: ${language || 'default'}`);
+  this.log.debug(`Extracting strings from for language: ${language || 'default'}`);
   const originalAppPath = appPath;
   if (appPath.endsWith(APKS_EXTENSION)) {
     appPath = await this.extractLanguageApk(appPath, language);
@@ -446,6 +448,7 @@ export async function extractStringsFromApk(
       },
       language,
       '(default)',
+      this.log,
     );
 
     const {stdout} = await exec((this.binaries as StringRecord).aapt as string, [
@@ -457,7 +460,7 @@ export async function extractStringsFromApk(
     apkStrings = parseAaptStrings(stdout, configMarker);
   } catch (e) {
     const err = e as ExecError;
-    log.debug(`Cannot extract resources using aapt. Trying aapt2. Original error: ${err.stderr || err.message}`);
+    this.log.debug(`Cannot extract resources using aapt. Trying aapt2. Original error: ${err.stderr || err.message}`);
 
     await this.initAapt2();
 
@@ -468,6 +471,7 @@ export async function extractStringsFromApk(
       },
       language,
       '',
+      this.log,
     );
 
     try {
@@ -482,12 +486,12 @@ export async function extractStringsFromApk(
   }
 
   if (util.isEmpty(apkStrings)) {
-    log.warn(
+    this.log.warn(
       `No strings have been found in '${originalAppPath}' resources ` +
         `for '${configMarker || 'default'}' configuration`,
     );
   } else {
-    log.info(
+    this.log.info(
       `Successfully extracted ${Object.keys(apkStrings).length} strings from ` +
         `'${originalAppPath}' resources for '${configMarker || 'default'}' configuration`,
     );
@@ -528,7 +532,7 @@ export async function getApkInfo(this: ADB, appPath: string): Promise<AppInfo | 
     };
   } catch (e) {
     const err = e as Error;
-    log.warn(`Error '${err.message}' while getting badging info`);
+    this.log.warn(`Error '${err.message}' while getting badging info`);
   }
   return {};
 }
@@ -739,19 +743,20 @@ async function formatConfigMarker(
   configsGetter: () => Promise<string[]>,
   desiredMarker: string | null,
   defaultMarker: string,
+  instanceLog: ADBLogger = log,
 ): Promise<string> {
   let configMarker = desiredMarker || defaultMarker;
   if (configMarker.includes('-') && !configMarker.includes('-r')) {
     configMarker = configMarker.replace('-', '-r');
   }
   const configs = await configsGetter();
-  log.debug(`Resource configurations: ${JSON.stringify(configs)}`);
+  instanceLog.debug(`Resource configurations: ${JSON.stringify(configs)}`);
   // Assume the 'en' configuration is the default one
   if (configMarker.toLowerCase().startsWith('en') && !configs.some((x) => x.trim() === configMarker)) {
-    log.debug(`Resource configuration name '${configMarker}' is unknown. Replacing it with '${defaultMarker}'`);
+    instanceLog.debug(`Resource configuration name '${configMarker}' is unknown. Replacing it with '${defaultMarker}'`);
     configMarker = defaultMarker;
   } else {
-    log.debug(`Selected configuration: '${configMarker}'`);
+    instanceLog.debug(`Selected configuration: '${configMarker}'`);
   }
   return configMarker;
 }

@@ -3,7 +3,6 @@ import {retryInterval} from 'asyncbox';
 import type {ExecError} from 'teen_process';
 
 import type {ADB} from '../adb.js';
-import {log} from '../logger.js';
 import type {SetPropOpts} from './types.js';
 
 const ANIMATION_SCALE_KEYS = [
@@ -28,7 +27,7 @@ const HIDDEN_API_POLICY_KEYS = [
 export async function getDeviceProperty(this: ADB, property: string): Promise<string> {
   const stdout = await this.shell(['getprop', property]);
   const val = stdout.trim();
-  log.debug(`Current device property '${property}': ${val}`);
+  this.log.debug(`Current device property '${property}': ${val}`);
   return val;
 }
 
@@ -44,7 +43,7 @@ export async function getDeviceProperty(this: ADB, property: string): Promise<st
  */
 export async function setDeviceProperty(this: ADB, prop: string, val: string, opts: SetPropOpts = {}): Promise<void> {
   const {privileged = true} = opts;
-  log.debug(`Setting device property '${prop}' to '${val}'`);
+  this.log.debug(`Setting device property '${prop}' to '${val}'`);
   await this.shell(['setprop', prop, val], {
     privileged,
   });
@@ -217,7 +216,7 @@ export async function getSetting(this: ADB, namespace: string, setting: string):
  * @throws If any exception is reported by adb shell.
  */
 export async function getTimeZone(this: ADB): Promise<string> {
-  log.debug('Getting current timezone');
+  this.log.debug('Getting current timezone');
   try {
     return await this.getDeviceProperty('persist.sys.timezone');
   } catch (e) {
@@ -233,7 +232,7 @@ export async function getTimeZone(this: ADB): Promise<string> {
  * Android Lollipop.
  */
 export async function getPlatformVersion(this: ADB): Promise<string> {
-  log.info('Getting device platform version');
+  this.log.info('Getting device platform version');
   try {
     return await this.getDeviceProperty('ro.build.version.release');
   } catch (e) {
@@ -312,7 +311,9 @@ export async function setHiddenApiPolicy(this: ADB, value: number | string, igno
     if (!ignoreError) {
       throw decorateWriteSecureSettingsException(err);
     }
-    log.info(`Failed to set setting keys '${HIDDEN_API_POLICY_KEYS}' to '${value}'. Original error: ${err.message}`);
+    this.log.info(
+      `Failed to set setting keys '${HIDDEN_API_POLICY_KEYS}' to '${value}'. Original error: ${err.message}`,
+    );
   }
 }
 
@@ -332,7 +333,7 @@ export async function setDefaultHiddenApiPolicy(this: ADB, ignoreError = false):
     if (!ignoreError) {
       throw decorateWriteSecureSettingsException(err);
     }
-    log.info(`Failed to delete keys '${HIDDEN_API_POLICY_KEYS}'. Original error: ${err.message}`);
+    this.log.info(`Failed to delete keys '${HIDDEN_API_POLICY_KEYS}'. Original error: ${err.message}`);
   }
 }
 
@@ -386,7 +387,7 @@ export async function ensureCurrentLocale(
   const hasLanguage = typeof language === 'string';
   const hasCountry = typeof country === 'string';
   if (!hasLanguage && !hasCountry) {
-    log.warn('ensureCurrentLocale requires language or country');
+    this.log.warn('ensureCurrentLocale requires language or country');
     return false;
   }
 
@@ -396,11 +397,11 @@ export async function ensureCurrentLocale(
   return (
     (await retryInterval(5, 1000, async () => {
       if (apiLevel < 23) {
-        log.debug(`Requested locale: ${lcLanguage}-${lcCountry}`);
+        this.log.debug(`Requested locale: ${lcLanguage}-${lcCountry}`);
         let actualLanguage: string | undefined;
         if (hasLanguage) {
           actualLanguage = (await this.getDeviceLanguage()).toLowerCase();
-          log.debug(`Actual language: ${actualLanguage}`);
+          this.log.debug(`Actual language: ${actualLanguage}`);
           if (!hasCountry && lcLanguage === actualLanguage) {
             return true;
           }
@@ -408,7 +409,7 @@ export async function ensureCurrentLocale(
         let actualCountry: string | undefined;
         if (hasCountry) {
           actualCountry = (await this.getDeviceCountry()).toLowerCase();
-          log.debug(`Actual country: ${actualCountry}`);
+          this.log.debug(`Actual country: ${actualCountry}`);
           if (!hasLanguage && lcCountry === actualCountry) {
             return true;
           }
@@ -420,7 +421,7 @@ export async function ensureCurrentLocale(
       const expectedLocale = script
         ? `${lcLanguage}-${script.toLowerCase()}-${lcCountry}`
         : `${lcLanguage}-${lcCountry}`;
-      log.debug(`Requested locale: ${expectedLocale}. Actual locale: '${actualLocale}'`);
+      this.log.debug(`Requested locale: ${expectedLocale}. Actual locale: '${actualLocale}'`);
       const languagePattern = `^${util.escapeRegExp(lcLanguage)}-${script ? util.escapeRegExp(script) + '-' : ''}`;
       const checkLocalePattern = (p: string) => new RegExp(p, 'i').test(actualLocale);
       if (hasLanguage && !hasCountry) {
@@ -489,7 +490,7 @@ export async function getDeviceIdleWhitelist(this: ADB): Promise<string[]> {
     return [];
   }
 
-  log.info('Listing packages in Doze whitelist');
+  this.log.info('Listing packages in Doze whitelist');
   const output = await this.shell(['dumpsys', 'deviceidle', 'whitelist']);
   return output
     .trim()
@@ -513,7 +514,7 @@ export async function addToDeviceIdleWhitelist(this: ADB, ...packages: string[])
     return false;
   }
 
-  log.info(`Adding ${util.pluralize('package', packages.length)} ${JSON.stringify(packages)} to Doze whitelist`);
+  this.log.info(`Adding ${util.pluralize('package', packages.length)} ${JSON.stringify(packages)} to Doze whitelist`);
   await this.shellChunks((pkg) => ['dumpsys', 'deviceidle', 'whitelist', `+${pkg}`], packages, {quoteArgs: true});
   return true;
 }
@@ -569,7 +570,7 @@ export async function setNfcOn(this: ADB, on: boolean): Promise<void> {
     outputFormat: 'full',
   });
   const output = stderr || stdout;
-  log.debug(output);
+  this.log.debug(output);
   if (output.includes('null NfcAdapter')) {
     throw new Error(`Cannot turn ${on ? 'on' : 'off'} the NFC adapter. Does the device under test have it?`);
   }

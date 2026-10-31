@@ -3,6 +3,7 @@ import {describe, it} from 'node:test';
 
 import {exec} from 'teen_process';
 
+import {log} from '../../lib/logger.js';
 import {adbExec} from '../../lib/tools/system-calls.js';
 import {redactExecError, redactSecrets} from '../../lib/utils/index.js';
 
@@ -115,6 +116,7 @@ describe('redactExecError', function () {
 
   it('should not expose lock credentials in errors thrown by adbExec', async function () {
     const ctx = {
+      log,
       executable: {path: '/bin/sh', defaultArgs: [] as string[]},
       EXEC_OUTPUT_FORMAT: {STDOUT: 'stdout', FULL: 'full'},
       adbExecTimeout: 5000,

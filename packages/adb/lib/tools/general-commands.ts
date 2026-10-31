@@ -2,7 +2,6 @@ import {fs, util} from '@appium/support';
 import {SubProcess, exec, type ExecError} from 'teen_process';
 
 import type {ADB} from '../adb.js';
-import {log} from '../logger.js';
 import {memoize} from '../utils/index.js';
 import type {ScreenrecordOptions, StringRecord} from './types.js';
 
@@ -79,14 +78,14 @@ export async function getApiLevel(this: ADB): Promise<number> {
     const apiLevelDiff = apiLevel - 28;
     const codename = String.fromCharCode(charCodeQ + apiLevelDiff);
     if (apiLevelDiff >= 0 && (await this.getPlatformVersion()).toLowerCase() === codename) {
-      log.debug(
+      this.log.debug(
         `Release version is ${codename.toUpperCase()} but found API Level ${apiLevel}. Setting API Level to ${apiLevel + 1}`,
       );
       apiLevel++;
     }
 
     this._apiLevel = apiLevel;
-    log.debug(`Device API level: ${this._apiLevel}`);
+    this.log.debug(`Device API level: ${this._apiLevel}`);
     if (isNaN(this._apiLevel)) {
       throw new Error(`The actual output '${strOutput}' cannot be converted to an integer`);
     }
@@ -116,7 +115,7 @@ export async function isDeviceConnected(this: ADB): Promise<boolean> {
  */
 export async function clearTextField(this: ADB, length: number = 100): Promise<void> {
   // assumes that the EditText field already has focus
-  log.debug(`Clearing up to ${length} characters`);
+  this.log.debug(`Clearing up to ${length} characters`);
   if (length === 0) {
     return;
   }
@@ -136,7 +135,7 @@ export async function clearTextField(this: ADB, length: number = 100): Promise<v
  * Back button tap.
  */
 export async function back(this: ADB): Promise<void> {
-  log.debug('Pressing the BACK button');
+  this.log.debug('Pressing the BACK button');
   await this.keyevent(4);
 }
 
@@ -145,7 +144,7 @@ export async function back(this: ADB): Promise<void> {
  * Home button tap.
  */
 export async function goToHome(this: ADB): Promise<void> {
-  log.debug('Pressing the HOME button');
+  this.log.debug('Pressing the HOME button');
   await this.keyevent(3);
 }
 
@@ -210,7 +209,7 @@ export function screenrecord(this: ADB, destination: string, options: Screenreco
   cmd.push(destination);
 
   const fullCmd = [...this.executable.defaultArgs, 'shell', ...cmd];
-  log.debug(`Building screenrecord process with the command line: adb ${util.quote(fullCmd)}`);
+  this.log.debug(`Building screenrecord process with the command line: adb ${util.quote(fullCmd)}`);
   return new SubProcess(this.executable.path, fullCmd);
 }
 

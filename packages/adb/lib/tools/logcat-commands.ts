@@ -15,6 +15,7 @@ export async function startLogcat(this: ADB, opts: LogcatOpts = {}): Promise<voi
 
   this.logcat = new Logcat({
     adb: this.executable,
+    getLogLevel: () => this.logLevel,
     debug: false,
     debugTrace: false,
     clearDeviceLogsOnStart: !!this.clearDeviceLogsOnStart,

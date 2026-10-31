@@ -3,7 +3,7 @@ import {fileURLToPath} from 'node:url';
 
 import {fs, zip, util} from '@appium/support';
 
-import {log} from '../../logger.js';
+import {log, type ADBLogger} from '../../logger.js';
 import {MODULE_NAME} from './constants.js';
 
 export const getResourcePath = util.memoize(async function getResourcePath(relPath: string): Promise<string> {
@@ -23,11 +23,15 @@ export const getResourcePath = util.memoize(async function getResourcePath(relPa
  * @param zipPath - Source zip file path
  * @param dstRoot - Destination directory. Defaults to zip parent directory
  */
-export async function unzipFile(zipPath: string, dstRoot: string = path.dirname(zipPath)): Promise<void> {
-  log.debug(`Unzipping '${zipPath}' to '${dstRoot}'`);
+export async function unzipFile(
+  zipPath: string,
+  dstRoot: string = path.dirname(zipPath),
+  instanceLog: ADBLogger = log,
+): Promise<void> {
+  instanceLog.debug(`Unzipping '${zipPath}' to '${dstRoot}'`);
   await zip.assertValidZip(zipPath);
   await zip.extractAllTo(zipPath, dstRoot);
-  log.debug('Unzip successful');
+  instanceLog.debug('Unzip successful');
 }
 
 const getModuleRoot = util.memoize(async function getModuleRoot(): Promise<string> {

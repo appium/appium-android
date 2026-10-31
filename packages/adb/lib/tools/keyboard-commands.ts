@@ -1,7 +1,6 @@
 import {sleep, waitForCondition} from 'asyncbox';
 
 import type {ADB} from '../adb.js';
-import {log} from '../logger.js';
 import type {KeyboardState} from './types.js';
 
 const KEYCODE_ESC = 111;
@@ -21,7 +20,7 @@ export async function hideKeyboard(this: ADB, timeoutMs: number = 1000): Promise
   let {isKeyboardShown} = keyboardState;
   const {canCloseKeyboard} = keyboardState;
   if (!isKeyboardShown) {
-    log.info('Keyboard has no UI; no closing necessary');
+    this.log.info('Keyboard has no UI; no closing necessary');
     return false;
   }
   // Try ESC then BACK if the first one fails
@@ -188,7 +187,7 @@ export async function runInImeContext<T>(this: ADB, ime: string, fn: () => Promi
 
   const originalIme = await this.defaultIME();
   if (originalIme === ime) {
-    log.debug(`The original IME is the same as '${ime}'. There is no need to reset it`);
+    this.log.debug(`The original IME is the same as '${ime}'. There is no need to reset it`);
   } else {
     await this.enableIME(ime);
     await this.setIME(ime);

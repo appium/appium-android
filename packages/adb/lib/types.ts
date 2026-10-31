@@ -1,3 +1,5 @@
+import type {AppiumLoggerLevel} from '@appium/types';
+
 import type {Logcat} from './logcat.js';
 import type {StringRecord} from './tools/types.js';
 
@@ -27,6 +29,8 @@ export interface ADBOptions {
   remoteAdbPort?: number;
   clearDeviceLogsOnStart?: boolean;
   listenAllNetwork?: boolean;
+  /** Additional per-instance log threshold. The global Appium log level still applies. */
+  logLevel?: AppiumLoggerLevel;
 }
 
 export interface ADBExecutable {

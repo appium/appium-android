@@ -2,7 +2,6 @@ import {util} from '@appium/support';
 import type {ExecError} from 'teen_process';
 
 import type {ADB} from '../adb.js';
-import {log} from '../logger.js';
 
 const PID_COLUMN_TITLE: string = 'PID';
 const PROCESS_NAME_COLUMN_TITLE: string = 'NAME';
@@ -25,7 +24,7 @@ export async function listProcessStatus(this: ADB): Promise<string> {
       this._doesPsSupportAOption = /^-A\b/m.test(await this.shell(['ps', '--help']));
     } catch (e: unknown) {
       const error: Error = e as Error;
-      log.debug(error.stack);
+      this.log.debug(error.stack);
       this._doesPsSupportAOption = false;
     }
   }
@@ -50,7 +49,7 @@ export async function getProcessNameById(this: ADB, pid: string | number): Promi
   const stdout: string = await this.listProcessStatus();
   const titleMatch: RegExpExecArray | null = PS_TITLE_PATTERN.exec(stdout);
   if (!titleMatch) {
-    log.debug(stdout);
+    this.log.debug(stdout);
     throw new Error(`Could not get the process name for PID '${numericPid}'`);
   }
   const allTitles: string[] = titleMatch[1].trim().split(/\s+/);
@@ -68,7 +67,7 @@ export async function getProcessNameById(this: ADB, pid: string | number): Promi
       return items[items.length + nameOffset];
     }
   }
-  log.debug(stdout);
+  this.log.debug(stdout);
   throw new Error(`Could not get the process name for PID '${numericPid}'`);
 }
 
@@ -79,12 +78,12 @@ export async function getProcessNameById(this: ADB, pid: string | number): Promi
  * @returns The list of matched process IDs or an empty list.
  */
 export async function getProcessIdsByName(this: ADB, name: string): Promise<number[]> {
-  log.debug(`Getting IDs of all '${name}' processes`);
+  this.log.debug(`Getting IDs of all '${name}' processes`);
 
   const stdout: string = await this.listProcessStatus();
   const titleMatch: RegExpExecArray | null = PS_TITLE_PATTERN.exec(stdout);
   if (!titleMatch) {
-    log.debug(stdout);
+    this.log.debug(stdout);
     throw new Error(`Could not parse process list for name '${name}'`);
   }
   const allTitles: string[] = titleMatch[1].trim().split(/\s+/);
@@ -121,10 +120,10 @@ export async function getProcessIdsByName(this: ADB, name: string): Promise<numb
  */
 export async function killProcessesByName(this: ADB, name: string, signal: string = 'SIGTERM'): Promise<void> {
   try {
-    log.debug(`Attempting to kill all ${name} processes`);
+    this.log.debug(`Attempting to kill all ${name} processes`);
     const pids: number[] = await this.getProcessIdsByName(name);
     if (pids.length === 0) {
-      log.info(`No '${name}' process has been found`);
+      this.log.info(`No '${name}' process has been found`);
     } else {
       await Promise.all(pids.map((p: number) => this.killProcessByPID(p, signal)));
     }
@@ -146,7 +145,7 @@ export async function killProcessesByName(this: ADB, name: string, signal: strin
  * @throws {Error} If the process cannot be killed.
  */
 export async function killProcessByPID(this: ADB, pid: string | number, signal: string = 'SIGTERM'): Promise<void> {
-  log.debug(`Attempting to kill process ${pid}`);
+  this.log.debug(`Attempting to kill process ${pid}`);
   const noProcessFlag: string = 'No such process';
   try {
     // Check if the process exists and throw an exception otherwise
@@ -159,7 +158,7 @@ export async function killProcessByPID(this: ADB, pid: string | number, signal: 
     if (!(err.stderr ?? '').includes('Operation not permitted')) {
       throw err;
     }
-    log.info(`Cannot kill PID ${pid} due to insufficient permissions. Retrying as root`);
+    this.log.info(`Cannot kill PID ${pid} due to insufficient permissions. Retrying as root`);
     try {
       await this.shell(['kill', `${pid}`], {
         privileged: true,

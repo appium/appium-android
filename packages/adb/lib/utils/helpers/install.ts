@@ -1,6 +1,6 @@
 import {util} from '@appium/support';
 
-import {log} from '../../logger.js';
+import {log, type ADBLogger} from '../../logger.js';
 
 export interface BuildInstallArgsOptions {
   replace?: boolean;
@@ -17,7 +17,11 @@ export interface BuildInstallArgsOptions {
  * @param options - Install options mapped to adb flags
  * @returns A list of install flags
  */
-export function buildInstallArgs(apiLevel: number, options: BuildInstallArgsOptions = {}): string[] {
+export function buildInstallArgs(
+  apiLevel: number,
+  options: BuildInstallArgsOptions = {},
+  instanceLog: ADBLogger = log,
+): string[] {
   const result: string[] = [];
 
   if (!util.hasValue(options.replace) || options.replace) {
@@ -31,7 +35,7 @@ export function buildInstallArgs(apiLevel: number, options: BuildInstallArgsOpti
   }
   if (options.grantPermissions) {
     if (apiLevel < 23) {
-      log.debug(
+      instanceLog.debug(
         `Skipping permissions grant option, since ` +
           `the current API level ${apiLevel} does not support applications ` +
           `permissions customization`,

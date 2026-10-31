@@ -6,7 +6,6 @@ import {LRUCache} from 'lru-cache';
 import {exec, type ExecError} from 'teen_process';
 
 import type {ADB} from '../adb.js';
-import {log} from '../logger.js';
 import {
   APKS_EXTENSION,
   getJavaForOs,
@@ -44,7 +43,7 @@ const SIGNED_APPS_CACHE = new LRUCache<string, SignedAppCacheValue>({
 export async function executeApksigner(this: ADB, args: string[]): Promise<string> {
   const apkSignerJar = await getApksignerForOs.bind(this)();
   const fullCmd = [await getJavaForOs(), '-Xmx1024M', '-Xss1m', '-jar', apkSignerJar, ...args];
-  log.debug(`Starting apksigner: ${util.quote(redactSecrets(fullCmd))}`);
+  this.log.debug(`Starting apksigner: ${util.quote(redactSecrets(fullCmd))}`);
   // It is necessary to specify CWD explicitly; see https://github.com/appium/appium/issues/14724#issuecomment-737446715
   let stdout: string;
   let stderr: string;
@@ -69,9 +68,9 @@ export async function executeApksigner(this: ADB, args: string[]): Promise<strin
         .split('\n')
         .filter((line) => !line.includes('WARNING:'))
         .join('\n');
-      log.debug(`apksigner ${name}: ${filteredStream}`);
+      this.log.debug(`apksigner ${name}: ${filteredStream}`);
     } else {
-      log.debug(`apksigner ${name}: ${stream}`);
+      this.log.debug(`apksigner ${name}: ${stream}`);
     }
   }
   return stdout;
@@ -84,7 +83,7 @@ export async function executeApksigner(this: ADB, args: string[]): Promise<strin
  * @throws If signing fails.
  */
 export async function signWithDefaultCert(this: ADB, apk: string): Promise<void> {
-  log.debug(`Signing '${apk}' with default cert`);
+  this.log.debug(`Signing '${apk}' with default cert`);
   if (!(await fs.exists(apk))) {
     throw new Error(`${apk} file doesn't exist.`);
   }
@@ -116,7 +115,7 @@ export async function signWithDefaultCert(this: ADB, apk: string): Promise<void>
  * @throws If signing fails.
  */
 export async function signWithCustomCert(this: ADB, apk: string): Promise<void> {
-  log.debug(`Signing '${apk}' with custom cert`);
+  this.log.debug(`Signing '${apk}' with custom cert`);
   if (!(await fs.exists(this.keystorePath as string))) {
     throw new Error(`Keystore: ${this.keystorePath} doesn't exist.`);
   }
@@ -139,15 +138,15 @@ export async function signWithCustomCert(this: ADB, apk: string): Promise<void> 
     ]);
   } catch (err) {
     const error = err as ExecError;
-    log.warn(
+    this.log.warn(
       `Cannot use apksigner tool for signing. Defaulting to jarsigner. ` +
         `Original error: ${error.stderr || error.stdout || error.message}`,
     );
     try {
       if (await unsignApk(apk)) {
-        log.debug(`'${apk}' has been successfully unsigned`);
+        this.log.debug(`'${apk}' has been successfully unsigned`);
       } else {
-        log.debug(`'${apk}' does not need to be unsigned`);
+        this.log.debug(`'${apk}' does not need to be unsigned`);
       }
       const jarsigner = path.resolve(await getJavaHome(), 'bin', `jarsigner${system.isWindows() ? '.exe' : ''}`);
       const fullCmd: string[] = [
@@ -165,7 +164,7 @@ export async function signWithCustomCert(this: ADB, apk: string): Promise<void> 
         apk,
         this.keyAlias as string,
       ];
-      log.debug(`Starting jarsigner: ${util.quote(redactSecrets(fullCmd))}`);
+      this.log.debug(`Starting jarsigner: ${util.quote(redactSecrets(fullCmd))}`);
       try {
         await exec(fullCmd[0], fullCmd.slice(1));
       } catch (e) {
@@ -200,7 +199,7 @@ export async function sign(this: ADB, appPath: string): Promise<void> {
         `Consider manual application bundle signing with the key at '${DEFAULT_PRIVATE_KEY}' ` +
         `and the certificate at '${DEFAULT_CERTIFICATE}'. Read ${BUNDLETOOL_TUTORIAL} for more details.`;
     }
-    log.warn(message);
+    this.log.warn(message);
     return;
   }
 
@@ -227,10 +226,10 @@ export async function zipAlignApk(this: ADB, apk: string): Promise<boolean> {
   await this.initZipAlign();
   try {
     await exec((this.binaries as StringRecord).zipalign as string, ['-c', '4', apk]);
-    log.debug(`${apk}' is already zip-aligned. Doing nothing`);
+    this.log.debug(`${apk}' is already zip-aligned. Doing nothing`);
     return false;
   } catch {
-    log.debug(`'${apk}' is not zip-aligned. Aligning`);
+    this.log.debug(`'${apk}' is not zip-aligned. Aligning`);
   }
   try {
     await fs.access(apk, _fs.constants.W_OK);
@@ -264,9 +263,9 @@ export async function zipAlignApk(this: ADB, apk: string): Promise<boolean> {
  * @returns True if given application is already signed.
  */
 export async function checkApkCert(this: ADB, appPath: string, opts: CertCheckOptions = {}): Promise<boolean> {
-  log.debug(`Checking app cert for ${appPath}`);
+  this.log.debug(`Checking app cert for ${appPath}`);
   if (!(await fs.exists(appPath))) {
-    log.debug(`'${appPath}' does not exist`);
+    this.log.debug(`'${appPath}' does not exist`);
     return false;
   }
 
@@ -278,7 +277,7 @@ export async function checkApkCert(this: ADB, appPath: string, opts: CertCheckOp
   const hashMatches = (apksignerOutput: string, expectedHashes: KeystoreHash): boolean => {
     for (const [name, value] of Object.entries(expectedHashes)) {
       if (value && new RegExp(`digest:\\s+${value}\\b`, 'i').test(apksignerOutput)) {
-        log.debug(`${name} hash did match for '${path.basename(actualAppPath)}'`);
+        this.log.debug(`${name} hash did match for '${path.basename(actualAppPath)}'`);
         return true;
       }
     }
@@ -289,7 +288,7 @@ export async function checkApkCert(this: ADB, appPath: string, opts: CertCheckOp
 
   const appHash = await fs.hash(actualAppPath);
   if (SIGNED_APPS_CACHE.has(appHash)) {
-    log.debug(`Using the previously cached signature entry for '${path.basename(actualAppPath)}'`);
+    this.log.debug(`Using the previously cached signature entry for '${path.basename(actualAppPath)}'`);
     const cached = SIGNED_APPS_CACHE.get(appHash);
     if (cached) {
       const {keystorePath, output, expected} = cached;
@@ -305,9 +304,9 @@ export async function checkApkCert(this: ADB, appPath: string, opts: CertCheckOp
     const output = await this.executeApksigner(['verify', '--print-certs', actualAppPath]);
     const hasMatch = hashMatches(output, expected);
     if (hasMatch) {
-      log.info(`'${actualAppPath}' is signed with the ${this.useKeystore ? 'keystore' : 'default'} certificate`);
+      this.log.info(`'${actualAppPath}' is signed with the ${this.useKeystore ? 'keystore' : 'default'} certificate`);
     } else {
-      log.info(`'${actualAppPath}' is signed with a non-${this.useKeystore ? 'keystore' : 'default'} certificate`);
+      this.log.info(`'${actualAppPath}' is signed with a non-${this.useKeystore ? 'keystore' : 'default'} certificate`);
     }
     const isSigned = (!this.useKeystore && !requireDefaultCert) || hasMatch;
     if (isSigned) {
@@ -322,7 +321,7 @@ export async function checkApkCert(this: ADB, appPath: string, opts: CertCheckOp
     const error = err as ExecError;
     // check if there is no signature
     if ((error.stderr ?? '').includes(APKSIGNER_VERIFY_FAIL)) {
-      log.info(`'${actualAppPath}' is not signed`);
+      this.log.info(`'${actualAppPath}' is not signed`);
       return false;
     }
     const errMsg = error.stderr || error.stdout || error.message;
@@ -335,8 +334,8 @@ export async function checkApkCert(this: ADB, appPath: string, opts: CertCheckOp
       // If these are not signed, e.g. in case of Espresso, then the next step(s)
       // would anyway fail.
       // See https://github.com/appium/appium/issues/14724 for more details.
-      log.warn(errMsg);
-      log.warn(`Assuming '${actualAppPath}' is already signed and continuing anyway`);
+      this.log.warn(errMsg);
+      this.log.warn(`Assuming '${actualAppPath}' is already signed and continuing anyway`);
       return true;
     }
     throw new Error(`Cannot verify the signature of '${actualAppPath}'. Original error: ${errMsg}`, {cause: err});
@@ -350,7 +349,7 @@ export async function checkApkCert(this: ADB, appPath: string, opts: CertCheckOp
  * @throws If getting keystore hash fails.
  */
 export async function getKeystoreHash(this: ADB): Promise<KeystoreHash> {
-  log.debug(`Getting hash of the '${this.keystorePath}' keystore`);
+  this.log.debug(`Getting hash of the '${this.keystorePath}' keystore`);
   const keytool = path.resolve(await getJavaHome(), 'bin', `keytool${system.isWindows() ? '.exe' : ''}`);
   if (!(await fs.exists(keytool))) {
     throw new Error(`The keytool utility cannot be found at '${keytool}'`);
@@ -365,7 +364,7 @@ export async function getKeystoreHash(this: ADB): Promise<KeystoreHash> {
     '-storepass',
     this.keystorePassword as string,
   ];
-  log.info(`Running '${keytool}' with arguments: ${util.quote(redactSecrets(args))}`);
+  this.log.info(`Running '${keytool}' with arguments: ${util.quote(redactSecrets(args))}`);
   try {
     const {stdout} = await exec(keytool, args);
     const result: KeystoreHash = {};
@@ -379,10 +378,10 @@ export async function getKeystoreHash(this: ADB): Promise<KeystoreHash> {
       result[hashName] = match[1].replace(/:/g, '').toLowerCase();
     }
     if (util.isEmpty(result)) {
-      log.debug(stdout);
+      this.log.debug(stdout);
       throw new Error('Cannot parse the hash value from the keytool output');
     }
-    log.debug(`Keystore hash: ${JSON.stringify(result)}`);
+    this.log.debug(`Keystore hash: ${JSON.stringify(result)}`);
     return result;
   } catch (e) {
     const err = redactExecError(e, keytool, args) as ExecError;

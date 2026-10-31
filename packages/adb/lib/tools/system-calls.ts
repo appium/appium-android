@@ -7,7 +7,7 @@ import {exec, SubProcess} from 'teen_process';
 import type {ExecError, TeenProcessExecResult} from 'teen_process';
 
 import type {ADB} from '../adb.js';
-import {log} from '../logger.js';
+import {log, type ADBLogger} from '../logger.js';
 import {
   DEFAULT_ADB_EXEC_TIMEOUT,
   cloneDeep,
@@ -130,13 +130,13 @@ export async function getBinaryFromSdkRoot(this: ADB, binaryName: string): Promi
   const binaryLocs = getSdkBinaryLocationCandidates(this.sdkRoot, fullBinaryName);
 
   // get subpaths for currently installed build tool directories
-  let buildToolsDirs = await getBuildToolsDirs(this.sdkRoot);
+  let buildToolsDirs = await getBuildToolsDirs(this.sdkRoot, this.log);
   if (this.buildToolsVersion) {
     buildToolsDirs = buildToolsDirs.filter((x) => path.basename(x) === this.buildToolsVersion);
     if (util.isEmpty(buildToolsDirs)) {
-      log.info(`Found no build tools whose version matches to '${this.buildToolsVersion}'`);
+      this.log.info(`Found no build tools whose version matches to '${this.buildToolsVersion}'`);
     } else {
-      log.info(`Using build tools at '${buildToolsDirs}'`);
+      this.log.info(`Using build tools at '${buildToolsDirs}'`);
     }
   }
   binaryLocs.push(
@@ -159,7 +159,7 @@ export async function getBinaryFromSdkRoot(this: ADB, binaryName: string): Promi
         `installed at '${this.sdkRoot}'?`,
     );
   }
-  log.info(`Using '${fullBinaryName}' from '${binaryLoc}'`);
+  this.log.info(`Using '${fullBinaryName}' from '${binaryLoc}'`);
   if (!this.binaries) {
     this.binaries = {};
   }
@@ -205,7 +205,7 @@ export async function getBinaryFromPath(this: ADB, binaryName: string): Promise<
   const fullBinaryName = this.getBinaryNameForOS(binaryName);
   try {
     const binaryLoc = await fs.which(fullBinaryName);
-    log.info(`Using '${fullBinaryName}' from '${binaryLoc}'`);
+    this.log.info(`Using '${fullBinaryName}' from '${binaryLoc}'`);
     if (!this.binaries) {
       this.binaries = {};
     }
@@ -242,7 +242,7 @@ export async function getConnectedDevices(
   this: ADB,
   opts: ConnectedDevicesOptions = {},
 ): Promise<Device[] | VerboseDevice[]> {
-  log.debug('Getting connected devices');
+  this.log.debug('Getting connected devices');
   const args = [...this.executable.defaultArgs, 'devices'];
   if (opts.verbose) {
     args.push('-l');
@@ -309,9 +309,9 @@ export async function getConnectedDevices(
       return device;
     });
   if (util.isEmpty(devices)) {
-    log.debug('No connected devices have been detected');
+    this.log.debug('No connected devices have been detected');
   } else {
-    log.debug(`Connected devices: ${JSON.stringify(devices)}`);
+    this.log.debug(`Connected devices: ${JSON.stringify(devices)}`);
   }
   return devices;
 }
@@ -324,7 +324,7 @@ export async function getConnectedDevices(
  * @throws {Error} If no devices are found within the timeout period
  */
 export async function getDevicesWithRetry(this: ADB, timeoutMs: number = 20000): Promise<Device[]> {
-  log.debug('Trying to find connected Android devices');
+  this.log.debug('Trying to find connected Android devices');
   try {
     let devices: Device[] = [];
     await waitForCondition(
@@ -334,11 +334,11 @@ export async function getDevicesWithRetry(this: ADB, timeoutMs: number = 20000):
           if (devices.length) {
             return true;
           }
-          log.debug('Could not find online devices');
+          this.log.debug('Could not find online devices');
         } catch (err: unknown) {
           const error = err as Error;
-          log.debug(error.stack);
-          log.warn(`Got an unexpected error while fetching connected devices list: ${error.message}`);
+          this.log.debug(error.stack);
+          this.log.warn(`Got an unexpected error while fetching connected devices list: ${error.message}`);
         }
 
         try {
@@ -373,7 +373,7 @@ export async function getDevicesWithRetry(this: ADB, timeoutMs: number = 20000):
  * @throws {Error} If reconnect command fails
  */
 export async function reconnect(this: ADB, target: string | null = 'offline'): Promise<void> {
-  log.debug(`Reconnecting adb (target ${target})`);
+  this.log.debug(`Reconnecting adb (target ${target})`);
 
   const args = ['reconnect'];
   if (target) {
@@ -394,16 +394,16 @@ export async function reconnect(this: ADB, target: string | null = 'offline'): P
  */
 export async function restartAdb(this: ADB): Promise<void> {
   if (this.suppressKillServer) {
-    log.debug(`Not restarting abd since 'suppressKillServer' is on`);
+    this.log.debug(`Not restarting abd since 'suppressKillServer' is on`);
     return;
   }
 
-  log.debug('Restarting adb');
+  this.log.debug('Restarting adb');
   try {
     await this.killServer();
     await this.adbExec(['start-server']);
   } catch {
-    log.error(`Error killing ADB server, going to see if it's online anyway`);
+    this.log.error(`Error killing ADB server, going to see if it's online anyway`);
   }
 }
 
@@ -411,7 +411,7 @@ export async function restartAdb(this: ADB): Promise<void> {
  * Kill adb server.
  */
 export async function killServer(this: ADB): Promise<void> {
-  log.debug(`Killing adb server on port '${this.adbPort}'`);
+  this.log.debug(`Killing adb server on port '${this.adbPort}'`);
   await this.adbExec(['kill-server'], {
     exclusive: true,
   });
@@ -423,21 +423,23 @@ export async function killServer(this: ADB): Promise<void> {
  *
  * @returns True if token was reset successfully, false otherwise
  */
-export const resetTelnetAuthToken = memoize(async function resetTelnetAuthToken(): Promise<boolean> {
+export const resetTelnetAuthToken = memoize(async function resetTelnetAuthToken(this: ADB): Promise<boolean> {
   // The methods is used to remove telnet auth token
   //
   const homeFolderPath = process.env[process.platform === 'win32' ? 'USERPROFILE' : 'HOME'];
   if (!homeFolderPath) {
-    log.warn(`Cannot find the path to user home folder. Ignoring resetting of emulator's telnet authentication token`);
+    this.log.warn(
+      `Cannot find the path to user home folder. Ignoring resetting of emulator's telnet authentication token`,
+    );
     return false;
   }
   const dstPath = path.resolve(homeFolderPath, '.emulator_console_auth_token');
-  log.debug(`Overriding ${dstPath} with an empty string to avoid telnet authentication for emulator commands`);
+  this.log.debug(`Overriding ${dstPath} with an empty string to avoid telnet authentication for emulator commands`);
   try {
     await fs.writeFile(dstPath, '');
   } catch (e: unknown) {
     const error = e as Error;
-    log.warn(
+    this.log.warn(
       `Error ${error.message} while resetting the content of ${dstPath}. Ignoring resetting of emulator's telnet authentication token`,
     );
     return false;
@@ -514,7 +516,7 @@ export async function adbExec(this: ADB, cmd: string | string[], opts?: AdbExecO
     const args = [...this.executable.defaultArgs, ...cmd];
     try {
       const logArgs = redactSecrets(args);
-      log.debug(
+      this.log.debug(
         `Running '${this.executable.path} ` +
           (logArgs.find((arg) => /\s+/.test(arg)) ? util.quote(logArgs) : logArgs.join(' ')) +
           `'`,
@@ -532,7 +534,7 @@ export async function adbExec(this: ADB, cmd: string | string[], opts?: AdbExecO
       const error = redactExecError(e, this.executable.path, args) as ExecError;
       const errText = `${error.message}, ${error.stdout}, ${error.stderr}`;
       if (ADB_RETRY_ERROR_PATTERNS.some((p) => p.test(errText))) {
-        log.info(`Error sending command, reconnecting device and retrying: ${redactSecrets(cmd)}`);
+        this.log.info(`Error sending command, reconnecting device and retrying: ${redactSecrets(cmd)}`);
         await this.getDevicesWithRetry();
 
         // try again one time
@@ -561,12 +563,12 @@ export async function adbExec(this: ADB, cmd: string | string[], opts?: AdbExecO
   };
 
   if (isExecLocked) {
-    log.debug('Waiting until the other exclusive ADB command is completed');
+    this.log.debug('Waiting until the other exclusive ADB command is completed');
     await waitForCondition(() => !isExecLocked, {
       waitMs: Number.MAX_SAFE_INTEGER,
       intervalMs: 10,
     });
-    log.debug('Continuing with the current ADB command');
+    this.log.debug('Continuing with the current ADB command');
   }
   if (optsCopy.exclusive) {
     isExecLocked = true;
@@ -609,9 +611,9 @@ export async function shell(this: ADB, cmd: string | string[], opts?: ShellExecO
   const cmdArr = quoteArgs ? args.map((arg) => util.quote(arg)) : args;
   const fullCmd: string[] = ['shell'];
   if (privileged) {
-    log.info(`'adb shell ${util.quote(redactSecrets(cmdArr))}' requires root access`);
+    this.log.info(`'adb shell ${util.quote(redactSecrets(cmdArr))}' requires root access`);
     if (await this.isRoot()) {
-      log.info('The device already had root access');
+      this.log.info('The device already had root access');
       fullCmd.push(...cmdArr);
     } else {
       fullCmd.push('su', 'root', util.quote(cmdArr));
@@ -631,7 +633,7 @@ export async function shell(this: ADB, cmd: string | string[], opts?: ShellExecO
 export function createSubProcess(this: ADB, args: string[] = []): SubProcess {
   // add the default arguments
   const finalArgs = [...this.executable.defaultArgs, ...args];
-  log.debug(`Creating ADB subprocess with args: ${JSON.stringify(finalArgs)}`);
+  this.log.debug(`Creating ADB subprocess with args: ${JSON.stringify(finalArgs)}`);
   return new SubProcess(this.getAdbPath(), finalArgs);
 }
 
@@ -642,7 +644,7 @@ export function createSubProcess(this: ADB, args: string[] = []): SubProcess {
  * @throws {Error} If no devices are connected or emulator port cannot be found
  */
 export async function getEmulatorPort(this: ADB): Promise<number> {
-  log.debug('Getting running emulator port');
+  this.log.debug('Getting running emulator port');
   if (this.emulatorPort != null) {
     return this.emulatorPort;
   }
@@ -695,7 +697,7 @@ export async function getConnectedEmulators(
   this: ADB,
   opts: ConnectedDevicesOptions = {},
 ): Promise<Device[] | VerboseDevice[]> {
-  log.debug('Getting connected emulators');
+  this.log.debug('Getting connected emulators');
   try {
     const devices = opts.verbose
       ? await this.getConnectedDevices({verbose: true})
@@ -708,7 +710,7 @@ export async function getConnectedEmulators(
         emulators.push(device);
       }
     }
-    log.debug(`${util.pluralize('emulator', emulators.length, true)} connected`);
+    this.log.debug(`${util.pluralize('emulator', emulators.length, true)} connected`);
     return emulators;
   } catch (e: unknown) {
     const error = e as Error;
@@ -731,7 +733,7 @@ export function setEmulatorPort(this: ADB, emPort: number): void {
  * @param deviceId - The device identifier
  */
 export function setDeviceId(this: ADB, deviceId: string): void {
-  log.debug(`Setting device id to ${deviceId}`);
+  this.log.debug(`Setting device id to ${deviceId}`);
   this.curDeviceId = deviceId;
   const argsHasDevice = this.executable.defaultArgs.indexOf('-s');
   if (argsHasDevice !== -1) {
@@ -766,7 +768,7 @@ export function setDevice(this: ADB, deviceObj: Device): void {
  * @throws {Error} If error occurs while getting AVD
  */
 export async function getRunningAVD(this: ADB, avdName: string): Promise<Device | null> {
-  log.debug(`Trying to find '${avdName}' emulator`);
+  this.log.debug(`Trying to find '${avdName}' emulator`);
   try {
     const emulators = await this.getConnectedEmulators();
     for (const emulator of emulators) {
@@ -779,12 +781,12 @@ export async function getRunningAVD(this: ADB, avdName: string): Promise<Device 
         connTimeout: 1000,
       });
       if (avdName.toLowerCase() === runningAVDName.trim().toLowerCase()) {
-        log.debug(`Found emulator '${avdName}' on port ${emulator.port}`);
+        this.log.debug(`Found emulator '${avdName}' on port ${emulator.port}`);
         this.setDeviceId(emulator.udid);
         return emulator;
       }
     }
-    log.debug(`Emulator '${avdName}' not running`);
+    this.log.debug(`Emulator '${avdName}' not running`);
     return null;
   } catch (e: unknown) {
     const error = e as Error;
@@ -812,7 +814,7 @@ export async function getRunningAVDWithRetry(
           return await this.getRunningAVD(avdName.replace('@', ''));
         } catch (e: unknown) {
           const error = e as Error;
-          log.debug(error.message);
+          this.log.debug(error.message);
           return false;
         }
       },
@@ -867,22 +869,22 @@ export async function killEmulator(
   timeout: number = 60000,
 ): Promise<boolean> {
   if (util.hasValue(avdName)) {
-    log.debug(`Killing avd '${avdName}'`);
+    this.log.debug(`Killing avd '${avdName}'`);
     const device = await this.getRunningAVD(avdName);
     if (!device) {
-      log.info(`No avd with name '${avdName}' running. Skipping kill step.`);
+      this.log.info(`No avd with name '${avdName}' running. Skipping kill step.`);
       return false;
     }
   } else {
     // killing the current avd
-    log.debug(`Killing avd with id '${this.curDeviceId}'`);
+    this.log.debug(`Killing avd with id '${this.curDeviceId}'`);
     if (!(await this.isEmulatorConnected())) {
-      log.debug(`Emulator with id '${this.curDeviceId}' not connected. Skipping kill step`);
+      this.log.debug(`Emulator with id '${this.curDeviceId}' not connected. Skipping kill step`);
       return false;
     }
   }
   await this.adbExec(['emu', 'kill']);
-  log.debug(`Waiting up to ${timeout}ms until the emulator '${avdName ? avdName : this.curDeviceId}' is killed`);
+  this.log.debug(`Waiting up to ${timeout}ms until the emulator '${avdName ? avdName : this.curDeviceId}' is killed`);
   try {
     await waitForCondition(
       async () => {
@@ -904,7 +906,7 @@ export async function killEmulator(
       `The emulator '${avdName ? avdName : this.curDeviceId}' is still running after being killed ${timeout}ms ago`,
     );
   }
-  log.info(`Successfully killed the '${avdName ? avdName : this.curDeviceId}' emulator`);
+  this.log.info(`Successfully killed the '${avdName ? avdName : this.curDeviceId}' emulator`);
   return true;
 }
 
@@ -918,7 +920,7 @@ export async function killEmulator(
  */
 export async function launchAVD(this: ADB, avdName: string, opts: AvdLaunchOptions = {}): Promise<SubProcess> {
   const {args = [], env = {}, language, country, launchTimeout = 60000, readyTimeout = 60000, retryTimes = 1} = opts;
-  log.debug(
+  this.log.debug(
     `Launching Emulator with AVD ${avdName}, launchTimeout ${launchTimeout}ms and readyTimeout ${readyTimeout}ms`,
   );
   const emulatorBinaryPath = await this.getSdkBinaryPath('emulator');
@@ -948,14 +950,14 @@ export async function launchAVD(this: ADB, avdName: string, opts: AvdLaunchOptio
         }
       } catch (e: unknown) {
         const error = e as Error;
-        log.info(
+        this.log.info(
           `The -delay-adb emulator startup detection feature will not be enabled. ` +
             `Original error: ${error.message}`,
         );
       }
     }
   } else {
-    log.info('The -delay-adb emulator startup detection feature has been explicitly disabled');
+    this.log.info('The -delay-adb emulator startup detection feature has been explicitly disabled');
   }
 
   if (!util.isEmpty(args)) {
@@ -966,19 +968,19 @@ export async function launchAVD(this: ADB, avdName: string, opts: AvdLaunchOptio
     );
   }
 
-  log.debug(`Running '${emulatorBinaryPath}' with args: ${util.quote(launchArgs)}`);
+  this.log.debug(`Running '${emulatorBinaryPath}' with args: ${util.quote(launchArgs)}`);
   if (!util.isEmpty(env)) {
-    log.debug(`Customized emulator environment: ${JSON.stringify(env)}`);
+    this.log.debug(`Customized emulator environment: ${JSON.stringify(env)}`);
   }
   const proc = new SubProcess(emulatorBinaryPath, launchArgs, {
     env: {...process.env, ...env},
   });
   await proc.start(0);
   for (const streamName of ['stderr', 'stdout']) {
-    proc.on(`line-${streamName}`, (line: string) => log.debug(`[AVD OUTPUT] ${line}`));
+    proc.on(`line-${streamName}`, (line: string) => this.log.debug(`[AVD OUTPUT] ${line}`));
   }
   proc.on('die', (code: number | null, signal: string | null) => {
-    log.warn(`Emulator avd ${processedAvdName} exited with code ${code}${signal ? `, signal ${signal}` : ''}`);
+    this.log.warn(`Emulator avd ${processedAvdName} exited with code ${code}${signal ? `, signal ${signal}` : ''}`);
   });
   await retry(retryTimes, async () => await this.getRunningAVDWithRetry(processedAvdName, launchTimeout));
   // At this point we have deviceId already assigned
@@ -1036,7 +1038,7 @@ export const getVersion = memoize(async function getVersion(this: ADB): Promise<
  * @throws {Error} If emulator is not ready within the timeout period
  */
 export async function waitForEmulatorReady(this: ADB, timeoutMs: number = 20000): Promise<void> {
-  log.debug(`Waiting up to ${timeoutMs}ms for the emulator to be ready`);
+  this.log.debug(`Waiting up to ${timeoutMs}ms for the emulator to be ready`);
   const requiredServicesRe = REQUIRED_SERVICES.map((name) => new RegExp(`\\b${name}:`));
   let services: string | undefined;
   const timer = new timing.Timer().start();
@@ -1048,7 +1050,7 @@ export async function waitForEmulatorReady(this: ADB, timeoutMs: number = 20000)
         if (isFirstCheck) {
           isFirstCheck = false;
         } else {
-          log.debug(
+          this.log.debug(
             `${timer.getDuration().asMilliSeconds.toFixed(0)}ms elapsed since ` +
               `emulator readiness check has started`,
           );
@@ -1060,7 +1062,7 @@ export async function waitForEmulatorReady(this: ADB, timeoutMs: number = 20000)
               this.shell(['getprop', 'init.svc.bootanim']),
             ]);
             if (bootCompleted.trim() !== '1' || !['stopped', ''].includes(bootAnimState.trim())) {
-              log.debug(
+              this.log.debug(
                 `Current status: sys.boot_completed=${bootCompleted.trim()}, ` +
                   `init.svc.bootanim=${bootAnimState.trim()}`,
               );
@@ -1072,14 +1074,14 @@ export async function waitForEmulatorReady(this: ADB, timeoutMs: number = 20000)
           const servicesOutput = await this.shell(['service', 'list']);
           services = servicesOutput;
           if (!servicesOutput || !requiredServicesRe.every((pattern) => pattern.test(servicesOutput))) {
-            log.debug(`Running services: ${servicesOutput}`);
+            this.log.debug(`Running services: ${servicesOutput}`);
             return false;
           }
 
           return true;
         } catch (err: unknown) {
           const error = err as Error;
-          log.debug(`Intermediate error: ${error.message}`);
+          this.log.debug(`Intermediate error: ${error.message}`);
           return false;
         }
       },
@@ -1102,7 +1104,7 @@ export async function waitForEmulatorReady(this: ADB, timeoutMs: number = 20000)
   const elapsedMs = timer.getDuration().asMilliSeconds;
   // Only log if the wait took a noticeable amount of time
   if (elapsedMs > 100) {
-    log.info(`Emulator is ready after ${elapsedMs}ms`);
+    this.log.info(`Emulator is ready after ${elapsedMs}ms`);
   }
 }
 
@@ -1195,7 +1197,7 @@ export async function reboot(this: ADB, retries: number = DEFAULT_ADB_REBOOT_RET
     }
     const msg = `Reboot is not completed after ${timer.getDuration().asMilliSeconds.toFixed(0)}ms`;
     // we don't want the stack trace
-    log.debug(msg);
+    this.log.debug(msg);
     throw new Error(msg);
   });
 }
@@ -1217,7 +1219,7 @@ export async function changeUserPrivileges(this: ADB, isElevated: boolean): Prom
       // Check the output of the stdErr to see if there's any clues that show that the device went offline
       // and if it did go offline, restart ADB
       if (['closed', 'device offline', 'timeout expired'].some((x) => (error.stderr || '').toLowerCase().includes(x))) {
-        log.warn(`Attempt to ${cmd} caused ADB to think the device went offline`);
+        this.log.warn(`Attempt to ${cmd} caused ADB to think the device went offline`);
         try {
           await this.reconnect();
         } catch {
@@ -1239,7 +1241,7 @@ export async function changeUserPrivileges(this: ADB, isElevated: boolean): Prom
   let wasAlreadyRooted = isRoot;
   try {
     const {stdout} = await retryIfOffline(async () => await this.adbExec([cmd]));
-    log.debug(stdout);
+    this.log.debug(stdout);
 
     // on real devices in some situations we get an error in the stdout
     if (stdout) {
@@ -1255,7 +1257,7 @@ export async function changeUserPrivileges(this: ADB, isElevated: boolean): Prom
   } catch (err: unknown) {
     const error = err as ExecError;
     const {stderr = '', message} = error;
-    log.warn(`Unable to ${cmd} adb daemon. Original error: '${message}'. Stderr: '${stderr}'. Continuing.`);
+    this.log.warn(`Unable to ${cmd} adb daemon. Original error: '${message}'. Stderr: '${stderr}'. Continuing.`);
     return {isSuccessful: false, wasAlreadyRooted};
   }
 }
@@ -1308,8 +1310,8 @@ export async function installMitmCertificate(this: ADB, cert: Buffer | string): 
     await fs.writeFile(srcCert, Buffer.isBuffer(cert) ? cert : Buffer.from(cert, 'base64'));
     const {stdout} = await exec(openSsl, ['x509', '-noout', '-hash', '-in', srcCert]);
     const certHash = stdout.trim();
-    log.debug(`Got certificate hash: ${certHash}`);
-    log.debug('Preparing certificate content');
+    this.log.debug(`Got certificate hash: ${certHash}`);
+    this.log.debug('Preparing certificate content');
     const {stdout: stdoutBuff1} = await exec(openSsl, ['x509', '-in', srcCert], {isBuffer: true});
     const {stdout: stdoutBuff2} = await exec(openSsl, ['x509', '-in', srcCert, '-text', '-fingerprint', '-noout'], {
       isBuffer: true,
@@ -1317,12 +1319,12 @@ export async function installMitmCertificate(this: ADB, cert: Buffer | string): 
     const dstCertContent = Buffer.concat([stdoutBuff1, stdoutBuff2]);
     const dstCert = path.resolve(tmpRoot, `${certHash}.0`);
     await fs.writeFile(dstCert, dstCertContent);
-    log.debug('Remounting /system in rw mode');
+    this.log.debug('Remounting /system in rw mode');
     // Sometimes emulator reboot is still not fully finished on this stage, so retry
     await retryInterval(5, 2000, async () => await this.adbExec(['remount']));
-    log.debug(`Uploading the generated certificate from '${dstCert}' to '${CERTS_ROOT}'`);
+    this.log.debug(`Uploading the generated certificate from '${dstCert}' to '${CERTS_ROOT}'`);
     await this.push(dstCert, CERTS_ROOT);
-    log.debug('Remounting /system to confirm changes');
+    this.log.debug('Remounting /system to confirm changes');
     await this.adbExec(['remount']);
   } catch (err: unknown) {
     const error = err as Error;
@@ -1367,7 +1369,7 @@ export async function isMitmCertificateInstalled(this: ADB, cert: Buffer | strin
     await fs.rimraf(tmpRoot);
   }
   const dstPath = path.posix.resolve(CERTS_ROOT, `${certHash}.0`);
-  log.debug(`Checking if the certificate is already installed at '${dstPath}'`);
+  this.log.debug(`Checking if the certificate is already installed at '${dstPath}'`);
   return await this.fileExists(dstPath);
 }
 
@@ -1410,7 +1412,7 @@ export async function shellChunks(
   if (!util.isEmpty(cmdChunk)) {
     commands.push(cmdChunk);
   }
-  log.debug(`Got the following command chunks to execute: ${JSON.stringify(commands)}`);
+  this.log.debug(`Got the following command chunks to execute: ${JSON.stringify(commands)}`);
   let lastError: Error | null = null;
   for (const cmd of commands) {
     try {
@@ -1461,7 +1463,10 @@ export function toAvdLocaleArgs(language: string | null, country: string | null)
  * @param sdkRoot - The Android SDK root directory path
  * @returns Array of build-tools directory paths (newest first)
  */
-export const getBuildToolsDirs = memoize(async function getBuildToolsDirs(sdkRoot: string): Promise<string[]> {
+export const getBuildToolsDirs = memoize(async function getBuildToolsDirs(
+  sdkRoot: string,
+  instanceLog: ADBLogger = log,
+): Promise<string[]> {
   let buildToolsDirs = await fs.glob('*/', {
     cwd: path.resolve(sdkRoot, 'build-tools'),
     absolute: true,
@@ -1473,20 +1478,20 @@ export const getBuildToolsDirs = memoize(async function getBuildToolsDirs(sdkRoo
       .map((pair) => pair[1]);
   } catch (err: unknown) {
     const error = err as Error;
-    log.warn(
+    instanceLog.warn(
       `Cannot sort build-tools folders ${JSON.stringify(buildToolsDirs.map((dir) => path.basename(dir)))} ` +
         `by semantic version names.`,
     );
-    log.warn(`Falling back to sorting by modification date. Original error: ${error.message}`);
+    instanceLog.warn(`Falling back to sorting by modification date. Original error: ${error.message}`);
     const pairs = await asyncmap(
       buildToolsDirs,
       async (dir) => [(await fs.stat(dir)).mtime.valueOf(), dir] as [number, string],
     );
     buildToolsDirs = pairs.sort((a, b) => (a[0] < b[0] ? 1 : -1)).map((pair) => pair[1]);
   }
-  log.info(`Found ${buildToolsDirs.length} 'build-tools' folders under '${sdkRoot}' (newest first):`);
+  instanceLog.info(`Found ${buildToolsDirs.length} 'build-tools' folders under '${sdkRoot}' (newest first):`);
   for (const dir of buildToolsDirs) {
-    log.info(`    ${dir}`);
+    instanceLog.info(`    ${dir}`);
   }
   return buildToolsDirs;
 });

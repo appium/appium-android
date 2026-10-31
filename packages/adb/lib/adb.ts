@@ -1,10 +1,11 @@
 import os from 'node:os';
 
+import type {AppiumLoggerLevel} from '@appium/types';
 import type {LRUCache} from 'lru-cache';
 import type {ExecError} from 'teen_process';
 
 import type {Logcat} from './logcat.js';
-import {log} from './logger.js';
+import {createLogger, type ADBLogger} from './logger.js';
 import * as aabUtilCommands from './tools/aab-utils.js';
 import * as manifestCommands from './tools/android-manifest.js';
 import * as signingCommands from './tools/apk-signing.js';
@@ -84,6 +85,8 @@ export class ADB implements ADBOptions {
   remoteAdbPort?: number;
   clearDeviceLogsOnStart?: boolean;
   listenAllNetwork?: boolean;
+  logLevel?: AppiumLoggerLevel;
+  readonly log: ADBLogger;
 
   getAdbWithCorrectAdbPath = generalCommands.getAdbWithCorrectAdbPath;
   initAapt = generalCommands.initAapt;
@@ -328,6 +331,7 @@ export class ADB implements ADBOptions {
   constructor(opts: ADBOptions = {} as ADBOptions) {
     const options: ADBOptions = defaultsDeep(opts, cloneDeep(DEFAULT_OPTS));
     defaultsDeep(this, options);
+    this.log = createLogger(() => this.logLevel);
 
     // The above defaultsDeep call guarantees the 'executable' field to be always assigned
     this.executable = options.executable as ADBExecutable;
@@ -365,7 +369,7 @@ export class ADB implements ADBOptions {
         await adb.adbExec(['start-server']);
       } catch (e) {
         const err = e as ExecError;
-        log.warn(err.stderr || err.message);
+        adb.log.warn(err.stderr || err.message);
       }
     }
     return adb;
@@ -378,7 +382,7 @@ export class ADB implements ADBOptions {
    * @returns The resulting class instance.
    */
   clone(opts: ADBOptions = {} as ADBOptions): ADB {
-    const originalOptions = cloneDeep(pick(this, Object.keys(DEFAULT_OPTS)));
+    const originalOptions = cloneDeep(pick(this, [...Object.keys(DEFAULT_OPTS), 'logLevel']));
     const cloneOptions = defaultsDeep(opts, originalOptions) as ADBOptions & {
       executable: ADBExecutable;
     };
