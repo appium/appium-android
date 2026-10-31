@@ -48,13 +48,3 @@ import { ADB } from 'appium-adb';
 const adb = await ADB.createADB({logLevel: 'info'});
 console.log(await adb.getProcessIdsByName('com.android.phone'));
 ```
-
-`logLevel` optionally filters log messages for this ADB instance, including its
-Logcat diagnostics. It does not change the shared Appium logger level or Android
-logcat filter specifications. The global Appium log level still applies, so this
-option can suppress additional messages but cannot enable messages suppressed by
-the global level. If omitted, no additional filtering is applied.
-
-Each instance has its own `logLevel`; changing it does not affect other instances.
-`adb.clone()` inherits the current level and accepts a `logLevel` override.
-Process-wide cache cleanup messages continue to use the shared logger.
