@@ -45,6 +45,6 @@ example:
 ```js
 import { ADB } from 'appium-adb';
 
-const adb = await ADB.createADB();
-console.log(await adb.getPIDsByName('com.android.phone'));
+const adb = await ADB.createADB({logLevel: 'info'});
+console.log(await adb.getProcessIdsByName('com.android.phone'));
 ```
