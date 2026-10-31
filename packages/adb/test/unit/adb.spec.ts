@@ -1,28 +1,79 @@
 import assert from 'node:assert/strict';
-import {afterEach, describe, it} from 'node:test';
+import {describe, it} from 'node:test';
 
 import {ADB, DEFAULT_ADB_PORT} from '../../lib/adb.js';
 import {log} from '../../lib/logger.js';
+import {buildInstallArgs} from '../../lib/utils/index.js';
 
 describe('ADB', function () {
   describe('logLevel', function () {
-    const originalLogLevel = log.level;
+    it('filters each instance without changing the shared logger', function (t) {
+      const globalLevel = log.level;
+      const debug = t.mock.method(log, 'debug', () => {});
+      const warn = t.mock.method(log, 'warn', () => {});
+      const error = t.mock.method(log, 'error', () => {});
+      const quiet = new ADB({logLevel: 'error'});
+      const verbose = new ADB({logLevel: 'debug'});
+      const defaultAdb = new ADB();
 
-    afterEach(function () {
-      log.level = originalLogLevel;
+      quiet.setDeviceId('quiet');
+      verbose.setDeviceId('verbose');
+      defaultAdb.setDeviceId('default');
+      quiet.log.warn('hidden');
+      verbose.log.warn('visible');
+      quiet.log.error('visible error');
+
+      assert.equal(debug.mock.callCount(), 2);
+      assert.deepEqual(
+        debug.mock.calls.map(({arguments: args}) => args[0]),
+        ['Setting device id to verbose', 'Setting device id to default'],
+      );
+      assert.equal(warn.mock.callCount(), 1);
+      assert.equal(error.mock.callCount(), 1);
+      assert.equal(log.level, globalLevel);
+      assert.equal(defaultAdb.logLevel, undefined);
     });
 
-    it('should configure logger level when logLevel option is provided', function () {
-      const adb = new ADB({logLevel: 'warn'});
-      assert.strictEqual(adb.logLevel, 'warn');
-      assert.strictEqual(log.level, 'warn');
-    });
-
-    it('should preserve logLevel when cloning', function () {
+    it('preserves and overrides clone levels independently', function (t) {
+      const debug = t.mock.method(log, 'debug', () => {});
       const original = new ADB({logLevel: 'error'});
       const clone = original.clone();
-      assert.strictEqual(clone.logLevel, 'error');
-      assert.strictEqual(log.level, 'error');
+      const verbose = original.clone({logLevel: 'debug'});
+      assert.equal(clone.logLevel, 'error');
+      assert.notEqual(clone.log, original.log);
+      clone.logLevel = 'warn';
+      original.setDeviceId('original');
+      clone.setDeviceId('clone');
+      verbose.setDeviceId('verbose');
+      assert.equal(original.logLevel, 'error');
+      assert.equal(debug.mock.callCount(), 1);
+    });
+
+    it('keeps concurrent asynchronous commands isolated', async function (t) {
+      const debug = t.mock.method(log, 'debug', () => {});
+      const quiet = new ADB({logLevel: 'error'});
+      const verbose = new ADB({logLevel: 'debug'});
+      t.mock.method(quiet, 'getDeviceProperty', async () => '26');
+      t.mock.method(verbose, 'getDeviceProperty', async () => '27');
+      assert.deepEqual(await Promise.all([quiet.getApiLevel(), verbose.getApiLevel()]), [26, 27]);
+      assert.deepEqual(
+        debug.mock.calls.map(({arguments: args}) => args[0]),
+        ['Device API level: 27'],
+      );
+    });
+
+    it('filters helper logs and preserves error throwing', function (t) {
+      const debug = t.mock.method(log, 'debug', () => {});
+      const error = t.mock.method(log, 'error', () => {});
+      const adb = new ADB({logLevel: 'error'});
+      buildInstallArgs(22, {grantPermissions: true}, adb.log);
+      assert.equal(debug.mock.callCount(), 0);
+      const failure = new Error('failure');
+      assert.throws(
+        () => adb.log.errorAndThrow(failure),
+        (err) => err === failure,
+      );
+      assert.equal(error.mock.callCount(), 1);
     });
   });
 

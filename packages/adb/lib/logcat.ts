@@ -1,10 +1,12 @@
 import {EventEmitter} from 'node:events';
 
 import {logger, util} from '@appium/support';
+import type {AppiumLoggerLevel} from '@appium/types';
 import {LRUCache} from 'lru-cache';
 import {SubProcess, exec} from 'teen_process';
 import type {ExecError} from 'teen_process';
 
+import {createLogger, type ADBLogger} from './logger.js';
 import type {LogEntry, LogcatOpts as StartCaptureOptions} from './tools/types.js';
 import type {ADBExecutable} from './types.js';
 
@@ -21,6 +23,7 @@ const EXECVP_ERR_PATTERN = /execvp\(\)/;
 
 export interface LogcatOptions {
   adb: ADBExecutable;
+  getLogLevel?: () => AppiumLoggerLevel | undefined;
   clearDeviceLogsOnStart?: boolean;
   debug?: boolean;
   debugTrace?: boolean;
@@ -30,6 +33,7 @@ export interface LogcatOptions {
 type LogFormat = (typeof SUPPORTED_FORMATS)[number];
 
 export class Logcat extends EventEmitter {
+  private readonly log: ADBLogger;
   private readonly adb: ADBExecutable;
   private readonly clearLogs: boolean;
   private readonly debug?: boolean;
@@ -41,6 +45,7 @@ export class Logcat extends EventEmitter {
 
   constructor(opts: LogcatOptions) {
     super();
+    this.log = createLogger(opts.getLogLevel ?? (() => undefined), log);
     this.adb = opts.adb;
     this.clearLogs = opts.clearDeviceLogsOnStart || false;
     this.debug = opts.debug;
@@ -76,22 +81,22 @@ export class Logcat extends EventEmitter {
             ...this.adb.defaultArgs,
             'logcat',
             '-v',
-            requireFormat(format),
-            ...formatFilterSpecs(filterSpecs),
+            requireFormat(format, this.log),
+            ...formatFilterSpecs(filterSpecs, this.log),
           ];
-          log.debug(`Starting logs capture with command: ${util.quote([this.adb.path, ...cmd])}`);
+          this.log.debug(`Starting logs capture with command: ${util.quote([this.adb.path, ...cmd])}`);
           this.proc = new SubProcess(this.adb.path, cmd);
           this.proc.on('exit', (code, signal) => {
-            log.error(`Logcat terminated with code ${code}, signal ${signal}`);
+            this.log.error(`Logcat terminated with code ${code}, signal ${signal}`);
             this.proc = null;
             if (!started) {
-              log.warn('Logcat not started. Continuing');
+              this.log.warn('Logcat not started. Continuing');
               resolve();
             }
           });
           this.proc.on('line-stderr', (line) => {
             if (!started && EXECVP_ERR_PATTERN.test(line)) {
-              log.error('Logcat process failed to start');
+              this.log.error('Logcat process failed to start');
               return reject(new Error(`Logcat process failed to start. stderr: ${line}`));
             }
             this.outputHandler(line, 'STDERR: ');
@@ -112,9 +117,9 @@ export class Logcat extends EventEmitter {
   }
 
   async stopCapture(): Promise<void> {
-    log.debug('Stopping logcat capture');
+    this.log.debug('Stopping logcat capture');
     if (!this.proc?.isRunning) {
-      log.debug('Logcat already stopped');
+      this.log.debug('Logcat already stopped');
       this.proc = null;
       return;
     }
@@ -156,13 +161,13 @@ export class Logcat extends EventEmitter {
   }
 
   async clear(): Promise<void> {
-    log.debug('Clearing logcat logs from device');
+    this.log.debug('Clearing logcat logs from device');
     try {
       const args = [...this.adb.defaultArgs, 'logcat', '-c'];
       await exec(this.adb.path, args);
     } catch (err) {
       const execErr = err as ExecError;
-      log.warn(`Failed to clear logcat logs: ${execErr.stderr || execErr.message}`);
+      this.log.warn(`Failed to clear logcat logs: ${execErr.stderr || execErr.message}`);
     }
   }
 
@@ -174,15 +179,15 @@ export class Logcat extends EventEmitter {
       this.emit('output', toLogEntry(logLine, timestamp));
     }
     if (this.debug && (this.debugTrace || !TRACE_PATTERN.test(logLine))) {
-      log.debug(prefix + logLine);
+      this.log.debug(prefix + logLine);
     }
   }
 }
 
-function requireFormat(format: string): LogFormat {
+function requireFormat(format: string, instanceLog: ADBLogger): LogFormat {
   if (!SUPPORTED_FORMATS.includes(format as LogFormat)) {
-    log.info(`The format value '${format}' is unknown. Supported values are: ${SUPPORTED_FORMATS}`);
-    log.info(`Defaulting to '${DEFAULT_FORMAT}'`);
+    instanceLog.info(`The format value '${format}' is unknown. Supported values are: ${SUPPORTED_FORMATS}`);
+    instanceLog.info(`Defaulting to '${DEFAULT_FORMAT}'`);
     return DEFAULT_FORMAT;
   }
   return format as LogFormat;
@@ -196,33 +201,33 @@ function toLogEntry(message: string, timestamp: number): LogEntry {
   };
 }
 
-function requireSpec(spec: string): string {
+function requireSpec(spec: string, instanceLog: ADBLogger): string {
   const [tag, priority] = spec.split(':');
   let resultTag = tag;
   if (!resultTag) {
-    log.info(`The tag value in spec '${spec}' cannot be empty`);
-    log.info(`Defaulting to '${DEFAULT_TAG}'`);
+    instanceLog.info(`The tag value in spec '${spec}' cannot be empty`);
+    instanceLog.info(`Defaulting to '${DEFAULT_TAG}'`);
     resultTag = DEFAULT_TAG;
   }
   if (!priority) {
-    log.info(`The priority value in spec '${spec}' is empty. Defaulting to Verbose (${DEFAULT_PRIORITY})`);
+    instanceLog.info(`The priority value in spec '${spec}' is empty. Defaulting to Verbose (${DEFAULT_PRIORITY})`);
     return `${resultTag}:${DEFAULT_PRIORITY}`;
   }
   if (!SUPPORTED_PRIORITIES.some((p) => priority.toLowerCase() === p.toLowerCase())) {
-    log.info(`The priority value in spec '${spec}' is unknown. Supported values are: ${SUPPORTED_PRIORITIES}`);
-    log.info(`Defaulting to Verbose (${DEFAULT_PRIORITY})`);
+    instanceLog.info(`The priority value in spec '${spec}' is unknown. Supported values are: ${SUPPORTED_PRIORITIES}`);
+    instanceLog.info(`Defaulting to Verbose (${DEFAULT_PRIORITY})`);
     return `${resultTag}:${DEFAULT_PRIORITY}`;
   }
   return spec;
 }
 
-function formatFilterSpecs(filterSpecs: string | string[]): string[] {
+function formatFilterSpecs(filterSpecs: string | string[], instanceLog: ADBLogger): string[] {
   if (!Array.isArray(filterSpecs)) {
     filterSpecs = [filterSpecs];
   }
   return filterSpecs
     .filter((spec) => spec && typeof spec === 'string' && !spec.startsWith('-'))
-    .map((spec) => (spec.includes(':') ? requireSpec(spec) : spec));
+    .map((spec) => (spec.includes(':') ? requireSpec(spec, instanceLog) : spec));
 }
 
 export default Logcat;

@@ -2,7 +2,6 @@ import {util} from '@appium/support';
 import {exec, type ExecError} from 'teen_process';
 
 import type {ADB} from '../../adb.js';
-import {log} from '../../logger.js';
 import type {ApkManifest} from '../../tools/types.js';
 
 /**
@@ -19,7 +18,7 @@ export async function readPackageManifest(this: ADB, apkPath: string): Promise<A
   }
 
   const args = ['dump', 'badging', apkPath];
-  log.debug(`Reading package manifest: '${util.quote([aapt2Binary, ...args])}'`);
+  this.log.debug(`Reading package manifest: '${util.quote([aapt2Binary, ...args])}'`);
   let stdout: string;
   try {
     ({stdout} = await exec(aapt2Binary, args));

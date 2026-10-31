@@ -4,7 +4,7 @@ import {fs, zip, tempDir, util} from '@appium/support';
 import {exec} from 'teen_process';
 
 import type {ADB} from '../adb.js';
-import {log} from '../logger.js';
+import {log, type ADBLogger} from '../logger.js';
 import {APKS_EXTENSION, readPackageManifest, unzipFile} from '../utils/index.js';
 import type {APKInfo, PlatformInfo, StringRecord} from './types.js';
 
@@ -25,8 +25,8 @@ export async function packageAndLaunchActivityFromManifest(this: ADB, appPath: s
     name: apkPackage,
     launchableActivity: {name: apkActivity},
   } = await readPackageManifest.bind(this)(appPath);
-  log.info(`Package name: '${apkPackage}'`);
-  log.info(`Main activity name: '${apkActivity}'`);
+  this.log.info(`Package name: '${apkPackage}'`);
+  this.log.info(`Main activity name: '${apkActivity}'`);
   return {apkPackage, apkActivity};
 }
 
@@ -39,7 +39,7 @@ export async function packageAndLaunchActivityFromManifest(this: ADB, appPath: s
  *                 application package.
  */
 export async function targetSdkVersionFromManifest(this: ADB, appPath: string): Promise<number> {
-  log.debug(`Extracting target SDK version of '${appPath}'`);
+  this.log.debug(`Extracting target SDK version of '${appPath}'`);
   const originalAppPath = appPath;
   if (appPath.endsWith(APKS_EXTENSION)) {
     appPath = await this.extractBaseApk(appPath);
@@ -85,7 +85,7 @@ export async function compileManifest(
   manifestPackage: string,
   targetPackage: string,
 ): Promise<void> {
-  const {platform, platformPath} = await getAndroidPlatformAndPath(this.sdkRoot as string);
+  const {platform, platformPath} = await getAndroidPlatformAndPath(this.sdkRoot as string, this.log);
   if (!platform || !platformPath) {
     throw new Error('Cannot compile the manifest. The required platform does not exist (API level >= 17)');
   }
@@ -112,10 +112,10 @@ export async function compileManifest(
       androidJarPath,
       '-v',
     ];
-    log.debug(`Compiling the manifest using '${util.quote([binaries.aapt2, ...args])}'`);
+    this.log.debug(`Compiling the manifest using '${util.quote([binaries.aapt2, ...args])}'`);
     await exec(binaries.aapt2, args);
   } catch (e) {
-    log.debug(
+    this.log.debug(
       'Cannot compile the manifest using aapt2. Defaulting to aapt. ' +
         `Original error: ${(e as Error).message || (e as {stderr?: string}).stderr}`,
     );
@@ -135,7 +135,7 @@ export async function compileManifest(
       resultPath,
       '-f',
     ];
-    log.debug(`Compiling the manifest using '${util.quote([binaries.aapt, ...args])}'`);
+    this.log.debug(`Compiling the manifest using '${util.quote([binaries.aapt, ...args])}'`);
     try {
       await exec(binaries.aapt, args);
     } catch (e1) {
@@ -145,7 +145,7 @@ export async function compileManifest(
       );
     }
   }
-  log.debug(`Compiled the manifest at '${resultPath}'`);
+  this.log.debug(`Compiled the manifest at '${resultPath}'`);
 }
 
 /**
@@ -162,15 +162,15 @@ export async function compileManifest(
  *                          The file will be overridden if it already exists.
  */
 export async function insertManifest(this: ADB, manifest: string, srcApk: string, dstApk: string): Promise<void> {
-  log.debug(`Inserting manifest '${manifest}', src: '${srcApk}', dst: '${dstApk}'`);
+  this.log.debug(`Inserting manifest '${manifest}', src: '${srcApk}', dst: '${dstApk}'`);
   await zip.assertValidZip(srcApk);
-  await unzipFile(`${manifest}.apk`);
+  await unzipFile(`${manifest}.apk`, undefined, this.log);
   const manifestName = path.basename(manifest);
   try {
     await this.initAapt();
     const binaries = this.binaries as StringRecord;
     await fs.copyFile(srcApk, dstApk);
-    log.debug('Moving manifest');
+    this.log.debug('Moving manifest');
     try {
       await exec(binaries.aapt, ['remove', dstApk, manifestName]);
     } catch {}
@@ -178,7 +178,7 @@ export async function insertManifest(this: ADB, manifest: string, srcApk: string
       cwd: path.dirname(manifest),
     });
   } catch (e) {
-    log.debug(
+    this.log.debug(
       'Cannot insert manifest using aapt. Defaulting to zip. ' +
         `Original error: ${(e as Error).message || (e as {stderr?: string}).stderr}`,
     );
@@ -187,11 +187,11 @@ export async function insertManifest(this: ADB, manifest: string, srcApk: string
       // Unfortunately NodeJS does not provide any reliable methods
       // to replace files inside zip archives without loading the
       // whole archive content into RAM
-      log.debug(`Extracting the source apk at '${srcApk}'`);
+      this.log.debug(`Extracting the source apk at '${srcApk}'`);
       await zip.extractAllTo(srcApk, tmpRoot);
-      log.debug('Moving manifest');
+      this.log.debug('Moving manifest');
       await fs.mv(manifest, path.resolve(tmpRoot, manifestName));
-      log.debug(`Collecting the destination apk at '${dstApk}'`);
+      this.log.debug(`Collecting the destination apk at '${dstApk}'`);
       await zip.toArchive(dstApk, {
         cwd: tmpRoot,
       });
@@ -199,7 +199,7 @@ export async function insertManifest(this: ADB, manifest: string, srcApk: string
       await fs.rimraf(tmpRoot);
     }
   }
-  log.debug(`Manifest insertion into '${dstApk}' is completed`);
+  this.log.debug(`Manifest insertion into '${dstApk}' is completed`);
 }
 
 /**
@@ -209,7 +209,7 @@ export async function insertManifest(this: ADB, manifest: string, srcApk: string
  * @return True if the manifest requires Internet access permission.
  */
 export async function hasInternetPermissionFromManifest(this: ADB, appPath: string): Promise<boolean> {
-  log.debug(`Checking if '${appPath}' requires internet access permission in the manifest`);
+  this.log.debug(`Checking if '${appPath}' requires internet access permission in the manifest`);
   if (appPath.endsWith(APKS_EXTENSION)) {
     appPath = await this.extractBaseApk(appPath);
   }
@@ -226,7 +226,7 @@ export async function hasInternetPermissionFromManifest(this: ADB, appPath: stri
  * @param sdkRoot
  * @return The resulting path to the newest installed platform.
  */
-export async function getAndroidPlatformAndPath(sdkRoot: string): Promise<PlatformInfo> {
+export async function getAndroidPlatformAndPath(sdkRoot: string, instanceLog: ADBLogger = log): Promise<PlatformInfo> {
   const propsPaths = await fs.glob('*/build.prop', {
     cwd: path.resolve(sdkRoot, 'platforms'),
     absolute: true,
@@ -238,7 +238,7 @@ export async function getAndroidPlatformAndPath(sdkRoot: string): Promise<Platfo
     const platform = path.basename(platformPath);
     const match = /ro\.build\.version\.sdk=(\d+)/.exec(propsContent);
     if (!match) {
-      log.warn(`Cannot read the SDK version from '${propsPath}'. Skipping '${platform}'`);
+      instanceLog.warn(`Cannot read the SDK version from '${propsPath}'. Skipping '${platform}'`);
       continue;
     }
     platformsMapping[parseInt(match[1], 10)] = {
@@ -247,7 +247,7 @@ export async function getAndroidPlatformAndPath(sdkRoot: string): Promise<Platfo
     };
   }
   if (util.isEmpty(platformsMapping)) {
-    log.warn(
+    instanceLog.warn(
       `Found zero platform folders at '${path.resolve(sdkRoot, 'platforms')}'. ` +
         `Do you have any Android SDKs installed?`,
     );
@@ -259,7 +259,7 @@ export async function getAndroidPlatformAndPath(sdkRoot: string): Promise<Platfo
 
   const recentSdkVersion = Math.max(...Object.keys(platformsMapping).map(Number));
   const result = platformsMapping[recentSdkVersion];
-  log.debug(`Found the most recent Android platform: ${JSON.stringify(result)}`);
+  instanceLog.debug(`Found the most recent Android platform: ${JSON.stringify(result)}`);
   return result;
 }
 

@@ -1,7 +1,6 @@
 import {EOL} from 'node:os';
 
 import type {ADB} from '../adb.js';
-import {log} from '../logger.js';
 import type {PortFamily, PortInfo} from './types.js';
 
 /**
@@ -11,7 +10,7 @@ import type {PortFamily, PortInfo} from './types.js';
  * An array contains each forwarding line of output
  */
 export async function getForwardList(this: ADB): Promise<string[]> {
-  log.debug(`List forwarding ports`);
+  this.log.debug(`List forwarding ports`);
   const connections = await this.adbExec(['forward', '--list']);
   return connections.split(EOL).filter((line) => Boolean(line.trim()));
 }
@@ -23,7 +22,7 @@ export async function getForwardList(this: ADB): Promise<string[]> {
  * @param devicePort - The number of the remote device port.
  */
 export async function forwardPort(this: ADB, systemPort: string | number, devicePort: string | number): Promise<void> {
-  log.debug(`Forwarding system: ${systemPort} to device: ${devicePort}`);
+  this.log.debug(`Forwarding system: ${systemPort} to device: ${devicePort}`);
   await this.adbExec(['forward', `tcp:${systemPort}`, `tcp:${devicePort}`]);
 }
 
@@ -35,7 +34,7 @@ export async function forwardPort(this: ADB, systemPort: string | number, device
  *                                     to remove forwarding on.
  */
 export async function removePortForward(this: ADB, systemPort: string | number): Promise<void> {
-  log.debug(`Removing forwarded port socket connection: ${systemPort} `);
+  this.log.debug(`Removing forwarded port socket connection: ${systemPort} `);
   await this.adbExec(['forward', `--remove`, `tcp:${systemPort}`]);
 }
 
@@ -46,7 +45,7 @@ export async function removePortForward(this: ADB, systemPort: string | number):
  * An array contains each forwarding line of output
  */
 export async function getReverseList(this: ADB): Promise<string[]> {
-  log.debug(`List reverse forwarding ports`);
+  this.log.debug(`List reverse forwarding ports`);
   const connections = await this.adbExec(['reverse', '--list']);
   return connections.split(EOL).filter((line) => Boolean(line.trim()));
 }
@@ -59,7 +58,7 @@ export async function getReverseList(this: ADB): Promise<string[]> {
  * @param systemPort - The number of the local system port.
  */
 export async function reversePort(this: ADB, devicePort: string | number, systemPort: string | number): Promise<void> {
-  log.debug(`Forwarding device: ${devicePort} to system: ${systemPort}`);
+  this.log.debug(`Forwarding device: ${devicePort} to system: ${systemPort}`);
   await this.adbExec(['reverse', `tcp:${devicePort}`, `tcp:${systemPort}`]);
 }
 
@@ -71,7 +70,7 @@ export async function reversePort(this: ADB, devicePort: string | number, system
  *                                     to remove forwarding on.
  */
 export async function removePortReverse(this: ADB, devicePort: string | number): Promise<void> {
-  log.debug(`Removing reverse forwarded port socket connection: ${devicePort} `);
+  this.log.debug(`Removing reverse forwarded port socket connection: ${devicePort} `);
   await this.adbExec(['reverse', `--remove`, `tcp:${devicePort}`]);
 }
 
@@ -88,7 +87,7 @@ export async function forwardAbstractPort(
   systemPort: string | number,
   devicePort: string | number,
 ): Promise<void> {
-  log.debug(`Forwarding system: ${systemPort} to abstract device: ${devicePort}`);
+  this.log.debug(`Forwarding system: ${systemPort} to abstract device: ${devicePort}`);
   await this.adbExec(['forward', `tcp:${systemPort}`, `localabstract:${devicePort}`]);
 }
 
@@ -119,7 +118,7 @@ export async function listPorts(this: ADB, family: PortFamily = '4'): Promise<Po
   const output = await this.shell(['cat', sourceProcName]);
   const lines = output.split('\n');
   if (!lines.length) {
-    log.debug(output);
+    this.log.debug(output);
     throw new Error(`Cannot parse the payload of ${sourceProcName}`);
   }
   //   sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt  uid  timeout inode
@@ -127,7 +126,7 @@ export async function listPorts(this: ADB, family: PortFamily = '4'): Promise<Po
   const localAddressCol = colHeaders.findIndex((x) => x === 'local_address');
   const stateCol = colHeaders.findIndex((x) => x === 'st');
   if (localAddressCol < 0 || stateCol < 0) {
-    log.debug(lines[0]);
+    this.log.debug(lines[0]);
     throw new Error(`Cannot parse the header row of ${sourceProcName} payload`);
   }
   const result: PortInfo[] = [];

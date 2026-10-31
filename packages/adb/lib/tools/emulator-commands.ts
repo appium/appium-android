@@ -5,7 +5,7 @@ import {util, fs} from '@appium/support';
 import * as ini from 'ini';
 
 import type {ADB} from '../adb.js';
-import {log} from '../logger.js';
+import {log, type ADBLogger} from '../logger.js';
 import type {
   EmuInfo,
   EmuVersionInfo,
@@ -172,7 +172,7 @@ export async function gsmSignal(this: ADB, strength: GsmSignalStrength = 4): Pro
       `Invalid signal strength param ${strength}. Supported values: ${Object.values(this.GSM_SIGNAL_STRENGTHS)}`,
     );
   }
-  log.info('gsm signal-profile <strength> changes the reported strength on next (15s) update.');
+  this.log.info('gsm signal-profile <strength> changes the reported strength on next (15s) update.');
   await this.adbExecEmu(['gsm', 'signal-profile', `${strength}`]);
 }
 
@@ -285,7 +285,7 @@ export async function execEmuConsoleCommand(
           clearTimeout(initTimeoutObj);
           serverResponse = [];
           const cmdStr = Array.isArray(cmd) ? util.quote(cmd) : `${cmd}`;
-          log.debug(`Executing Emulator console command: ${cmdStr}`);
+          this.log.debug(`Executing Emulator console command: ${cmdStr}`);
           client.write(cmdStr);
           client.write(eol);
           isCommandSent = true;
@@ -360,7 +360,7 @@ export async function getEmuVersionInfo(this: ADB): Promise<EmuVersionInfo> {
  *   target=android-30
  */
 export async function getEmuImageProperties(this: ADB, avdName: string): Promise<StringRecord> {
-  const avds = await listEmulators();
+  const avds = await listEmulators(this.log);
   const avd = avds.find(({name}) => name === avdName);
   if (!avd) {
     let msg = `Cannot find '${avdName}' emulator. `;
@@ -382,7 +382,7 @@ export async function getEmuImageProperties(this: ADB, avdName: string): Promise
  * @throws If the emulator with given name does not exist.
  */
 export async function checkAvdExist(this: ADB, avdName: string): Promise<boolean> {
-  const avds = await listEmulators();
+  const avds = await listEmulators(this.log);
   if (!avds.some(({name}) => name === avdName)) {
     let msg = `Avd '${avdName}' is not available. `;
     if (avds.length === 0) {
@@ -412,24 +412,26 @@ export async function sendTelnetCommand(this: ADB, command: string): Promise<str
  *
  * @returns
  */
-async function listEmulators(): Promise<EmuInfo[]> {
+async function listEmulators(instanceLog: ADBLogger = log): Promise<EmuInfo[]> {
   let avdsRoot = process.env.ANDROID_AVD_HOME;
   if (await dirExists(avdsRoot ?? '')) {
     return await getAvdConfigPaths(avdsRoot as string);
   }
 
   if (avdsRoot) {
-    log.warn(`The value of the ANDROID_AVD_HOME environment variable '${avdsRoot}' is not an existing directory`);
+    instanceLog.warn(
+      `The value of the ANDROID_AVD_HOME environment variable '${avdsRoot}' is not an existing directory`,
+    );
   }
 
-  const prefsRoot = await getAndroidPrefsRoot();
+  const prefsRoot = await getAndroidPrefsRoot(instanceLog);
   if (!prefsRoot) {
     return [];
   }
 
   avdsRoot = path.resolve(prefsRoot, 'avd');
   if (!(await dirExists(avdsRoot))) {
-    log.debug(`Virtual devices config root '${avdsRoot}' is not an existing directory`);
+    instanceLog.debug(`Virtual devices config root '${avdsRoot}' is not an existing directory`);
     return [];
   }
 
@@ -460,14 +462,16 @@ async function getAvdConfigPaths(avdsRoot: string): Promise<EmuInfo[]> {
  *
  * @returns The full path to the folder or `null` if the folder cannot be found
  */
-async function getAndroidPrefsRoot(): Promise<string | null> {
+async function getAndroidPrefsRoot(instanceLog: ADBLogger = log): Promise<string | null> {
   let location = process.env.ANDROID_EMULATOR_HOME;
   if (await dirExists(location ?? '')) {
     return location ?? null;
   }
 
   if (location) {
-    log.warn(`The value of the ANDROID_EMULATOR_HOME environment variable '${location}' is not an existing directory`);
+    instanceLog.warn(
+      `The value of the ANDROID_EMULATOR_HOME environment variable '${location}' is not an existing directory`,
+    );
   }
 
   const home = process.env.HOME || process.env.USERPROFILE;
@@ -476,7 +480,7 @@ async function getAndroidPrefsRoot(): Promise<string | null> {
   }
 
   if (!(await dirExists(location ?? ''))) {
-    log.debug(`Android config root '${location}' is not an existing directory`);
+    instanceLog.debug(`Android config root '${location}' is not an existing directory`);
     return null;
   }
 

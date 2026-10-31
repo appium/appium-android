@@ -6,7 +6,7 @@ import {LRUCache} from 'lru-cache';
 import {exec} from 'teen_process';
 
 import type {ADB} from '../adb.js';
-import {log} from '../logger.js';
+import {log, type ADBLogger} from '../logger.js';
 import {
   APK_INSTALL_TIMEOUT,
   buildInstallArgs,
@@ -64,7 +64,7 @@ export async function execBundletool(this: ADB, args: string[], errorMsg: string
   if (this.adbHost) {
     env.ANDROID_ADB_SERVER_HOST = this.adbHost;
   }
-  log.debug(`Executing bundletool with arguments: ${JSON.stringify(redactSecrets(args))}`);
+  this.log.debug(`Executing bundletool with arguments: ${JSON.stringify(redactSecrets(args))}`);
   const java = await getJavaForOs();
   let stdout: string;
   try {
@@ -72,15 +72,15 @@ export async function execBundletool(this: ADB, args: string[], errorMsg: string
       env,
       timeout: BUNDLETOOL_TIMEOUT_MS,
     }));
-    log.debug(`Command stdout: ${util.truncateString(stdout, {length: 300})}`);
+    this.log.debug(`Command stdout: ${util.truncateString(stdout, {length: 300})}`);
     return stdout;
   } catch (e) {
     const err = redactExecError(e, java, args) as Error & {stdout?: string; stderr?: string};
     if (err.stdout) {
-      log.debug(`Command stdout: ${err.stdout}`);
+      this.log.debug(`Command stdout: ${err.stdout}`);
     }
     if (err.stderr) {
-      log.debug(`Command stderr: ${err.stderr}`);
+      this.log.debug(`Command stderr: ${err.stderr}`);
     }
     throw new Error(`${errorMsg}. Original error: ${err.message}`, {cause: e});
   }
@@ -102,7 +102,7 @@ export async function getDeviceSpec(this: ADB, specLocation: string): Promise<st
     '--output',
     specLocation,
   ];
-  log.debug(`Getting the spec for the device '${this.curDeviceId}'`);
+  this.log.debug(`Getting the spec for the device '${this.curDeviceId}'`);
   await this.execBundletool(args, 'Cannot retrieve the device spec');
   return specLocation;
 }
@@ -118,7 +118,7 @@ export async function installMultipleApks(
   apkPathsToInstall: string[],
   options: InstallMultipleApksOptions = {},
 ): Promise<string> {
-  const installArgs = buildInstallArgs(await this.getApiLevel(), options);
+  const installArgs = buildInstallArgs(await this.getApiLevel(), options, this.log);
   return await this.adbExec(['install-multiple', ...installArgs, ...apkPathsToInstall], {
     // @ts-ignore This validation works
     timeout: isNaN(Number(options.timeout)) ? undefined : options.timeout,
@@ -171,7 +171,7 @@ export async function installApks(this: ADB, apks: string, options: InstallApksO
  * @throws {Error} If there was an error while extracting/finding the file
  */
 export async function extractBaseApk(this: ADB, apks: string): Promise<string> {
-  return await extractFromApks(apks, ['splits', BASE_APK]);
+  return await extractFromApks(apks, ['splits', BASE_APK], this.log);
 }
 
 /**
@@ -188,10 +188,10 @@ export async function extractBaseApk(this: ADB, apks: string): Promise<string> {
 export async function extractLanguageApk(this: ADB, apks: string, language: string | null = null): Promise<string> {
   if (language) {
     try {
-      return await extractFromApks(apks, ['splits', LANGUAGE_APK(language)]);
+      return await extractFromApks(apks, ['splits', LANGUAGE_APK(language)], this.log);
     } catch (e) {
-      log.debug((e as Error).message);
-      log.info(
+      this.log.debug((e as Error).message);
+      this.log.info(
         `Assuming that splitting by language is not enabled for the '${apks}' bundle ` +
           `and returning the main apk instead`,
       );
@@ -202,11 +202,11 @@ export async function extractLanguageApk(this: ADB, apks: string, language: stri
   const defaultLanguages = ['en', 'en_us'];
   for (const lang of defaultLanguages) {
     try {
-      return await extractFromApks(apks, ['splits', LANGUAGE_APK(lang)]);
+      return await extractFromApks(apks, ['splits', LANGUAGE_APK(lang)], this.log);
     } catch {}
   }
 
-  log.info(
+  this.log.info(
     `Cannot find any split apk for the default languages ${JSON.stringify(defaultLanguages)}. ` +
       `Returning the main apk instead.`,
   );
@@ -235,7 +235,11 @@ export function isTestPackageOnlyError(output: string): boolean {
  * @throws {Error} If the requested item does not exist in the extracted archive or the provides
  * apks file is not a valid bundle
  */
-async function extractFromApks(apks: string, dstPath: string | string[]): Promise<string> {
+async function extractFromApks(
+  apks: string,
+  dstPath: string | string[],
+  instanceLog: ADBLogger = log,
+): Promise<string> {
   const normalizedDstPath = Array.isArray(dstPath) ? dstPath : [dstPath];
 
   return await APKS_CACHE_GUARD.acquire(apks, async () => {
@@ -243,7 +247,7 @@ async function extractFromApks(apks: string, dstPath: string | string[]): Promis
     // so we need to keep the hash sums instead of the actual file paths
     // as caching keys
     const apksHash = await fs.hash(apks);
-    log.debug(`Calculated '${apks}' hash: ${apksHash}`);
+    instanceLog.debug(`Calculated '${apks}' hash: ${apksHash}`);
 
     if (APKS_CACHE.has(apksHash)) {
       const cachedRoot = APKS_CACHE.get(apksHash);
@@ -257,8 +261,8 @@ async function extractFromApks(apks: string, dstPath: string | string[]): Promis
     }
 
     const tmpRoot = await tempDir.openDir();
-    log.debug(`Unpacking application bundle at '${apks}' to '${tmpRoot}'`);
-    await unzipFile(apks, tmpRoot);
+    instanceLog.debug(`Unpacking application bundle at '${apks}' to '${tmpRoot}'`);
+    await unzipFile(apks, tmpRoot, instanceLog);
     const resultPath = path.resolve(tmpRoot, ...normalizedDstPath);
     if (!(await fs.exists(resultPath))) {
       throw new Error(

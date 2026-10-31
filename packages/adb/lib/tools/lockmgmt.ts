@@ -2,7 +2,6 @@ import {util} from '@appium/support';
 import {sleep, waitForCondition} from 'asyncbox';
 
 import type {ADB} from '../adb.js';
-import {log} from '../logger.js';
 
 const CREDENTIAL_CANNOT_BE_NULL_OR_EMPTY_ERROR = `Credential can't be null or empty`;
 const CREDENTIAL_DID_NOT_MATCH_ERROR = `didn't match`;
@@ -20,7 +19,7 @@ const HIDE_KEYBOARD_WAIT_TIME = 100;
 export async function isLockManagementSupported(this: ADB): Promise<boolean> {
   if (typeof this._isLockManagementSupported !== 'boolean') {
     this._isLockManagementSupported = (await this.getApiLevel()) >= 27;
-    log.debug(`Extended lock settings management is ${this._isLockManagementSupported ? '' : 'not '}supported`);
+    this.log.debug(`Extended lock settings management is ${this._isLockManagementSupported ? '' : 'not '}supported`);
   }
   return this._isLockManagementSupported as boolean;
 }
@@ -204,7 +203,7 @@ export async function isScreenLocked(this: ADB): Promise<boolean> {
  * Dismisses keyguard overlay.
  */
 export async function dismissKeyguard(this: ADB): Promise<void> {
-  log.info('Waking up the device to dismiss the keyguard');
+  this.log.info('Waking up the device to dismiss the keyguard');
   // Screen off once to force pre-inputted text field clean after wake-up
   // Just screen on if the screen defaults off
   await this.cycleWakeUp();
@@ -216,15 +215,15 @@ export async function dismissKeyguard(this: ADB): Promise<void> {
 
   const stdout = await this.shell(['dumpsys', 'window']);
   if (!isCurrentFocusOnKeyguard(stdout)) {
-    log.debug('The keyguard seems to be inactive');
+    this.log.debug('The keyguard seems to be inactive');
     return;
   }
 
-  log.debug('Swiping up to dismiss the keyguard');
+  this.log.debug('Swiping up to dismiss the keyguard');
   if (await this.hideKeyboard()) {
     await sleep(HIDE_KEYBOARD_WAIT_TIME);
   }
-  log.debug('Dismissing notifications from the unlock view');
+  this.log.debug('Dismissing notifications from the unlock view');
   await this.shell(['service', 'call', 'notification', '1']);
   await this.back();
   await swipeUp.bind(this)(stdout);
@@ -244,10 +243,10 @@ export async function cycleWakeUp(this: ADB): Promise<void> {
  */
 export async function lock(this: ADB): Promise<void> {
   if (await this.isScreenLocked()) {
-    log.debug('Screen is already locked. Doing nothing.');
+    this.log.debug('Screen is already locked. Doing nothing.');
     return;
   }
-  log.debug('Pressing the KEYCODE_POWER button to lock screen');
+  this.log.debug('Pressing the KEYCODE_POWER button to lock screen');
   await this.keyevent(26);
 
   const timeoutMs = 5000;

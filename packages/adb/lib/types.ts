@@ -29,6 +29,7 @@ export interface ADBOptions {
   remoteAdbPort?: number;
   clearDeviceLogsOnStart?: boolean;
   listenAllNetwork?: boolean;
+  /** Additional per-instance log threshold. The global Appium log level still applies. */
   logLevel?: AppiumLoggerLevel;
 }
 

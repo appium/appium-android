@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import events from 'node:events';
 import {describe, it, beforeEach, afterEach, mock} from 'node:test';
 
+import {logger} from '@appium/support';
+import type {AppiumLoggerLevel} from '@appium/types';
 import sinon from 'sinon';
 
 let currentExec: (...args: any[]) => any = async () => ({stdout: '', stderr: ''});
@@ -33,6 +35,17 @@ describe('logcat commands', function () {
   afterEach(function () {
     sandbox.verify();
     sandbox.restore();
+  });
+
+  it('filters diagnostics using the current instance level', async function (t) {
+    const debug = t.mock.method(logger.getLogger('Logcat').unwrap(), 'debug', () => {});
+    let level: AppiumLoggerLevel = 'warn';
+    const capture = new Logcat({adb, getLogLevel: () => level});
+    await capture.stopCapture();
+    assert.equal(debug.mock.callCount(), 0);
+    level = 'debug';
+    await capture.stopCapture();
+    assert.equal(debug.mock.callCount(), 2);
   });
 
   describe('startCapture', function () {

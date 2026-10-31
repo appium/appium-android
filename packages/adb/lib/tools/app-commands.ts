@@ -5,7 +5,7 @@ import {waitForCondition} from 'asyncbox';
 import type {ExecError} from 'teen_process';
 
 import type {ADB} from '../adb.js';
-import {log} from '../logger.js';
+import {log, type ADBLogger} from '../logger.js';
 import {defaults, intersectionWith} from '../utils/index.js';
 import type {
   StringRecord,
@@ -83,7 +83,7 @@ export async function resolveLaunchableActivity(
     const stdout = await this.shell(['dumpsys', 'package', pkg], {quoteArgs: true});
     const names = parseLaunchableActivityNames(stdout);
     if (util.isEmpty(names)) {
-      log.debug(stdout);
+      this.log.debug(stdout);
       throw new Error(`Unable to resolve the launchable activity of '${pkg}'. Is it installed on the device?`);
     }
     if (names.length === 1) {
@@ -97,8 +97,8 @@ export async function resolveLaunchableActivity(
       return apkActivity as string;
     } catch (e) {
       const err = e as Error;
-      log.debug(err.stack);
-      log.warn(
+      this.log.debug(err.stack);
+      this.log.warn(
         `Unable to resolve the launchable activity of '${pkg}'. ` +
           `The very first match of the dumpsys output is going to be used. ` +
           `Original error: ${err.message}`,
@@ -188,7 +188,7 @@ export async function grantAllPermissions(this: ADB, pkg: string, apk?: string):
     }
   } catch {
     //avoiding logging error stack, as calling library function would have logged
-    log.warn(`Ran into problem getting target SDK version; ignoring...`);
+    this.log.warn(`Ran into problem getting target SDK version; ignoring...`);
   }
   if (apiLevel >= MIN_API_LEVEL_WITH_PERMS_SUPPORT && targetSdk >= MIN_API_LEVEL_WITH_PERMS_SUPPORT) {
     /**
@@ -201,18 +201,18 @@ export async function grantAllPermissions(this: ADB, pkg: string, apk?: string):
     const grantedPermissions = await this.getGrantedPermissions(pkg, dumpsysOutput);
     const permissionsToGrant = requestedPermissions.filter((x) => !grantedPermissions.includes(x));
     if (util.isEmpty(permissionsToGrant)) {
-      log.info(`${pkg} contains no permissions available for granting`);
+      this.log.info(`${pkg} contains no permissions available for granting`);
     } else {
       await this.grantPermissions(pkg, permissionsToGrant);
     }
   } else if (targetSdk < MIN_API_LEVEL_WITH_PERMS_SUPPORT) {
-    log.info(
+    this.log.info(
       `It is only possible to grant permissions in runtime for ` +
         `apps whose targetSdkVersion in the manifest is set to ${MIN_API_LEVEL_WITH_PERMS_SUPPORT} or above. ` +
         `The current ${pkg} targetSdkVersion is ${targetSdk || 'unset'}.`,
     );
   } else if (apiLevel < MIN_API_LEVEL_WITH_PERMS_SUPPORT) {
-    log.info(
+    this.log.info(
       `The device's OS API level is ${apiLevel}. ` +
         `It is only possible to grant permissions on devices running Android 6 or above.`,
     );
@@ -233,7 +233,7 @@ export async function grantPermissions(this: ADB, pkg: string, permissions: stri
   // trying to grant all permission by forming equivalent command.
   // Also, it is necessary to split long commands into chunks, since the maximum length of
   // adb shell buffer is limited
-  log.debug(`Granting permissions ${JSON.stringify(permissions)} to '${pkg}'`);
+  this.log.debug(`Granting permissions ${JSON.stringify(permissions)} to '${pkg}'`);
   try {
     await this.shellChunks((perm) => ['pm', 'grant', pkg, perm], permissions, {quoteArgs: true});
   } catch (e) {
@@ -294,9 +294,9 @@ export async function getGrantedPermissions(
   pkg: string,
   cmdOutput: string | null = null,
 ): Promise<string[]> {
-  log.debug('Retrieving granted permissions');
+  this.log.debug('Retrieving granted permissions');
   const stdout = cmdOutput || (await this.shell(['dumpsys', 'package', pkg], {quoteArgs: true}));
-  return extractMatchingPermissions(stdout, ['install', 'runtime'], true);
+  return extractMatchingPermissions(stdout, ['install', 'runtime'], true, this.log);
 }
 
 /**
@@ -308,9 +308,9 @@ export async function getGrantedPermissions(
  * @returns The list of denied permissions or an empty list.
  */
 export async function getDeniedPermissions(this: ADB, pkg: string, cmdOutput: string | null = null): Promise<string[]> {
-  log.debug('Retrieving denied permissions');
+  this.log.debug('Retrieving denied permissions');
   const stdout = cmdOutput || (await this.shell(['dumpsys', 'package', pkg], {quoteArgs: true}));
-  return extractMatchingPermissions(stdout, ['install', 'runtime'], false);
+  return extractMatchingPermissions(stdout, ['install', 'runtime'], false, this.log);
 }
 
 /**
@@ -322,9 +322,9 @@ export async function getDeniedPermissions(this: ADB, pkg: string, cmdOutput: st
  * @returns The list of requested permissions or an empty list.
  */
 export async function getReqPermissions(this: ADB, pkg: string, cmdOutput: string | null = null): Promise<string[]> {
-  log.debug('Retrieving requested permissions');
+  this.log.debug('Retrieving requested permissions');
   const stdout = cmdOutput || (await this.shell(['dumpsys', 'package', pkg], {quoteArgs: true}));
-  return extractMatchingPermissions(stdout, ['requested']);
+  return extractMatchingPermissions(stdout, ['requested'], undefined, this.log);
 }
 
 /**
@@ -349,15 +349,15 @@ export async function stopAndClear(this: ADB, pkg: string): Promise<void> {
  * @returns The parsed application information.
  */
 export async function getPackageInfo(this: ADB, pkg: string): Promise<AppInfo> {
-  log.debug(`Getting package info for '${pkg}'`);
+  this.log.debug(`Getting package info for '${pkg}'`);
   const result: AppInfo = {name: pkg};
   let stdout: string;
   try {
     stdout = await this.shell(['dumpsys', 'package', pkg], {quoteArgs: true});
   } catch (err) {
     const error = err as Error;
-    log.debug(error.stack);
-    log.warn(`Got an unexpected error while dumping package info: ${error.message}`);
+    this.log.debug(error.stack);
+    this.log.warn(`Got an unexpected error while dumping package info: ${error.message}`);
     return result;
   }
 
@@ -396,7 +396,7 @@ export async function pullApk(this: ADB, pkg: string, tmpDir: string): Promise<s
   const remotePath = stdout.replace(packageMarker, '');
   const tmpApp = path.resolve(tmpDir, `${pkg}.apk`);
   await this.pull(remotePath, tmpApp);
-  log.debug(`Pulled app for package '${pkg}' to '${tmpApp}'`);
+  this.log.debug(`Pulled app for package '${pkg}' to '${tmpApp}'`);
   return tmpApp;
 }
 
@@ -409,7 +409,7 @@ export async function pullApk(this: ADB, pkg: string, tmpDir: string): Promise<s
  * @throws {Error} If the app cannot be activated
  */
 export async function activateApp(this: ADB, appId: string): Promise<void> {
-  log.debug(`Activating '${appId}'`);
+  this.log.debug(`Activating '${appId}'`);
   const apiLevel = await this.getApiLevel();
   // Fallback to Monkey in older APIs
   if (apiLevel < 24) {
@@ -419,13 +419,13 @@ export async function activateApp(this: ADB, appId: string): Promise<void> {
     let output: string;
     try {
       output = await this.shell(cmd, {quoteArgs: true});
-      log.debug(`Command stdout: ${output}`);
+      this.log.debug(`Command stdout: ${output}`);
     } catch (e) {
       const error = e as Error;
-      throw log.errorWithException(`Cannot activate '${appId}'. Original error: ${error.message}`);
+      throw this.log.errorWithException(`Cannot activate '${appId}'. Original error: ${error.message}`);
     }
     if (output.includes('monkey aborted')) {
-      throw log.errorWithException(`Cannot activate '${appId}'. Are you sure it is installed?`);
+      throw this.log.errorWithException(`Cannot activate '${appId}'. Are you sure it is installed?`);
     }
     return;
   }
@@ -433,7 +433,7 @@ export async function activateApp(this: ADB, appId: string): Promise<void> {
   let activityName = await this.resolveLaunchableActivity(appId);
   if (activityName === RESOLVER_ACTIVITY_NAME) {
     // https://github.com/appium/appium/issues/17128
-    log.debug(
+    this.log.debug(
       `The launchable activity name of '${appId}' was resolved to '${activityName}'. ` +
         `Switching the resolver to not use cmd`,
     );
@@ -458,7 +458,7 @@ export async function activateApp(this: ADB, appId: string): Promise<void> {
     ],
     {quoteArgs: true},
   );
-  log.debug(stdout);
+  this.log.debug(stdout);
   if (/^error:/im.test(stdout)) {
     throw new Error(`Cannot activate '${appId}'. Original error: ${stdout}`);
   }
@@ -474,7 +474,7 @@ export async function activateApp(this: ADB, appId: string): Promise<void> {
 export async function isAppInstalled(this: ADB, pkg: string, opts: IsAppInstalledOptions = {}): Promise<boolean> {
   const {user} = opts;
 
-  log.debug(`Getting install status for ${pkg}`);
+  this.log.debug(`Getting install status for ${pkg}`);
   let isInstalled: boolean;
   if ((await this.getApiLevel()) < 26) {
     try {
@@ -492,7 +492,7 @@ export async function isAppInstalled(this: ADB, pkg: string, opts: IsAppInstalle
     const installedPAckages = await this.listInstalledPackages(opts);
     isInstalled = installedPAckages.some((p) => p.appPackage === pkg);
   }
-  log.debug(`'${pkg}' is${!isInstalled ? ' not' : ''} installed`);
+  this.log.debug(`'${pkg}' is${!isInstalled ? ' not' : ''} installed`);
   return isInstalled;
 }
 
@@ -621,7 +621,7 @@ export async function startApp(this: ADB, startAppOptions: StartAppOptions): Pro
     const stdout = await this.shell(cmd, {...shellOpts, quoteArgs: true});
     if (stdout.includes('Error: Activity class') && stdout.includes('does not exist')) {
       if (options.retry && options.activity && !options.activity.startsWith('.')) {
-        log.debug(
+        this.log.debug(
           `We tried to start an activity that doesn't exist, retrying with '.${options.activity}' activity name`,
         );
         options.activity = `.${options.activity}`;
@@ -685,7 +685,7 @@ export async function dumpWindows(this: ADB): Promise<string> {
  * @throws {Error} If there is an error while parsing the data.
  */
 export async function getFocusedPackageAndActivity(this: ADB): Promise<PackageActivityInfo> {
-  log.debug('Getting focused package and activity');
+  this.log.debug('Getting focused package and activity');
   let stdout: string;
   try {
     stdout = await this.dumpWindows();
@@ -748,7 +748,7 @@ export async function getFocusedPackageAndActivity(this: ADB): Promise<PackageAc
     }
   }
 
-  log.debug(stdout);
+  this.log.debug(stdout);
   throw new Error('Could not retrieve the currently focused package and activity');
 }
 
@@ -807,7 +807,7 @@ export async function waitForActivityOrNot(
       }
     }
   }
-  log.debug(
+  this.log.debug(
     `Expected package names to ${waitForStop ? 'not ' : ''}be focused within ${waitMs}ms: ` +
       allPackages.map((name) => `'${name}'`).join(', '),
   );
@@ -815,7 +815,7 @@ export async function waitForActivityOrNot(
   const possibleActivityPatterns = possibleActivityNames.map(
     (actName) => new RegExp(`^${actName.replace(/\./g, '\\.').replace(/\*/g, '.*?').replace(/\$/g, '\\$')}$`),
   );
-  log.debug(
+  this.log.debug(
     `Expected activity name patterns to ${waitForStop ? 'not ' : ''}be focused within ${waitMs}ms: ` +
       possibleActivityPatterns.map((name) => `'${name}'`).join(', '),
   );
@@ -827,23 +827,23 @@ export async function waitForActivityOrNot(
       ({appPackage, appActivity} = await this.getFocusedPackageAndActivity());
     } catch (e) {
       const error = e as Error;
-      log.debug(error.message);
+      this.log.debug(error.message);
       return false;
     }
     if (appActivity && appPackage) {
-      log.debug(`Focused package: ${appPackage}`);
+      this.log.debug(`Focused package: ${appPackage}`);
       const fullyQualifiedActivity = toFullyQualifiedActivityName(
         appActivity.startsWith('.') ? appPackage : '',
         appActivity,
       );
-      log.debug(`Focused fully qualified activity name: ${fullyQualifiedActivity}`);
+      this.log.debug(`Focused fully qualified activity name: ${fullyQualifiedActivity}`);
       const isFound =
         allPackages.includes(appPackage) && possibleActivityPatterns.some((p) => p.test(fullyQualifiedActivity));
       if ((!waitForStop && isFound) || (waitForStop && !isFound)) {
         return true;
       }
     }
-    log.debug('None of the expected package/activity combinations matched to the currently focused one. Retrying');
+    this.log.debug('None of the expected package/activity combinations matched to the currently focused one. Retrying');
     return false;
   };
 
@@ -1053,6 +1053,7 @@ export function extractMatchingPermissions(
   dumpsysOutput: string,
   groupNames: string[],
   grantedState: boolean | null = null,
+  instanceLog: ADBLogger = log,
 ): string[] {
   const groupPatternByName = (groupName: string) =>
     new RegExp(`^(\\s*${util.escapeRegExp(groupName)} permissions:[\\s\\S]+)`, 'm');
@@ -1096,7 +1097,7 @@ export function extractMatchingPermissions(
   const filteredResult = result
     .filter((item) => typeof grantedState !== 'boolean' || item.granted === grantedState)
     .map((item) => item.permission);
-  log.debug(
+  instanceLog.debug(
     `Retrieved ${util.pluralize('permission', filteredResult.length, true)} ` +
       `from ${groupNames} ${util.pluralize('group', groupNames.length, false)}`,
   );
@@ -1113,7 +1114,7 @@ export async function broadcast(this: ADB, intent: string): Promise<void> {
   if (!this.isValidClass(intent)) {
     throw new Error(`Invalid intent ${intent}`);
   }
-  log.debug(`Broadcasting: ${intent}`);
+  this.log.debug(`Broadcasting: ${intent}`);
   await this.shell(['am', 'broadcast', '-a', intent], {quoteArgs: true});
 }
 
@@ -1124,7 +1125,7 @@ export async function broadcast(this: ADB, intent: string): Promise<void> {
  * @returns The list of matched process IDs or an empty list.
  */
 export async function listAppProcessIds(this: ADB, pkg: string): Promise<number[]> {
-  log.debug(`Getting IDs of all '${pkg}' package`);
+  this.log.debug(`Getting IDs of all '${pkg}' package`);
   const pidRegex = new RegExp(`ProcessRecord\\{[\\w]+\\s+(\\d+):${util.escapeRegExp(pkg)}\\/`);
   const processesInfo = await this.shell(['dumpsys', 'activity', 'processes']);
   const pids = processesInfo
