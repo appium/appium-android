@@ -48,3 +48,6 @@ import { ADB } from 'appium-adb';
 const adb = await ADB.createADB({logLevel: 'info'});
 console.log(await adb.getProcessIdsByName('com.android.phone'));
 ```
+
+`logLevel` affects the shared Appium logger, not an individual ADB instance.
+See [`ADBOptions.logLevel`](./lib/types.ts) for details.
