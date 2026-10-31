@@ -51,19 +51,11 @@ console.log(await adb.getProcessIdsByName('com.android.phone'));
 
 ### Logging
 
-The optional `logLevel` option sets the level of the shared Appium logger when an
-ADB instance is created. It is **not an instance-specific or ADB-only setting**:
-other ADB instances and other packages using the same underlying logger in the
-same process share the updated level. The last explicitly supplied level wins.
-Omitting `logLevel` leaves the shared level unchanged; it does not restore a
-default. `adb.clone()` inherits the option, so cloning an instance with a
-`logLevel` also reapplies that level unless overridden.
+The optional `logLevel` option sets the level of the shared Appium logger when an ADB instance is created.
+It is **not an instance-specific or ADB-only setting**: other ADB instances and other packages using the same underlying logger in the same process share the updated level. The last explicitly supplied level wins.
+Omitting `logLevel` leaves the shared level unchanged; it does not restore a default. `adb.clone()` inherits the option, so cloning an instance with a `logLevel` also reapplies that level unless overridden.
 
-When using `appium-adb` standalone, this setting controls the shared logger's
-direct output. When running inside the Appium server, log events are forwarded
-to Winston, which controls server log output separately. Setting this option
-does not change the server's `--log-level` setting and should not be used to
-filter ADB messages in the server logs.
+When using `appium-adb` standalone, this setting controls the shared logger's direct output.
+When running inside the Appium server, log events are forwarded to Winston, which controls server log output separately. Setting this option does not change the server's `--log-level` setting and should not be used to filter ADB messages in the server logs.
 
-This option does not configure Android logcat priorities or filter
-specifications.
+This option does not configure Android logcat priorities or filter specifications.
