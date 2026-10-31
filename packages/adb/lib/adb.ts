@@ -85,6 +85,13 @@ export class ADB implements ADBOptions {
   remoteAdbPort?: number;
   clearDeviceLogsOnStart?: boolean;
   listenAllNetwork?: boolean;
+  /**
+   * Stores the log level option applied to the shared Appium logger during construction.
+   * Assigning this property after construction does not update the logger level.
+   * `clone()` inherits the current property value and reapplies it unless overridden.
+   *
+   * @see {@link ADBOptions.logLevel}
+   */
   logLevel?: AppiumLoggerLevel;
 
   getAdbWithCorrectAdbPath = generalCommands.getAdbWithCorrectAdbPath;
