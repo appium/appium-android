@@ -41,7 +41,7 @@ labels:
   - label: 'package:android-driver'
     sync: true
     matcher:
-      files: ['packages/android-driver/**']
+      files: ['packages/driver-lib/**']
 
   - label: 'package:apidemos'
     sync: true
