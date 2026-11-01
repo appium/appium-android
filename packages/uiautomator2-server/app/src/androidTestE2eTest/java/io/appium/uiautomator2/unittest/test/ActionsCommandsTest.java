@@ -158,10 +158,22 @@ public class ActionsCommandsTest extends BaseTest {
         return typeIntoUsernameField(false, keys);
     }
 
+    private Response openUsernameField() throws JSONException {
+        // The dialog is not always shown right after the first attempt
+        for (int attempt = 0; attempt < 3; attempt++) {
+            setupEditView();
+            try {
+                return waitForElement(By.id("io.appium.android.apis:id/username_edit"), null, 5000L);
+            } catch (Exception e) {
+                // try again
+            }
+        }
+        throw new AssertionError("The username field has not been shown");
+    }
+
     private String typeIntoUsernameField(boolean releaseAfterAllPressed, String... keys) throws JSONException {
-        setupEditView();
-        Response edit = findElement(By.id("io.appium.android.apis:id/username_edit"));
-        click(edit.getElementId());
+        Response edit = openUsernameField();
+        assertTrue(click(edit.getElementId()).isSuccessful());
         assertTrue(performActions(keySequence(releaseAfterAllPressed, keys)).isSuccessful());
         return (String) getText(edit.getElementId()).getValue();
     }
@@ -191,9 +203,8 @@ public class ActionsCommandsTest extends BaseTest {
 
     @Test
     public void verifyTypingUnknownSpecialKeyFails() throws JSONException {
-        setupEditView();
-        Response edit = findElement(By.id("io.appium.android.apis:id/username_edit"));
-        click(edit.getElementId());
+        Response edit = openUsernameField();
+        assertTrue(click(edit.getElementId()).isSuccessful());
         // A private use code point that is not a known W3C special key must not be typed as text
         assertFalse(performActions(keySequence(false, "\uE0FF")).isSuccessful());
     }

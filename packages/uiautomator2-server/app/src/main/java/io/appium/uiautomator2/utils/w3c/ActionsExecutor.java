@@ -24,6 +24,9 @@ import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityWindowInfo;
+
+import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -147,6 +150,7 @@ public class ActionsExecutor {
 
         final boolean isHintShown = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && node.isShowingHintText();
         final CharSequence currentText = node.getText();
+        // An empty field reports no text and an unknown (-1) or zero selection
         if (node.isPassword() || (currentText == null && !isHintShown
                 && Math.max(node.getTextSelectionStart(), node.getTextSelectionEnd()) > 0)) {
             // The content is masked or hidden, so replacing the text would corrupt it
@@ -190,19 +194,42 @@ public class ActionsExecutor {
     }
 
     /**
+     * Looks for the input focus in the windows of the applications only, because the active window
+     * (and the focused attribute) may point to the window of the input method.
+     */
+    @Nullable
+    private static AccessibilityNodeInfo findInputFocusedNode() {
+        final List<AccessibilityWindowInfo> windows = getInstance().getUiAutomation().getWindows();
+        try {
+            for (AccessibilityWindowInfo window : windows) {
+                if (window.getType() == AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
+                    continue;
+                }
+                final AccessibilityNodeInfo root = window.getRoot();
+                try {
+                            final AccessibilityNodeInfo node = root == null
+                            ? null
+                            : root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+                    if (node != null) {
+                        return node;
+                    }
+                } finally {
+                    recycleSafely(root);
+                }
+            }
+            return null;
+        } finally {
+            windows.forEach(window -> recycleSafely(window));
+        }
+    }
+
+    /**
      * The focus may be moved to the element right after a click, so give it some time.
      */
     private static AccessibilityNodeInfo findFocusedEditableNode(int codePoint) {
         final long deadline = SystemClock.uptimeMillis() + FOCUS_WAIT_TIMEOUT_MS;
         while (true) {
-            // Unlike a search by the focused attribute, this ignores the windows of the input method
-            final AccessibilityNodeInfo root = getInstance().getUiAutomation().getRootInActiveWindow();
-            AccessibilityNodeInfo node = null;
-            try {
-                node = root == null ? null : root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
-            } finally {
-                recycleSafely(root);
-            }
+            final AccessibilityNodeInfo node = findInputFocusedNode();
             if (node != null && node.isEditable()) {
                 return node;
             }
@@ -262,8 +289,7 @@ public class ActionsExecutor {
                                    Set<Integer> depressedMetaKeys) {
         final int keyCode = eventParam.keyCode;
         if (keyCode <= 0) {
-            depressedMetaKeys.clear();
-            return true;
+            throw new InvalidArgumentException(String.format("'%s' is not a valid key code point", keyCode));
         }
         final int keyAction = eventParam.keyAction;
 
