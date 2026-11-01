@@ -1,3 +1,15 @@
+# Change Log
+
+All notable changes to this project will be documented in this file.
+See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
+## 15.1.0 (2026-11-01)
+
+### Features
+
+* **driver-lib:** move appium-android-driver into packages/driver-lib ([#77](https://github.com/appium/appium-android/issues/77)) ([35b499e](https://github.com/appium/appium-android/commit/35b499e95f1228060aed06485b79bbf16c509e5a))
+
+
 ## [15.0.0](https://github.com/appium/appium-android-driver/compare/v14.2.6...v15.0.0) (2026-10-31)
 
 ### ⚠ BREAKING CHANGES
