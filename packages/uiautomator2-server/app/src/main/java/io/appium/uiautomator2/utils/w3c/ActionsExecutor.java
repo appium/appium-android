@@ -57,6 +57,7 @@ public class ActionsExecutor {
     private static final long TEXT_SETTLE_TIMEOUT_MS = 1000;
     private static final long TEXT_SETTLE_STABLE_MS = 150;
     private static final long TEXT_SETTLE_POLL_MS = 30;
+    private static final long TEXT_VERIFY_TIMEOUT_MS = 1000;
     private static final long IME_SYNC_DELAY_MS = 150;
     private static final long FOCUS_WAIT_TIMEOUT_MS = 1000;
     private static final long FOCUS_WAIT_POLL_MS = 100;
@@ -179,7 +180,8 @@ public class ActionsExecutor {
         }
         // Setting the text moves the cursor to the end; put it right after the inserted character
         final int cursor = start + inserted.length();
-        if (cursor < newText.length()) {
+        final boolean isCursorMoved = cursor < newText.length();
+        if (isCursorMoved) {
             final Bundle args = new Bundle();
             args.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, cursor);
             args.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, cursor);
@@ -190,7 +192,43 @@ public class ActionsExecutor {
             }
         }
         isImeSyncPending = true;
+        verifyInsertion(node, codePoint, newText, isCursorMoved ? cursor : -1);
         return true;
+    }
+
+    /**
+     * The input method may silently revert our modification, so make sure it has been applied.
+     * The case is ignored, as input filters may change it. The cursor is checked if it has been moved.
+     */
+    private static void verifyInsertion(AccessibilityNodeInfo node, int codePoint,
+                                        String expectedText, int expectedCursor) {
+        final long deadline = SystemClock.uptimeMillis() + TEXT_VERIFY_TIMEOUT_MS;
+        String actualText;
+        int actualStart;
+        int actualEnd;
+        while (true) {
+            if (!node.refresh()) {
+                throw new StaleElementReferenceException();
+            }
+            final CharSequence text = node.getText();
+            actualText = text == null ? "" : text.toString();
+            actualStart = node.getTextSelectionStart();
+            actualEnd = node.getTextSelectionEnd();
+            if (expectedText.equalsIgnoreCase(actualText)
+                    && (expectedCursor < 0 || (actualStart == expectedCursor && actualEnd == expectedCursor))) {
+                return;
+            }
+            if (SystemClock.uptimeMillis() >= deadline) {
+                break;
+            }
+            SystemClock.sleep(TEXT_SETTLE_POLL_MS);
+        }
+        throw new InvalidElementStateException(String.format(
+                "The character with the code point %s has been typed, but the expected state of the " +
+                "focused element was not observed within %sms (text length: expected %s, actual %s; " +
+                "cursor: expected %s, actual %s-%s)", codePoint, TEXT_VERIFY_TIMEOUT_MS,
+                expectedText.length(), actualText.length(),
+                expectedCursor < 0 ? "any" : expectedCursor, actualStart, actualEnd));
     }
 
     /**
