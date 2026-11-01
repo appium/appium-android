@@ -353,4 +353,16 @@ public class ActionsCommandsTest extends BaseTest {
         swipeResponse = swipe(dot1Response.getElementId(), null, 0.5f, "foo", null);
         assertFalse(swipeResponse.isSuccessful());
     }
+
+    @Test
+    public void verifyTypingNonAsciiTextIntoPasswordFieldFails() throws JSONException {
+        startActivity(".view.TextFields");
+        Response password = waitForElement(By.id("io.appium.android.apis:id/edit1"));
+        click(password.getElementId());
+        assertTrue(performActions(keySequence(false, "a", "b")).isSuccessful());
+        // The content of the field is masked, so it cannot be safely modified
+        assertFalse(performActions(keySequence(false, "Ж")).isSuccessful());
+        Response mirror = findElement(By.id("io.appium.android.apis:id/edit1Text"));
+        assertThat((String) getText(mirror.getElementId()).getValue(), equalTo("ab"));
+    }
 }

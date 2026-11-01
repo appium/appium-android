@@ -138,8 +138,8 @@ public class ActionsExecutor {
 
         final boolean isHintShown = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && node.isShowingHintText();
         final CharSequence currentText = node.getText();
-        if (currentText == null && !isHintShown && (node.isPassword() || node.getTextSelectionStart() > 0)) {
-            // The content is hidden, so we cannot tell if the field is empty and it could be overwritten
+        if (node.isPassword() || (currentText == null && !isHintShown && node.getTextSelectionStart() > 0)) {
+            // The content is masked or hidden, so replacing the text would corrupt it
             throw new InvalidElementStateException(String.format(
                     "Cannot type the character with the code point %s: the current text " +
                     "of the focused element is not exposed", codePoint));
