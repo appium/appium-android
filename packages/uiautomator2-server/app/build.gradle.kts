@@ -49,7 +49,9 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         testOptions {
             testInstrumentationRunnerArguments += mapOf(
-                "notAnnotation" to "androidx.test.filters.FlakyTest"
+                "notAnnotation" to "androidx.test.filters.FlakyTest",
+                // Lets the tests adapt to the CI environment, where the emulators are slow
+                "isCi" to (System.getenv("CI") != null).toString()
             )
         }
         buildFeatures {

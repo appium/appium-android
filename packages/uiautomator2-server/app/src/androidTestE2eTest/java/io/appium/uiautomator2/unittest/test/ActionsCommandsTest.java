@@ -20,9 +20,12 @@ import android.graphics.Rect;
 import android.os.Build;
 import android.os.SystemClock;
 
+import androidx.test.platform.app.InstrumentationRegistry;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -183,13 +186,24 @@ public class ActionsCommandsTest extends BaseTest {
         assertThat(typeIntoUsernameField("П", "р", "и", "в", "і", "т"), equalTo("Привіт"));
     }
 
+    /**
+     * The keyboard of the old emulators on CI, which are slow, may re-commit the text it has cached
+     * after the text is changed directly, so the tests mixing both kinds of input are unstable there.
+     */
+    private static void assumeStableKeyboard() {
+        final boolean isCi = Boolean.parseBoolean(InstrumentationRegistry.getArguments().getString("isCi"));
+        Assume.assumeFalse(isCi && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q);
+    }
+
     @Test
     public void verifyTypingNonAsciiTextMixedWithAscii() throws JSONException {
+        assumeStableKeyboard();
         assertThat(typeIntoUsernameField("a", "-", "ж", "-", "b"), equalTo("a-ж-b"));
     }
 
     @Test
     public void verifyTypingNonAsciiTextWhenKeysAreReleasedAfterAllPressed() throws JSONException {
+        assumeStableKeyboard();
         // This is how WebdriverIO sends keys: the ASCII key events are still pending
         // when the non-ASCII character is typed, but the order must be preserved
         assertThat(typeIntoUsernameField(true, "a", "Ж", "b"), equalTo("aЖb"));
