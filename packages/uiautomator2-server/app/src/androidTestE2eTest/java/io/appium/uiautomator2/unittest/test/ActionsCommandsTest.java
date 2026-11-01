@@ -135,11 +135,18 @@ public class ActionsCommandsTest extends BaseTest {
         assertThat((String) response.getValue(), equalTo("hi"));
     }
 
-    private static JSONArray keySequence(String... keys) throws JSONException {
+    private static JSONArray keySequence(boolean releaseAfterAllPressed, String... keys) throws JSONException {
         final JSONArray actions = new JSONArray();
         for (String key : keys) {
             actions.put(new JSONObject().put("type", "keyDown").put("value", key));
-            actions.put(new JSONObject().put("type", "keyUp").put("value", key));
+            if (!releaseAfterAllPressed) {
+                actions.put(new JSONObject().put("type", "keyUp").put("value", key));
+            }
+        }
+        if (releaseAfterAllPressed) {
+            for (String key : keys) {
+                actions.put(new JSONObject().put("type", "keyUp").put("value", key));
+            }
         }
         return new JSONArray().put(new JSONObject()
                 .put("type", "key")
@@ -148,10 +155,14 @@ public class ActionsCommandsTest extends BaseTest {
     }
 
     private String typeIntoUsernameField(String... keys) throws JSONException {
+        return typeIntoUsernameField(false, keys);
+    }
+
+    private String typeIntoUsernameField(boolean releaseAfterAllPressed, String... keys) throws JSONException {
         setupEditView();
         Response edit = findElement(By.id("io.appium.android.apis:id/username_edit"));
         click(edit.getElementId());
-        assertTrue(performActions(keySequence(keys)).isSuccessful());
+        assertTrue(performActions(keySequence(releaseAfterAllPressed, keys)).isSuccessful());
         return (String) getText(edit.getElementId()).getValue();
     }
 
@@ -166,6 +177,13 @@ public class ActionsCommandsTest extends BaseTest {
     }
 
     @Test
+    public void verifyTypingNonAsciiTextWhenKeysAreReleasedAfterAllPressed() throws JSONException {
+        // This is how WebdriverIO sends keys: the ASCII key events are still pending
+        // when the non-ASCII character is typed, but the order must be preserved
+        assertThat(typeIntoUsernameField(true, "a", "Ж", "b"), equalTo("aЖb"));
+    }
+
+    @Test
     public void verifyTypingNonAsciiTextAtCursorPosition() throws JSONException {
         // \uE012 is the W3C code of the left arrow key
         assertThat(typeIntoUsernameField("a", "c", "\uE012", "Ж"), equalTo("aЖc"));
@@ -177,7 +195,7 @@ public class ActionsCommandsTest extends BaseTest {
         Response edit = findElement(By.id("io.appium.android.apis:id/username_edit"));
         click(edit.getElementId());
         // A private use code point that is not a known W3C special key must not be typed as text
-        assertFalse(performActions(keySequence("\uE0FF")).isSuccessful());
+        assertFalse(performActions(keySequence(false, "\uE0FF")).isSuccessful());
     }
 
     @Ignore("This test is not stable on CI as probably slow response. Please enable again once we move the CI instance to faster emulator one such as M1 macOS instance. Local run works.")

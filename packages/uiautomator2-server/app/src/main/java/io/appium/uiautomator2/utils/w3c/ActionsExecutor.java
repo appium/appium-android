@@ -45,7 +45,6 @@ import io.appium.uiautomator2.utils.Logger;
 
 import static androidx.test.uiautomator.By.focused;
 import static io.appium.uiautomator2.model.internal.CustomUiDevice.getInstance;
-import static io.appium.uiautomator2.core.AxNodeInfoHelper.truncateTextToMaxLength;
 import static io.appium.uiautomator2.utils.ElementHelpers.setText;
 import static io.appium.uiautomator2.utils.ReflectionUtils.getMethod;
 import static io.appium.uiautomator2.utils.ReflectionUtils.invoke;
@@ -149,40 +148,45 @@ public class ActionsExecutor {
 
         final boolean isHintShown = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && node.isShowingHintText();
         final CharSequence currentText = node.getText();
-        if (currentText == null && !isHintShown && node.getTextSelectionStart() > 0) {
-            // Password fields may not expose their content, so it would be overwritten
+        if (currentText == null && !isHintShown && (node.isPassword() || node.getTextSelectionStart() > 0)) {
+            // The content is hidden, so we cannot tell if the field is empty and it could be overwritten
             throw new InvalidElementStateException(String.format(
                     "Cannot type the character with the code point %s: the current text " +
                     "of the focused element is not exposed", codePoint));
         }
         final String text = currentText == null || isHintShown ? "" : currentText.toString();
-        final int start = isHintShown ? 0 : clamp(node.getTextSelectionStart(), text.length());
-        final int end = isHintShown ? 0 : Math.max(start, clamp(node.getTextSelectionEnd(), text.length()));
+        final int rawStart = isHintShown ? 0 : clamp(node.getTextSelectionStart(), text.length());
+        final int rawEnd = isHintShown ? 0 : clamp(node.getTextSelectionEnd(), text.length());
+        // The selection may be reversed if it has been made from right to left
+        final int start = Math.min(rawStart, rawEnd);
+        final int end = Math.max(rawStart, rawEnd);
 
         final String inserted = new String(Character.toChars(codePoint));
-        // If the max length is reached, the character is dropped, same as for regular typing
-        final String newText = truncateWithoutSplittingSurrogates(
-                truncateTextToMaxLength(node, text.substring(0, start) + inserted + text.substring(end)));
+        final int maxLength = node.getMaxTextLength();
+        if (maxLength > 0 && text.length() - (end - start) + inserted.length() > maxLength) {
+            // Same as regular typing: the new character is dropped, the existing text is kept
+            Logger.info(String.format("Not typing the character with the code point %s: " +
+                    "the max text length %s would be exceeded", codePoint, maxLength));
+            return true;
+        }
+        final String newText = text.substring(0, start) + inserted + text.substring(end);
         if (!setText(node, newText)) {
             return false;
         }
         // Setting the text moves the cursor to the end; put it right after the inserted character
-        final int cursor = Math.min(start + inserted.length(), newText.length());
-        final Bundle args = new Bundle();
-        args.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, cursor);
-        args.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, cursor);
-        if (!node.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, args)) {
-            Logger.warn(String.format("Could not move the cursor to the position %s", cursor));
+        final int cursor = start + inserted.length();
+        if (cursor < newText.length()) {
+            final Bundle args = new Bundle();
+            args.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, cursor);
+            args.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, cursor);
+            if (!node.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, args)) {
+                throw new InvalidElementStateException(String.format(
+                        "The character with the code point %s has been typed, but the cursor " +
+                        "could not be moved to the position %s", codePoint, cursor));
+            }
         }
         isImeSyncPending = true;
         return true;
-    }
-
-    private static String truncateWithoutSplittingSurrogates(String text) {
-        final int length = text.length();
-        return length > 0 && Character.isHighSurrogate(text.charAt(length - 1))
-                ? text.substring(0, length - 1)
-                : text;
     }
 
     /**
@@ -238,6 +242,9 @@ public class ActionsExecutor {
         boolean result = true;
         final W3CKeyCode w3CKeyCode = W3CKeyCode.fromCodePoint(keyCode);
         if (w3CKeyCode == null) {
+            if (!Character.isValidCodePoint(keyCode)) {
+                throw new InvalidArgumentException(String.format("'%s' is not a valid code point", keyCode));
+            }
             final KeyEvent[] events = keyCharacterMap.getEvents(Character.toChars(keyCode));
             if (events == null) {
                 // The virtual keyboard layout knows only about Latin characters
