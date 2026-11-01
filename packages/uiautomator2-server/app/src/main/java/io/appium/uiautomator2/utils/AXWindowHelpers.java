@@ -140,7 +140,7 @@ public class AXWindowHelpers {
                         "manager could do its work", SystemClock.uptimeMillis() - start));
     }
 
-    private static List<AccessibilityWindowInfo> getWindows() {
+    public static List<AccessibilityWindowInfo> getWindows() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             return CustomUiDevice.getInstance().getUiAutomation().getWindows();
         }

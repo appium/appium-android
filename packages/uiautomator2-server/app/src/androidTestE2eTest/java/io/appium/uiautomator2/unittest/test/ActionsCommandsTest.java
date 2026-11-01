@@ -20,8 +20,12 @@ import android.graphics.Rect;
 import android.os.Build;
 import android.os.SystemClock;
 
+import androidx.test.platform.app.InstrumentationRegistry;
+
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
+import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -132,6 +136,91 @@ public class ActionsCommandsTest extends BaseTest {
         assertTrue(actionsResponse.isSuccessful());
         Response response = getText(edit.getElementId());
         assertThat((String) response.getValue(), equalTo("hi"));
+    }
+
+    private static JSONArray keySequence(boolean releaseAfterAllPressed, String... keys) throws JSONException {
+        final JSONArray actions = new JSONArray();
+        for (String key : keys) {
+            actions.put(new JSONObject().put("type", "keyDown").put("value", key));
+            if (!releaseAfterAllPressed) {
+                actions.put(new JSONObject().put("type", "keyUp").put("value", key));
+            }
+        }
+        if (releaseAfterAllPressed) {
+            for (String key : keys) {
+                actions.put(new JSONObject().put("type", "keyUp").put("value", key));
+            }
+        }
+        return new JSONArray().put(new JSONObject()
+                .put("type", "key")
+                .put("id", "keyboard")
+                .put("actions", actions));
+    }
+
+    private String typeIntoUsernameField(String... keys) throws JSONException {
+        return typeIntoUsernameField(false, keys);
+    }
+
+    private Response openUsernameField() throws JSONException {
+        // The dialog is not always shown right after the first attempt
+        for (int attempt = 0; attempt < 3; attempt++) {
+            setupEditView();
+            try {
+                return waitForElement(By.id("io.appium.android.apis:id/username_edit"), null, 5000L);
+            } catch (Exception e) {
+                // try again
+            }
+        }
+        throw new AssertionError("The username field has not been shown");
+    }
+
+    private String typeIntoUsernameField(boolean releaseAfterAllPressed, String... keys) throws JSONException {
+        Response edit = openUsernameField();
+        assertTrue(click(edit.getElementId()).isSuccessful());
+        assertTrue(performActions(keySequence(releaseAfterAllPressed, keys)).isSuccessful());
+        return (String) getText(edit.getElementId()).getValue();
+    }
+
+    @Test
+    public void verifyTypingNonAsciiText() throws JSONException {
+        assertThat(typeIntoUsernameField("П", "р", "и", "в", "і", "т"), equalTo("Привіт"));
+    }
+
+    /**
+     * The keyboard of the old emulators on CI, which are slow, may re-commit the text it has cached
+     * after the text is changed directly, so the tests mixing both kinds of input are unstable there.
+     */
+    private static void assumeStableKeyboard() {
+        final boolean isCi = Boolean.parseBoolean(InstrumentationRegistry.getArguments().getString("isCi"));
+        Assume.assumeFalse(isCi && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q);
+    }
+
+    @Test
+    public void verifyTypingNonAsciiTextMixedWithAscii() throws JSONException {
+        assumeStableKeyboard();
+        assertThat(typeIntoUsernameField("a", "-", "ж", "-", "b"), equalTo("a-ж-b"));
+    }
+
+    @Test
+    public void verifyTypingNonAsciiTextWhenKeysAreReleasedAfterAllPressed() throws JSONException {
+        assumeStableKeyboard();
+        // This is how WebdriverIO sends keys: the ASCII key events are still pending
+        // when the non-ASCII character is typed, but the order must be preserved
+        assertThat(typeIntoUsernameField(true, "a", "Ж", "b"), equalTo("aЖb"));
+    }
+
+    @Test
+    public void verifyTypingNonAsciiTextAtCursorPosition() throws JSONException {
+        // \uE012 is the W3C code of the left arrow key
+        assertThat(typeIntoUsernameField("a", "c", "\uE012", "Ж"), equalTo("aЖc"));
+    }
+
+    @Test
+    public void verifyTypingUnknownSpecialKeyFails() throws JSONException {
+        Response edit = openUsernameField();
+        assertTrue(click(edit.getElementId()).isSuccessful());
+        // A private use code point that is not a known W3C special key must not be typed as text
+        assertFalse(performActions(keySequence(false, "\uE0FF")).isSuccessful());
     }
 
     @Ignore("This test is not stable on CI as probably slow response. Please enable again once we move the CI instance to faster emulator one such as M1 macOS instance. Local run works.")
@@ -288,5 +377,17 @@ public class ActionsCommandsTest extends BaseTest {
         assertFalse(swipeResponse.isSuccessful());
         swipeResponse = swipe(dot1Response.getElementId(), null, 0.5f, "foo", null);
         assertFalse(swipeResponse.isSuccessful());
+    }
+
+    @Test
+    public void verifyTypingNonAsciiTextIntoPasswordFieldFails() throws JSONException {
+        startActivity(".view.TextFields");
+        Response password = waitForElement(By.id("io.appium.android.apis:id/edit1"));
+        click(password.getElementId());
+        assertTrue(performActions(keySequence(false, "a", "b")).isSuccessful());
+        // The content of the field is masked, so it cannot be safely modified
+        assertFalse(performActions(keySequence(false, "Ж")).isSuccessful());
+        Response mirror = findElement(By.id("io.appium.android.apis:id/edit1Text"));
+        assertThat((String) getText(mirror.getElementId()).getValue(), equalTo("ab"));
     }
 }
