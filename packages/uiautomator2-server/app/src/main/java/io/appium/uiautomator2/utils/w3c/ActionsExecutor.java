@@ -43,6 +43,7 @@ import io.appium.uiautomator2.model.settings.Settings;
 import io.appium.uiautomator2.utils.Logger;
 
 import static io.appium.uiautomator2.model.internal.CustomUiDevice.getInstance;
+import static io.appium.uiautomator2.core.AxNodeInfoHelper.recycleSafely;
 import static io.appium.uiautomator2.utils.ElementHelpers.setText;
 import static io.appium.uiautomator2.utils.ReflectionUtils.getMethod;
 import static io.appium.uiautomator2.utils.ReflectionUtils.invoke;
@@ -133,12 +134,21 @@ public class ActionsExecutor {
                     codePoint));
         }
         final AccessibilityNodeInfo node = findFocusedEditableNode(codePoint);
+        try {
+            return insertCharacterIntoNode(node, codePoint);
+        } finally {
+            recycleSafely(node);
+        }
+    }
+
+    private boolean insertCharacterIntoNode(AccessibilityNodeInfo node, int codePoint) {
         refreshNode(node, hasUnsettledKeyEvents);
         hasUnsettledKeyEvents = false;
 
         final boolean isHintShown = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && node.isShowingHintText();
         final CharSequence currentText = node.getText();
-        if (node.isPassword() || (currentText == null && !isHintShown && node.getTextSelectionStart() > 0)) {
+        if (node.isPassword() || (currentText == null && !isHintShown
+                && Math.max(node.getTextSelectionStart(), node.getTextSelectionEnd()) > 0)) {
             // The content is masked or hidden, so replacing the text would corrupt it
             throw new InvalidElementStateException(String.format(
                     "Cannot type the character with the code point %s: the current text " +
@@ -187,14 +197,21 @@ public class ActionsExecutor {
         while (true) {
             // Unlike a search by the focused attribute, this ignores the windows of the input method
             final AccessibilityNodeInfo root = getInstance().getUiAutomation().getRootInActiveWindow();
-            final AccessibilityNodeInfo node = root == null ? null : root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+            AccessibilityNodeInfo node = null;
+            try {
+                node = root == null ? null : root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+            } finally {
+                recycleSafely(root);
+            }
             if (node != null && node.isEditable()) {
                 return node;
             }
+            final boolean isFocused = node != null;
+            recycleSafely(node);
             if (SystemClock.uptimeMillis() >= deadline) {
                 throw new InvalidElementStateException(String.format(
                         "Cannot type the character with the code point %s: %s", codePoint,
-                        node == null ? "no element is focused" : "the focused element is not editable"));
+                        isFocused ? "the focused element is not editable" : "no element is focused"));
             }
             SystemClock.sleep(FOCUS_WAIT_POLL_MS);
         }
