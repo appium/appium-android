@@ -157,7 +157,7 @@ public class ActionsCommandsTest extends BaseTest {
 
     @Test
     public void verifyTypingNonAsciiText() throws JSONException {
-        assertThat(typeIntoUsernameField("П", "р", "и", "в", "е", "т"), equalTo("Привет"));
+        assertThat(typeIntoUsernameField("П", "р", "и", "в", "і", "т"), equalTo("Привіт"));
     }
 
     @Test
