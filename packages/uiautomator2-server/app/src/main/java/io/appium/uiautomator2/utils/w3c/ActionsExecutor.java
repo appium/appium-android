@@ -45,8 +45,8 @@ import io.appium.uiautomator2.model.settings.CurrentDisplayId;
 import io.appium.uiautomator2.model.settings.Settings;
 import io.appium.uiautomator2.utils.Logger;
 
-import static io.appium.uiautomator2.model.internal.CustomUiDevice.getInstance;
 import static io.appium.uiautomator2.core.AxNodeInfoHelper.recycleSafely;
+import static io.appium.uiautomator2.utils.AXWindowHelpers.getWindows;
 import static io.appium.uiautomator2.utils.ElementHelpers.setText;
 import static io.appium.uiautomator2.utils.ReflectionUtils.getMethod;
 import static io.appium.uiautomator2.utils.ReflectionUtils.invoke;
@@ -199,7 +199,7 @@ public class ActionsExecutor {
      */
     @Nullable
     private static AccessibilityNodeInfo findInputFocusedNode() {
-        final List<AccessibilityWindowInfo> windows = getInstance().getUiAutomation().getWindows();
+        final List<AccessibilityWindowInfo> windows = getWindows();
         try {
             for (AccessibilityWindowInfo window : windows) {
                 if (window.getType() == AccessibilityWindowInfo.TYPE_INPUT_METHOD) {
