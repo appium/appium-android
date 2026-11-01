@@ -38,12 +38,10 @@ import io.appium.uiautomator2.common.exceptions.StaleElementReferenceException;
 import io.appium.uiautomator2.common.exceptions.UiAutomator2Exception;
 import io.appium.uiautomator2.core.InteractionController;
 import io.appium.uiautomator2.core.UiAutomatorBridge;
-import io.appium.uiautomator2.model.AccessibleUiObject;
 import io.appium.uiautomator2.model.settings.CurrentDisplayId;
 import io.appium.uiautomator2.model.settings.Settings;
 import io.appium.uiautomator2.utils.Logger;
 
-import static androidx.test.uiautomator.By.focused;
 import static io.appium.uiautomator2.model.internal.CustomUiDevice.getInstance;
 import static io.appium.uiautomator2.utils.ElementHelpers.setText;
 import static io.appium.uiautomator2.utils.ReflectionUtils.getMethod;
@@ -56,6 +54,8 @@ public class ActionsExecutor {
     private static final long TEXT_SETTLE_STABLE_MS = 150;
     private static final long TEXT_SETTLE_POLL_MS = 30;
     private static final long IME_SYNC_DELAY_MS = 150;
+    private static final long FOCUS_WAIT_TIMEOUT_MS = 1000;
+    private static final long FOCUS_WAIT_POLL_MS = 100;
     // Set when regular key events were injected after the last direct text insertion
     private boolean hasUnsettledKeyEvents = false;
     // The input method needs a moment to pick up the text and the cursor set by us
@@ -132,17 +132,7 @@ public class ActionsExecutor {
                     "Cannot type the character with the code point %s while modifier keys are pressed",
                     codePoint));
         }
-        final AccessibleUiObject focusedObject = getInstance().findObject(focused(true));
-        if (focusedObject == null) {
-            throw new InvalidElementStateException(String.format(
-                    "Cannot type the character with the code point %s: no element is focused", codePoint));
-        }
-        final AccessibilityNodeInfo node = focusedObject.getInfo();
-        if (!node.isEditable()) {
-            throw new InvalidElementStateException(String.format(
-                    "Cannot type the character with the code point %s: the focused element is not editable",
-                    codePoint));
-        }
+        final AccessibilityNodeInfo node = findFocusedEditableNode(codePoint);
         refreshNode(node, hasUnsettledKeyEvents);
         hasUnsettledKeyEvents = false;
 
@@ -187,6 +177,27 @@ public class ActionsExecutor {
         }
         isImeSyncPending = true;
         return true;
+    }
+
+    /**
+     * The focus may be moved to the element right after a click, so give it some time.
+     */
+    private static AccessibilityNodeInfo findFocusedEditableNode(int codePoint) {
+        final long deadline = SystemClock.uptimeMillis() + FOCUS_WAIT_TIMEOUT_MS;
+        while (true) {
+            // Unlike a search by the focused attribute, this ignores the windows of the input method
+            final AccessibilityNodeInfo root = getInstance().getUiAutomation().getRootInActiveWindow();
+            final AccessibilityNodeInfo node = root == null ? null : root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+            if (node != null && node.isEditable()) {
+                return node;
+            }
+            if (SystemClock.uptimeMillis() >= deadline) {
+                throw new InvalidElementStateException(String.format(
+                        "Cannot type the character with the code point %s: %s", codePoint,
+                        node == null ? "no element is focused" : "the focused element is not editable"));
+            }
+            SystemClock.sleep(FOCUS_WAIT_POLL_MS);
+        }
     }
 
     /**
