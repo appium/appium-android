@@ -17,11 +17,13 @@
 package io.appium.uiautomator2.utils.w3c;
 
 import android.os.Build;
+import android.os.Bundle;
 import android.os.SystemClock;
 import android.view.InputDevice;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,16 +36,32 @@ import io.appium.uiautomator2.common.exceptions.InvalidArgumentException;
 import io.appium.uiautomator2.common.exceptions.UiAutomator2Exception;
 import io.appium.uiautomator2.core.InteractionController;
 import io.appium.uiautomator2.core.UiAutomatorBridge;
+import io.appium.uiautomator2.model.AccessibleUiObject;
 import io.appium.uiautomator2.model.settings.CurrentDisplayId;
 import io.appium.uiautomator2.model.settings.Settings;
 import io.appium.uiautomator2.utils.Logger;
 
+import static androidx.test.uiautomator.By.focused;
+import static io.appium.uiautomator2.model.internal.CustomUiDevice.getInstance;
+import static io.appium.uiautomator2.core.AxNodeInfoHelper.truncateTextToMaxLength;
+import static io.appium.uiautomator2.utils.ElementHelpers.setText;
 import static io.appium.uiautomator2.utils.ReflectionUtils.getMethod;
 import static io.appium.uiautomator2.utils.ReflectionUtils.invoke;
 import static io.appium.uiautomator2.utils.w3c.ActionHelpers.normalizeSequence;
 import static io.appium.uiautomator2.utils.w3c.ActionsConstants.EVENT_INJECTION_DELAY_MS;
 
 public class ActionsExecutor {
+    private static final long TEXT_SETTLE_TIMEOUT_MS = 1000;
+    private static final long TEXT_SETTLE_STABLE_MS = 150;
+    private static final long TEXT_SETTLE_POLL_MS = 30;
+    private static final long IME_SYNC_DELAY_MS = 150;
+    // Set when regular key events were injected after the last direct text insertion
+    private boolean hasUnsettledKeyEvents = false;
+    // Text and cursor as of our last direct insertion; null once regular key events change them
+    private String lastInsertedText = null;
+    private int lastInsertedCursor = 0;
+    // The input method needs a moment to pick up the text and the cursor set by us
+    private boolean isImeSyncPending = false;
     private final KeyCharacterMap keyCharacterMap;
     private static final List<Integer> HOVERING_ACTIONS = Arrays.asList(
             MotionEvent.ACTION_HOVER_ENTER, MotionEvent.ACTION_HOVER_EXIT, MotionEvent.ACTION_HOVER_MOVE
@@ -95,6 +113,89 @@ public class ActionsExecutor {
         }
     }
 
+    /**
+     * Inserts a character that has no key event representation (e.g. Cyrillic, Arabic, emoji)
+     * into the focused element at the current cursor position, replacing the selection if any.
+     */
+    private boolean insertCharacter(int codePoint) {
+        final AccessibleUiObject focusedObject = getInstance().findObject(focused(true));
+        if (focusedObject == null) {
+            throw new InvalidArgumentException(String.format(
+                    "Cannot type the character with the code point %s: no element is focused", codePoint));
+        }
+        final AccessibilityNodeInfo node = focusedObject.getInfo();
+        final String text;
+        final int start;
+        final int end;
+        if (lastInsertedText != null) {
+            // The accessibility cache may still hold the state before our previous insertion
+            text = lastInsertedText;
+            start = lastInsertedCursor;
+            end = lastInsertedCursor;
+        } else {
+            if (hasUnsettledKeyEvents) {
+                waitForTextToSettle(node);
+            }
+            final boolean isHintShown = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && node.isShowingHintText();
+            final CharSequence currentText = node.getText();
+            text = currentText == null || isHintShown ? "" : currentText.toString();
+            start = isHintShown ? 0 : clamp(node.getTextSelectionStart(), text.length());
+            end = isHintShown ? 0 : Math.max(start, clamp(node.getTextSelectionEnd(), text.length()));
+        }
+        hasUnsettledKeyEvents = false;
+
+        final String inserted = new String(Character.toChars(codePoint));
+        final String newText = truncateTextToMaxLength(node, text.substring(0, start) + inserted + text.substring(end));
+        if (!setText(node, newText)) {
+            lastInsertedText = null;
+            return false;
+        }
+        // Setting the text moves the cursor to the end; put it right after the inserted character
+        final int cursor = Math.min(start + inserted.length(), newText.length());
+        final Bundle args = new Bundle();
+        args.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, cursor);
+        args.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, cursor);
+        node.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, args);
+        lastInsertedText = newText;
+        lastInsertedCursor = cursor;
+        isImeSyncPending = true;
+        return true;
+    }
+
+    /**
+     * Key events are delivered to the input method asynchronously, so the node state may lag
+     * behind them. Wait until the text and the cursor stop changing before modifying them.
+     */
+    private static void waitForTextToSettle(AccessibilityNodeInfo node) {
+        final long deadline = SystemClock.uptimeMillis() + TEXT_SETTLE_TIMEOUT_MS;
+        String lastState = null;
+        long stableSince = SystemClock.uptimeMillis();
+        while (SystemClock.uptimeMillis() < deadline) {
+            node.refresh();
+            final String state = node.getText() + "|" + node.getTextSelectionStart() + "|" + node.getTextSelectionEnd();
+            final long now = SystemClock.uptimeMillis();
+            if (!state.equals(lastState)) {
+                lastState = state;
+                stableSince = now;
+            } else if (now - stableSince >= TEXT_SETTLE_STABLE_MS) {
+                return;
+            }
+            SystemClock.sleep(TEXT_SETTLE_POLL_MS);
+        }
+    }
+
+    private void syncImeIfNeeded() {
+        if (isImeSyncPending) {
+            isImeSyncPending = false;
+            SystemClock.sleep(IME_SYNC_DELAY_MS);
+        }
+    }
+
+    private static int clamp(int index, int length) {
+        // Negative index means the cursor position is unknown, so append
+        return index < 0 ? length : Math.min(index, length);
+    }
+
     private boolean injectKeyEvent(KeyInputEventParams eventParam, long startTimestamp,
                                    Set<Integer> depressedMetaKeys) {
         final int keyCode = eventParam.keyCode;
@@ -109,13 +210,12 @@ public class ActionsExecutor {
         if (w3CKeyCode == null) {
             final KeyEvent[] events = keyCharacterMap.getEvents(Character.toChars(keyCode));
             if (events == null) {
-                throw new InvalidArgumentException(String.format(
-                        "KeyCharacterMap.getEvents is unable to synthesize KeyEvent sequence out " +
-                        "of '%s' key code. Consider applying a patch to UiAutomator2 server code or " +
-                        "try to synthesize the necessary key event(s) for it manually", keyCode));
+                // The virtual keyboard layout knows only about Latin characters
+                return keyAction != KeyEvent.ACTION_DOWN || insertCharacter(keyCode);
             }
             for (KeyEvent event : events) {
                 if (event.getAction() == keyAction) {
+                    syncImeIfNeeded();
                     final long eventTime = SystemClock.uptimeMillis();
                     final KeyEvent keyEvent = new KeyEvent(startTimestamp + eventParam.startDelta,
                             eventTime, keyAction, event.getKeyCode(), 0,
@@ -123,6 +223,8 @@ public class ActionsExecutor {
                             KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0);
                     result &= interactionController.injectEventSync(keyEvent);
                     logEvent(keyEvent, eventTime, result);
+                    hasUnsettledKeyEvents = true;
+        lastInsertedText = null;
                 }
             }
             return result;
@@ -138,12 +240,15 @@ public class ActionsExecutor {
             return true;
         }
 
+        syncImeIfNeeded();
         final long eventTime = SystemClock.uptimeMillis();
         final KeyEvent keyEvent = new KeyEvent(startTimestamp + eventParam.startDelta,
                 eventTime, keyAction, w3CKeyCode.getAndroidCodePoint(), 0,
                 metaKeysToState(depressedMetaKeys), KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0);
         result = interactionController.injectEventSync(keyEvent);
         logEvent(keyEvent, eventTime, result);
+        hasUnsettledKeyEvents = true;
+        lastInsertedText = null;
         return result;
     }
 

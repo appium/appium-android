@@ -22,6 +22,7 @@ import android.os.SystemClock;
 
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -132,6 +133,42 @@ public class ActionsCommandsTest extends BaseTest {
         assertTrue(actionsResponse.isSuccessful());
         Response response = getText(edit.getElementId());
         assertThat((String) response.getValue(), equalTo("hi"));
+    }
+
+    private static JSONArray keySequence(String... keys) throws JSONException {
+        final JSONArray actions = new JSONArray();
+        for (String key : keys) {
+            actions.put(new JSONObject().put("type", "keyDown").put("value", key));
+            actions.put(new JSONObject().put("type", "keyUp").put("value", key));
+        }
+        return new JSONArray().put(new JSONObject()
+                .put("type", "key")
+                .put("id", "keyboard")
+                .put("actions", actions));
+    }
+
+    private String typeIntoUsernameField(String... keys) throws JSONException {
+        setupEditView();
+        Response edit = findElement(By.id("io.appium.android.apis:id/username_edit"));
+        click(edit.getElementId());
+        assertTrue(performActions(keySequence(keys)).isSuccessful());
+        return (String) getText(edit.getElementId()).getValue();
+    }
+
+    @Test
+    public void verifyTypingNonAsciiText() throws JSONException {
+        assertThat(typeIntoUsernameField("П", "р", "и", "в", "е", "т"), equalTo("Привет"));
+    }
+
+    @Test
+    public void verifyTypingNonAsciiTextMixedWithAscii() throws JSONException {
+        assertThat(typeIntoUsernameField("a", "-", "ж", "-", "b"), equalTo("a-ж-b"));
+    }
+
+    @Test
+    public void verifyTypingNonAsciiTextAtCursorPosition() throws JSONException {
+        // \uE012 is the W3C code of the left arrow key
+        assertThat(typeIntoUsernameField("a", "c", "\uE012", "Ж"), equalTo("aЖc"));
     }
 
     @Ignore("This test is not stable on CI as probably slow response. Please enable again once we move the CI instance to faster emulator one such as M1 macOS instance. Local run works.")
