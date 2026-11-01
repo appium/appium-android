@@ -7,6 +7,7 @@
 - [`appium-adb`][]: Node.js wrapper over Android Debug Bridge (adb)
 - [`android-apidemos`][]: Fork of Google's ApiDemos Android app, used for testing Appium
 - [`appium-chromedriver`][]: Node.js wrapper around Chromedriver
+- [`appium-android-driver`][]: Base Android driver (UiAutomator and Chrome support) for Appium
 - [`compose-playground`][]: Jetpack Compose fixture app for Android UI exploration and testing
 - [`appium-uiautomator2-server`][]: Netty server running on the device that executes UiAutomator2 commands
 - [`io.appium.settings`][]: Android app for dealing with device settings, plus its Node.js client
@@ -18,6 +19,7 @@ See the main [Appium site](https://appium.io) or [Appium GitHub repository](http
 [`android-apidemos`]: https://github.com/appium/appium-android/tree/main/packages/android-apidemos
 [`appium-adb`]: https://github.com/appium/appium-android/tree/main/packages/adb
 [`appium-chromedriver`]: https://github.com/appium/appium-android/tree/main/packages/chromedriver
+[`appium-android-driver`]: https://github.com/appium/appium-android/tree/main/packages/driver-lib
 [`compose-playground`]: https://github.com/appium/appium-android/tree/main/packages/compose-playground
 [`appium-uiautomator2-server`]: https://github.com/appium/appium-android/tree/main/packages/uiautomator2-server
 [`io.appium.settings`]: https://github.com/appium/appium-android/tree/main/packages/settings
