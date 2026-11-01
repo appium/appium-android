@@ -1,7 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["github>appium/appium-workflows//renovate/default"],
-  "enabledManagers": ["npm", "github-actions", "gradle"],
+  "labels": ["dependencies"],
   "lockFileMaintenance": {
     "enabled": true
   },
@@ -41,19 +41,11 @@
       "enabled": false
     },
     {
-      "description": "Label Gradle updates",
-      "matchManagers": ["gradle"],
-      "labels": ["dependencies"]
-    },
-    {
       "description": "uiautomator2-server: group minor/patch updates",
       "matchManagers": ["gradle"],
       "matchFileNames": ["packages/uiautomator2-server/**"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "gradle-dependencies"
     }
-  ],
-  "vulnerabilityAlerts": {
-    "enabled": true
-  }
+  ]
 }
