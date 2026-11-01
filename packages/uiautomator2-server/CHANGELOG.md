@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [10.7.10](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@10.7.9...appium-uiautomator2-server@10.7.10) (2026-11-01)
+
+### Bug Fixes
+
+* **uiautomator2-server:** support non-ASCII characters in W3C key actions ([#79](https://github.com/appium/appium-android/issues/79)) ([d89c773](https://github.com/appium/appium-android/commit/d89c77376c66ea02f6388838677966220d7f26d6))
+
+
 ## [10.7.9](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@10.7.8...appium-uiautomator2-server@10.7.9) (2026-10-31)
 
 **Note:** Version bump only for package appium-uiautomator2-server
