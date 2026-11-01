@@ -171,6 +171,15 @@ public class ActionsCommandsTest extends BaseTest {
         assertThat(typeIntoUsernameField("a", "c", "\uE012", "Ж"), equalTo("aЖc"));
     }
 
+    @Test
+    public void verifyTypingUnknownSpecialKeyFails() throws JSONException {
+        setupEditView();
+        Response edit = findElement(By.id("io.appium.android.apis:id/username_edit"));
+        click(edit.getElementId());
+        // A private use code point that is not a known W3C special key must not be typed as text
+        assertFalse(performActions(keySequence("\uE0FF")).isSuccessful());
+    }
+
     @Ignore("This test is not stable on CI as probably slow response. Please enable again once we move the CI instance to faster emulator one such as M1 macOS instance. Local run works.")
     @Test
     public void verifyLongClickGesture() throws JSONException {

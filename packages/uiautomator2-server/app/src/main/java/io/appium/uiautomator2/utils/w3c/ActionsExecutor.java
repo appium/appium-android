@@ -33,6 +33,8 @@ import java.util.Set;
 import java.util.concurrent.locks.LockSupport;
 
 import io.appium.uiautomator2.common.exceptions.InvalidArgumentException;
+import io.appium.uiautomator2.common.exceptions.InvalidElementStateException;
+import io.appium.uiautomator2.common.exceptions.StaleElementReferenceException;
 import io.appium.uiautomator2.common.exceptions.UiAutomator2Exception;
 import io.appium.uiautomator2.core.InteractionController;
 import io.appium.uiautomator2.core.UiAutomatorBridge;
@@ -57,9 +59,6 @@ public class ActionsExecutor {
     private static final long IME_SYNC_DELAY_MS = 150;
     // Set when regular key events were injected after the last direct text insertion
     private boolean hasUnsettledKeyEvents = false;
-    // Text and cursor as of our last direct insertion; null once regular key events change them
-    private String lastInsertedText = null;
-    private int lastInsertedCursor = 0;
     // The input method needs a moment to pick up the text and the cursor set by us
     private boolean isImeSyncPending = false;
     private final KeyCharacterMap keyCharacterMap;
@@ -113,41 +112,58 @@ public class ActionsExecutor {
         }
     }
 
+    private static boolean isTypeableCharacter(int codePoint) {
+        final int type = Character.getType(codePoint);
+        return Character.isValidCodePoint(codePoint) && !Character.isISOControl(codePoint)
+                && type != Character.PRIVATE_USE && type != Character.UNASSIGNED && type != Character.SURROGATE;
+    }
+
     /**
      * Inserts a character that has no key event representation (e.g. Cyrillic, Arabic, emoji)
      * into the focused element at the current cursor position, replacing the selection if any.
      */
-    private boolean insertCharacter(int codePoint) {
+    private boolean insertCharacter(int codePoint, Set<Integer> depressedMetaKeys) {
+        if (!isTypeableCharacter(codePoint)) {
+            throw new InvalidArgumentException(String.format(
+                    "The code point %s is neither a known W3C special key nor a printable character " +
+                    "that could be typed", codePoint));
+        }
+        if (!depressedMetaKeys.isEmpty()) {
+            throw new InvalidArgumentException(String.format(
+                    "Cannot type the character with the code point %s while modifier keys are pressed",
+                    codePoint));
+        }
         final AccessibleUiObject focusedObject = getInstance().findObject(focused(true));
         if (focusedObject == null) {
             throw new InvalidArgumentException(String.format(
                     "Cannot type the character with the code point %s: no element is focused", codePoint));
         }
         final AccessibilityNodeInfo node = focusedObject.getInfo();
-        final String text;
-        final int start;
-        final int end;
-        if (lastInsertedText != null) {
-            // The accessibility cache may still hold the state before our previous insertion
-            text = lastInsertedText;
-            start = lastInsertedCursor;
-            end = lastInsertedCursor;
-        } else {
-            if (hasUnsettledKeyEvents) {
-                waitForTextToSettle(node);
-            }
-            final boolean isHintShown = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && node.isShowingHintText();
-            final CharSequence currentText = node.getText();
-            text = currentText == null || isHintShown ? "" : currentText.toString();
-            start = isHintShown ? 0 : clamp(node.getTextSelectionStart(), text.length());
-            end = isHintShown ? 0 : Math.max(start, clamp(node.getTextSelectionEnd(), text.length()));
+        if (!node.isEditable()) {
+            throw new InvalidElementStateException(String.format(
+                    "Cannot type the character with the code point %s: the focused element is not editable",
+                    codePoint));
         }
+        refreshNode(node, hasUnsettledKeyEvents);
         hasUnsettledKeyEvents = false;
 
+        final boolean isHintShown = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && node.isShowingHintText();
+        final CharSequence currentText = node.getText();
+        if (currentText == null && !isHintShown && node.getTextSelectionStart() > 0) {
+            // Password fields may not expose their content, so it would be overwritten
+            throw new InvalidElementStateException(String.format(
+                    "Cannot type the character with the code point %s: the current text " +
+                    "of the focused element is not exposed", codePoint));
+        }
+        final String text = currentText == null || isHintShown ? "" : currentText.toString();
+        final int start = isHintShown ? 0 : clamp(node.getTextSelectionStart(), text.length());
+        final int end = isHintShown ? 0 : Math.max(start, clamp(node.getTextSelectionEnd(), text.length()));
+
         final String inserted = new String(Character.toChars(codePoint));
-        final String newText = truncateTextToMaxLength(node, text.substring(0, start) + inserted + text.substring(end));
+        // If the max length is reached, the character is dropped, same as for regular typing
+        final String newText = truncateWithoutSplittingSurrogates(
+                truncateTextToMaxLength(node, text.substring(0, start) + inserted + text.substring(end)));
         if (!setText(node, newText)) {
-            lastInsertedText = null;
             return false;
         }
         // Setting the text moves the cursor to the end; put it right after the inserted character
@@ -155,23 +171,36 @@ public class ActionsExecutor {
         final Bundle args = new Bundle();
         args.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, cursor);
         args.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, cursor);
-        node.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, args);
-        lastInsertedText = newText;
-        lastInsertedCursor = cursor;
+        if (!node.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, args)) {
+            Logger.warn(String.format("Could not move the cursor to the position %s", cursor));
+        }
         isImeSyncPending = true;
         return true;
     }
 
+    private static String truncateWithoutSplittingSurrogates(String text) {
+        final int length = text.length();
+        return length > 0 && Character.isHighSurrogate(text.charAt(length - 1))
+                ? text.substring(0, length - 1)
+                : text;
+    }
+
     /**
-     * Key events are delivered to the input method asynchronously, so the node state may lag
-     * behind them. Wait until the text and the cursor stop changing before modifying them.
+     * Reloads the node bypassing the accessibility cache, which may still return the state
+     * from before our previous modification. Key events are delivered to the input method
+     * asynchronously, so if there were any, wait until the text and the cursor stop changing.
      */
-    private static void waitForTextToSettle(AccessibilityNodeInfo node) {
+    private static void refreshNode(AccessibilityNodeInfo node, boolean waitForSettle) {
         final long deadline = SystemClock.uptimeMillis() + TEXT_SETTLE_TIMEOUT_MS;
         String lastState = null;
         long stableSince = SystemClock.uptimeMillis();
-        while (SystemClock.uptimeMillis() < deadline) {
-            node.refresh();
+        do {
+            if (!node.refresh()) {
+                throw new StaleElementReferenceException();
+            }
+            if (!waitForSettle) {
+                return;
+            }
             final String state = node.getText() + "|" + node.getTextSelectionStart() + "|" + node.getTextSelectionEnd();
             final long now = SystemClock.uptimeMillis();
             if (!state.equals(lastState)) {
@@ -181,7 +210,8 @@ public class ActionsExecutor {
                 return;
             }
             SystemClock.sleep(TEXT_SETTLE_POLL_MS);
-        }
+        } while (SystemClock.uptimeMillis() < deadline);
+        Logger.warn(String.format("The text of the focused element did not settle in %sms", TEXT_SETTLE_TIMEOUT_MS));
     }
 
     private void syncImeIfNeeded() {
@@ -211,7 +241,9 @@ public class ActionsExecutor {
             final KeyEvent[] events = keyCharacterMap.getEvents(Character.toChars(keyCode));
             if (events == null) {
                 // The virtual keyboard layout knows only about Latin characters
-                return keyAction != KeyEvent.ACTION_DOWN || insertCharacter(keyCode);
+                // The character is typed on key down, same as regular keys, so the order of
+                // characters is preserved when a client presses all the keys before releasing them
+                return keyAction != KeyEvent.ACTION_DOWN || insertCharacter(keyCode, depressedMetaKeys);
             }
             for (KeyEvent event : events) {
                 if (event.getAction() == keyAction) {
@@ -224,7 +256,6 @@ public class ActionsExecutor {
                     result &= interactionController.injectEventSync(keyEvent);
                     logEvent(keyEvent, eventTime, result);
                     hasUnsettledKeyEvents = true;
-        lastInsertedText = null;
                 }
             }
             return result;
@@ -248,7 +279,6 @@ public class ActionsExecutor {
         result = interactionController.injectEventSync(keyEvent);
         logEvent(keyEvent, eventTime, result);
         hasUnsettledKeyEvents = true;
-        lastInsertedText = null;
         return result;
     }
 
