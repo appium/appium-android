@@ -135,7 +135,7 @@ public class ActionsExecutor {
         }
         final AccessibleUiObject focusedObject = getInstance().findObject(focused(true));
         if (focusedObject == null) {
-            throw new InvalidArgumentException(String.format(
+            throw new InvalidElementStateException(String.format(
                     "Cannot type the character with the code point %s: no element is focused", codePoint));
         }
         final AccessibilityNodeInfo node = focusedObject.getInfo();
