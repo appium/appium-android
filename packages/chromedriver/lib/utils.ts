@@ -7,10 +7,11 @@ import {BaseDriver} from '@appium/base-driver';
 import {system, fs, node, util} from '@appium/support';
 import axios from 'axios';
 import type {AxiosRequestConfig} from 'axios';
-import {compareVersions} from 'compare-versions';
 
 import {OS, CPU} from './constants.js';
 import type {ChromedriverAdb, ChromedriverVersionMapping, OSInfo} from './types.js';
+
+const VERSION_COLLATOR = new Intl.Collator(undefined, {numeric: true});
 
 const CD_EXECUTABLE_PREFIX = 'chromedriver';
 const MODULE_NAME = 'appium-chromedriver';
@@ -33,6 +34,15 @@ export const CHROMEDRIVER_CHROME_MAPPING: ChromedriverVersionMapping = JSON.pars
   readFileSync(path.join(getModuleRoot(), 'config', 'mapping.json'), 'utf8'),
 );
 export const CD_BASE_DIR = path.join(getModuleRoot(), 'chromedriver');
+
+/**
+ * Compares dotted version strings numerically (e.g. `114.0.5735.90`, `2.46`).
+ * A leading `v` is ignored.
+ * @returns Negative if `a < b`, positive if `a > b`, zero if equal.
+ */
+export function compareVersions(a: string, b: string): number {
+  return VERSION_COLLATOR.compare(a.replace(/^v/i, ''), b.replace(/^v/i, ''));
+}
 
 /**
  * Gets the most recent Chromedriver version from the mapping.

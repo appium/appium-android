@@ -2,12 +2,11 @@ import path from 'node:path';
 
 import {system, fs, logger, tempDir, zip, util, net} from '@appium/support';
 import {asyncmap} from 'asyncbox';
-import {compareVersions} from 'compare-versions';
 import * as semver from 'semver';
 
 import {STORAGE_REQ_TIMEOUT_MS, GOOGLEAPIS_CDN, USER_AGENT, CHROMELABS_URL, ARCH, OS, CPU} from '../constants.js';
 import type {ChromedriverStorageClientOpts, SyncOptions, OSInfo, ChromedriverDetailsMapping} from '../types.js';
-import {getChromedriverDir, retrieveData, getOsInfo, convertToInt, getCpuType} from '../utils.js';
+import {getChromedriverDir, retrieveData, getOsInfo, convertToInt, getCpuType, compareVersions} from '../utils.js';
 import {parseKnownGoodVersionsWithDownloadsJson, parseLatestKnownGoodVersionsJson} from './chromelabs.js';
 import {parseGoogleapiStorageXml} from './googleapis.js';
 
