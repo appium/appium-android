@@ -1,4 +1,15 @@
-import type {ADB} from 'appium-adb';
+/**
+ * The subset of the `appium-adb` ADB class used by Chromedriver.
+ * Declared structurally to avoid a hard dependency on `appium-adb`.
+ */
+export interface ChromedriverAdb {
+  adbPort?: number;
+  executable: {defaultArgs: string[]};
+  getPackageInfo(pkg: string): Promise<{versionName?: string}>;
+  getApiLevel(): Promise<number>;
+  getForwardList(): Promise<string[]>;
+  removePortForward(systemPort: string | number): Promise<void>;
+}
 
 export interface ChromedriverOpts {
   host?: string;
@@ -9,7 +20,7 @@ export interface ChromedriverOpts {
   bundleId?: string;
   mappingPath?: string;
   cmdArgs?: string[];
-  adb?: ADB;
+  adb?: ChromedriverAdb;
   verbose?: boolean;
   logPath?: string;
   disableBuildCheck?: boolean;
