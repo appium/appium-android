@@ -19,6 +19,11 @@ describe('utils', function () {
       assert.strictEqual(compareVersions('v2.11', '2.11'), 0);
       assert.ok(compareVersions('v2.11', '2.12') < 0);
     });
+    it('should treat missing trailing segments as zero', function () {
+      assert.strictEqual(compareVersions('2.46', '2.46.0'), 0);
+      assert.strictEqual(compareVersions('2.46.0.0', '2.46'), 0);
+      assert.ok(compareVersions('2.46', '2.46.0.1') < 0);
+    });
     it('should sort a list in ascending order', function () {
       const versions = ['114.0.5735.90', '2.9', '114.0.5735.100', '2.46', '73.0.3683.20'];
       assert.deepStrictEqual(versions.sort(compareVersions), [
