@@ -57,7 +57,10 @@ export const CD_VER: string =
  * @param bundleId - The bundle ID of the Chrome/WebView app.
  * @returns The version name string, or undefined if not found.
  */
-export async function getChromeVersion(adb: Pick<ChromedriverAdb, 'getPackageInfo'>, bundleId: string): Promise<string | undefined> {
+export async function getChromeVersion(
+  adb: Pick<ChromedriverAdb, 'getPackageInfo'>,
+  bundleId: string,
+): Promise<string | undefined> {
   const {versionName} = await adb.getPackageInfo(bundleId);
   return versionName;
 }
