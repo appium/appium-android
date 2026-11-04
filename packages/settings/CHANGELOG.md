@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [8.5.3](https://github.com/appium/appium-android/compare/io.appium.settings@8.5.2...io.appium.settings@8.5.3) (2026-11-04)
+
+### Bug Fixes
+
+* **settings:** declare appium-adb as a peer dependency ([#84](https://github.com/appium/appium-android/issues/84)) ([025aa95](https://github.com/appium/appium-android/commit/025aa954977d679283ca81e0ee8db034249db09b))
+
+
 ## [8.5.2](https://github.com/appium/appium-android/compare/io.appium.settings@8.5.1...io.appium.settings@8.5.2) (2026-10-31)
 
 **Note:** Version bump only for package io.appium.settings
