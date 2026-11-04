@@ -3,7 +3,6 @@ import events from 'node:events';
 import {WebDriverProxy, PROTOCOLS} from '@appium/base-driver';
 import {logger, util} from '@appium/support';
 import type {ProxyOptions, HTTPMethod, HTTPBody} from '@appium/types';
-import type {ADB} from 'appium-adb';
 import type {Request, Response} from 'express';
 import {SubProcess, exec} from 'teen_process';
 
@@ -19,7 +18,7 @@ import {syncProtocol, startSession, changeState, getCapValue, type SessionCapabi
 import {getChromeVersionForAutodetection} from './commands/version.js';
 import {CHROMEDRIVER_EVENTS, CHROMEDRIVER_STATES} from './constants.js';
 import {ChromedriverStorageClient} from './storage-client/storage-client.js';
-import type {ChromedriverOpts} from './types.js';
+import type {ChromedriverAdb, ChromedriverOpts} from './types.js';
 import {getChromedriverDir, generateLogPrefix} from './utils.js';
 
 // Keep this import marked as used at runtime when it is otherwise only referenced in type positions.
@@ -46,7 +45,7 @@ export class Chromedriver extends events.EventEmitter<ChromedriverEventMap> {
   static readonly STATE_RESTARTING = CHROMEDRIVER_STATES.RESTARTING;
 
   readonly proxyPort: number;
-  readonly adb?: ADB;
+  readonly adb?: ChromedriverAdb;
   readonly cmdArgs?: string[];
   proc: SubProcess | null;
   readonly useSystemExecutable: boolean;

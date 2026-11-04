@@ -5,13 +5,12 @@ import {fileURLToPath} from 'node:url';
 
 import {BaseDriver} from '@appium/base-driver';
 import {system, fs, node, util} from '@appium/support';
-import type {ADB} from 'appium-adb';
 import axios from 'axios';
 import type {AxiosRequestConfig} from 'axios';
 import {compareVersions} from 'compare-versions';
 
 import {OS, CPU} from './constants.js';
-import type {ChromedriverVersionMapping, OSInfo} from './types.js';
+import type {ChromedriverAdb, ChromedriverVersionMapping, OSInfo} from './types.js';
 
 const CD_EXECUTABLE_PREFIX = 'chromedriver';
 const MODULE_NAME = 'appium-chromedriver';
@@ -54,11 +53,14 @@ export const CD_VER: string =
 
 /**
  * Gets the Chrome version for a given bundle ID using ADB.
- * @param adb - The ADB instance to use.
+ * @param adb - The ADB-like instance to use.
  * @param bundleId - The bundle ID of the Chrome/WebView app.
  * @returns The version name string, or undefined if not found.
  */
-export async function getChromeVersion(adb: ADB, bundleId: string): Promise<string | undefined> {
+export async function getChromeVersion(
+  adb: Pick<ChromedriverAdb, 'getPackageInfo'>,
+  bundleId: string,
+): Promise<string | undefined> {
   const {versionName} = await adb.getPackageInfo(bundleId);
   return versionName;
 }

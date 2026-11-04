@@ -9,6 +9,5 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext"
   },
-  "include": ["lib", "test"],
-  "references": [{"path": "../adb"}]
+  "include": ["lib", "test"]
 }
