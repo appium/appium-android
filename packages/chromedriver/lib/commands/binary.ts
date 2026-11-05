@@ -2,12 +2,11 @@ import path from 'node:path';
 
 import {fs, util} from '@appium/support';
 import {asyncmap} from 'asyncbox';
-import {compareVersions} from 'compare-versions';
 import * as semver from 'semver';
 import {type ExecError} from 'teen_process';
 
 import type {ChromedriverVersionMapping} from '../types.js';
-import {CHROMEDRIVER_CHROME_MAPPING, getChromedriverBinaryPath} from '../utils.js';
+import {CHROMEDRIVER_CHROME_MAPPING, getChromedriverBinaryPath, compareVersions} from '../utils.js';
 import type {ChromedriverCommandContext} from './types.js';
 
 const NEW_CD_VERSION_FORMAT_MAJOR_VERSION = 73;
