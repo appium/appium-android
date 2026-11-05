@@ -107,6 +107,27 @@ describe('ChromedriverStorageClient', function () {
       assert.deepStrictEqual(selectedDrivers, ['2.0/chromedriver_win32.zip', '76.0.3809.12/chromedriver_win32.zip']);
     });
 
+    it('should select only the latest patch for versions sharing a major', function () {
+      const entry = (version: string) => ({
+        url: `https://example.com/${version}/chromedriver_linux64.zip`,
+        etag: version,
+        version,
+        minBrowserVersion: '114',
+        os: {name: 'linux', arch: '64', cpu: 'intel'},
+      });
+      const client = createClient({
+        '114.0.5735.90/chromedriver_linux64.zip': entry('114.0.5735.90'),
+        '114.0.5735.100/chromedriver_linux64.zip': entry('114.0.5735.100'),
+        '114.0.5735.16/chromedriver_linux64.zip': entry('114.0.5735.16'),
+      });
+      const selectedDrivers = selectDrivers(client, {name: 'linux', arch: '64', cpu: 'intel'});
+      assert.deepStrictEqual(selectedDrivers, [
+        '2.0/chromedriver_linux64.zip',
+        '76.0.3809.12/chromedriver_linux64.zip',
+        '114.0.5735.100/chromedriver_linux64.zip',
+      ]);
+    });
+
     it('should select appropriate drivers if versions are set', function () {
       const client = createClient();
       const selectedDrivers = selectDrivers(
