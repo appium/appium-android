@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [9.2.2](https://github.com/appium/appium-android/compare/appium-chromedriver@9.2.1...appium-chromedriver@9.2.2) (2026-11-05)
+
+### Miscellaneous Chores
+
+* **chromedriver:** replace compare-versions with Intl.Collator ([#85](https://github.com/appium/appium-android/issues/85)) ([55e1f36](https://github.com/appium/appium-android/commit/55e1f36ac2731e2fb898c7532aa918e87412cdbc))
+
+
 ## [9.2.1](https://github.com/appium/appium-android/compare/appium-chromedriver@9.2.0...appium-chromedriver@9.2.1) (2026-11-04)
 
 ### Miscellaneous Chores
