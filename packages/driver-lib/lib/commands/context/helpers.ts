@@ -607,10 +607,19 @@ async function collectWebviewsDetails(
     return;
   }
 
+  // A frozen process keeps its devtools socket open but never answers on it
+  const frozenPids = webviewsMapping.some(({webview}) => WEBVIEW_PID_PATTERN.test(webview))
+    ? await getFrozenPids.bind(this)()
+    : new Set<string>();
   // Connect to each devtools socket and retrieve web view details
   this.log.debug(`Collecting CDP data of ${util.pluralize('webview', webviewsMapping.length, true)}`);
   const detailCollectors: Promise<void>[] = [];
   for (const item of webviewsMapping) {
+    const pid = WEBVIEW_PID_PATTERN.exec(item.webview)?.[1];
+    if (pid && frozenPids.has(pid)) {
+      this.log.info(`CDP data for '${item.webview}' cannot be collected since its process is frozen`);
+      continue;
+    }
     detailCollectors.push(
       (async (): Promise<void> => {
         let port: number | undefined;
@@ -640,6 +649,34 @@ async function collectWebviewsDetails(
   }
   await Promise.all(detailCollectors);
   this.log.debug(`CDP data collection completed`);
+}
+
+/**
+ * Reads the PIDs of the processes the Android cached apps freezer has frozen.
+ * Returns an empty set if the device does not report them.
+ */
+async function getFrozenPids(this: AndroidDriver): Promise<Set<string>> {
+  let output: string;
+  try {
+    output = await this.adb.shell(['dumpsys', 'activity', 'cao']);
+  } catch (e) {
+    this.log.debug(`Cannot read the list of frozen processes: ${(e as Error).message}`);
+    return new Set();
+  }
+  const lines = output.split('\n');
+  const start = lines.findIndex((line) => /^\s*Apps frozen:/.test(line));
+  const pids = new Set<string>();
+  if (start < 0) {
+    return pids;
+  }
+  for (const line of lines.slice(start + 1)) {
+    const match = /^\s+\d+:\s+(\d+)\s/.exec(line);
+    if (!match) {
+      break;
+    }
+    pids.add(match[1]);
+  }
+  return pids;
 }
 
 /**
