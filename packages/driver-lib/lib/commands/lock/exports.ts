@@ -115,6 +115,14 @@ export async function unlockWithOptions(this: AndroidDriver, caps: AndroidDriver
         `Assuming the device is locked with a simple lock screen.`,
     );
     await this.adb.dismissKeyguard();
+    try {
+      await verifyUnlock.bind(this)(capabilities.unlockSuccessTimeout);
+    } catch {
+      this.log.warn(
+        `The device is still locked after dismissing the keyguard. ` +
+          `Provide 'unlockType' and 'unlockKey' if it has a secure lock screen.`,
+      );
+    }
     return;
   }
 

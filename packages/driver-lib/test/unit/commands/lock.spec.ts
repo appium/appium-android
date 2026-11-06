@@ -60,6 +60,23 @@ describe('Lock', function () {
       sandbox.stub(driver.adb, 'isLockManagementSupported').throws();
       await unlockWithOptions.bind(driver)({} as AndroidDriverCaps);
     });
+    it('should wait until the keyguard is gone after dismissing a simple lock screen', async function () {
+      const isScreenLocked = sandbox.stub(driver.adb, 'isScreenLocked');
+      isScreenLocked.onCall(0).resolves(true);
+      isScreenLocked.onCall(1).resolves(true);
+      isScreenLocked.onCall(2).resolves(false);
+      sandbox.stub(driver.adb, 'dismissKeyguard').onFirstCall();
+      await unlockWithOptions.bind(driver)({} as AndroidDriverCaps);
+      sinon.assert.callCount(isScreenLocked, 3);
+    });
+    it('should warn instead of failing if a simple lock screen stays locked after dismissing it', async function () {
+      const isScreenLocked = sandbox.stub(driver.adb, 'isScreenLocked').resolves(true);
+      sandbox.stub(driver.adb, 'dismissKeyguard').onFirstCall();
+      const warn = sandbox.stub(driver.log, 'warn');
+      await unlockWithOptions.bind(driver)({unlockSuccessTimeout: 0} as AndroidDriverCaps);
+      sinon.assert.calledTwice(isScreenLocked);
+      sinon.assert.calledOnce(warn);
+    });
     it('should raise an error on undefined unlockKey when unlockType is defined', async function () {
       sandbox.stub(driver.adb, 'isScreenLocked').onFirstCall().resolves(true);
       sandbox.stub(driver.adb, 'isLockManagementSupported').throws();
