@@ -46,7 +46,7 @@ export async function findElOrEls(
   context = '',
 ) {
   if (!selector) {
-    throw new Error('Must provide a selector when finding elements');
+    throw new errors.InvalidSelectorError('Must provide a selector when finding elements');
   }
 
   const params: FindElementOpts = {
