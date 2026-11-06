@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [15.1.6](https://github.com/appium/appium-android/compare/appium-android-driver@15.1.5...appium-android-driver@15.1.6) (2026-11-06)
+
+### Bug Fixes
+
+* **driver-lib:** report an empty selector as an invalid selector ([#86](https://github.com/appium/appium-android/issues/86)) ([8daa770](https://github.com/appium/appium-android/commit/8daa770bb7f87b294567e3a689f55278a08e59f6))
+
+
 ## [15.1.5](https://github.com/appium/appium-android/compare/appium-android-driver@15.1.4...appium-android-driver@15.1.5) (2026-11-06)
 
 ### Bug Fixes
