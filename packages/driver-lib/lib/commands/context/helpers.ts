@@ -75,6 +75,9 @@ const WEBVIEW_PID_PATTERN = new RegExp(`^${WEBVIEW_BASE}(\\d+)`);
 const WEBVIEW_PKG_PATTERN = new RegExp(`^${WEBVIEW_BASE}([^\\d\\s][\\w.]*)`);
 const WEBVIEW_WAIT_INTERVAL_MS = 200;
 const CDP_REQ_TIMEOUT = 2000; // ms
+const FROZEN_PIDS_TIMEOUT_MS = 1000;
+const FROZEN_APPS_HEADER_PATTERN = /^\s*Apps frozen:\s*(\d+)/m;
+const FROZEN_APP_PATTERN = /^\s+\d+:\s+(\d+)\s/;
 const DEVTOOLS_PORTS_RANGE = [10900, 11000] as const;
 const DEVTOOLS_PORT_ALLOCATION_GUARD = util.getLockFileGuard(path.resolve(os.tmpdir(), 'android_devtools_port_guard'), {
   timeout: 7,
@@ -608,14 +611,13 @@ async function collectWebviewsDetails(
   }
 
   // A frozen process keeps its devtools socket open but never answers on it
-  const frozenPids = webviewsMapping.some(({webview}) => WEBVIEW_PID_PATTERN.test(webview))
-    ? await getFrozenPids.bind(this)()
-    : new Set<string>();
+  const pids = webviewsMapping.map(({webview}) => WEBVIEW_PID_PATTERN.exec(webview)?.[1]);
+  const frozenPids = pids.some(Boolean) ? await getFrozenPids.bind(this)() : new Set<string>();
   // Connect to each devtools socket and retrieve web view details
   this.log.debug(`Collecting CDP data of ${util.pluralize('webview', webviewsMapping.length, true)}`);
   const detailCollectors: Promise<void>[] = [];
-  for (const item of webviewsMapping) {
-    const pid = WEBVIEW_PID_PATTERN.exec(item.webview)?.[1];
+  for (const [index, item] of webviewsMapping.entries()) {
+    const pid = pids[index];
     if (pid && frozenPids.has(pid)) {
       this.log.info(`CDP data for '${item.webview}' cannot be collected since its process is frozen`);
       continue;
@@ -656,22 +658,29 @@ async function collectWebviewsDetails(
  * Returns an empty set if the device does not report them.
  */
 async function getFrozenPids(this: AndroidDriver): Promise<Set<string>> {
+  const pids = new Set<string>();
   let output: string;
   try {
-    output = await this.adb.shell(['dumpsys', 'activity', 'cao']);
+    output = await this.adb.shell(['dumpsys', 'activity', 'cao'], {timeout: FROZEN_PIDS_TIMEOUT_MS});
   } catch (e) {
     this.log.debug(`Cannot read the list of frozen processes: ${(e as Error).message}`);
-    return new Set();
-  }
-  const lines = output.split('\n');
-  const start = lines.findIndex((line) => /^\s*Apps frozen:/.test(line));
-  const pids = new Set<string>();
-  if (start < 0) {
     return pids;
   }
-  for (const line of lines.slice(start + 1)) {
-    const match = /^\s+\d+:\s+(\d+)\s/.exec(line);
+  const header = FROZEN_APPS_HEADER_PATTERN.exec(output);
+  if (!header) {
+    this.log.debug(`The device does not report frozen processes`);
+    return pids;
+  }
+  const expectedCount = Number(header[1]);
+  for (const line of output.slice(header.index).split('\n').slice(1)) {
+    if (!line.trim()) {
+      continue;
+    }
+    const match = FROZEN_APP_PATTERN.exec(line);
     if (!match) {
+      if (pids.size < expectedCount) {
+        this.log.debug(`Cannot parse the frozen process entry '${line.trim()}'`);
+      }
       break;
     }
     pids.add(match[1]);
