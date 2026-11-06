@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [15.1.5](https://github.com/appium/appium-android/compare/appium-android-driver@15.1.4...appium-android-driver@15.1.5) (2026-11-06)
+
+### Bug Fixes
+
+* **driver-lib:** wait for the keyguard to go away after a simple unlock ([#87](https://github.com/appium/appium-android/issues/87)) ([e221988](https://github.com/appium/appium-android/commit/e221988c0f45d00fbded38eff4e2802b61d81251))
+
+
 ## [15.1.4](https://github.com/appium/appium-android/compare/appium-android-driver@15.1.3...appium-android-driver@15.1.4) (2026-11-05)
 
 **Note:** Version bump only for package appium-android-driver
