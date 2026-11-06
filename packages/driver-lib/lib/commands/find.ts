@@ -21,7 +21,7 @@ declare module '../driver.js' {
  * @param context The context (e.g., webview) in which to search. Defaults to empty string (native context).
  * @returns If `mult` is `false`, returns a single `Element` object.
  * If `mult` is `true`, returns an array of `Element` objects (may be empty).
- * @throws {Error} If `selector` is not provided.
+ * @throws {errors.InvalidSelectorError} If `selector` is not provided.
  * @throws {errors.NoSuchElementError} If a single element search fails and no element is found.
  */
 export async function findElOrEls(
