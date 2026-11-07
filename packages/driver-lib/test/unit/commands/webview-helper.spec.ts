@@ -143,6 +143,19 @@ describe('Webview Helpers', function () {
         assert.strictEqual(adbExec.called, false);
       });
 
+      it('then a process listed after the counted frozen entries is still asked for its pages', async function () {
+        await getWebviews(
+          async () =>
+            '  Apps frozen: 1\n    65581: 1855 com.android.cellbroadcastreceiver\n\n    802918: 123 io.appium.android.apis\n',
+        );
+        assertPagesRequested();
+      });
+
+      it('then a process listed after zero frozen apps is still asked for its pages', async function () {
+        await getWebviews(async () => '  Apps frozen: 0\n\n    802918: 123 io.appium.android.apis\n');
+        assertPagesRequested();
+      });
+
       it('then a running webview process is still asked for its pages', async function () {
         await getWebviews(frozenApps('65581: 1234 com.android.cellbroadcastreceiver'));
         assertPagesRequested();

@@ -671,19 +671,21 @@ async function getFrozenPids(this: AndroidDriver): Promise<Set<string>> {
     this.log.debug(`The device does not report frozen processes`);
     return pids;
   }
-  const expectedCount = Number(header[1]);
+  let remaining = Number(header[1]);
   for (const line of output.slice(header.index).split('\n').slice(1)) {
+    if (remaining <= 0) {
+      break;
+    }
     if (!line.trim()) {
       continue;
     }
     const match = FROZEN_APP_PATTERN.exec(line);
     if (!match) {
-      if (pids.size < expectedCount) {
-        this.log.debug(`Cannot parse the frozen process entry '${line.trim()}'`);
-      }
+      this.log.debug(`Cannot parse the frozen process entry '${line.trim()}'`);
       break;
     }
     pids.add(match[1]);
+    remaining--;
   }
   return pids;
 }
