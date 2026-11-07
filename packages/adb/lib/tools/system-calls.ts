@@ -1,7 +1,7 @@
 import path from 'node:path';
 
 import {system, fs, util, tempDir, timing} from '@appium/support';
-import {asyncmap, retry, retryInterval, sleep, waitForCondition} from 'asyncbox';
+import {asyncmap, ConditionUnmetError, retry, retryInterval, sleep, waitForCondition} from 'asyncbox';
 import * as semver from 'semver';
 import {exec, SubProcess} from 'teen_process';
 import type {ExecError, TeenProcessExecResult} from 'teen_process';
@@ -356,7 +356,7 @@ export async function getDevicesWithRetry(this: ADB, timeoutMs: number = 20000):
     return devices;
   } catch (e: unknown) {
     const error = e as Error;
-    if (/Condition unmet/.test(error.message)) {
+    if (error instanceof ConditionUnmetError) {
       throw new Error(`Could not find a connected Android device in ${timeoutMs}ms`, {
         cause: e,
       });
