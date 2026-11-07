@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [16.4.0](https://github.com/appium/appium-android/compare/appium-adb@16.3.1...appium-adb@16.4.0) (2026-11-07)
+
+### Features
+
+* **adb:** re-export teen_process types used in the public API ([#90](https://github.com/appium/appium-android/issues/90)) ([fd955d2](https://github.com/appium/appium-android/commit/fd955d2b2ea7a9930f3a2024777572bfbcaa400e))
+
+
 ## [16.3.1](https://github.com/appium/appium-android/compare/appium-adb@16.3.0...appium-adb@16.3.1) (2026-10-31)
 
 **Note:** Version bump only for package appium-adb
