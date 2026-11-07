@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [16.4.1](https://github.com/appium/appium-android/compare/appium-adb@16.4.0...appium-adb@16.4.1) (2026-11-07)
+
+### Code Refactoring
+
+* use ConditionUnmetError instead of message matching ([#89](https://github.com/appium/appium-android/issues/89)) ([0270c94](https://github.com/appium/appium-android/commit/0270c944c04cec9452eecb39ff1dd8bbde13d6b1))
+
+
 ## [16.4.0](https://github.com/appium/appium-android/compare/appium-adb@16.3.1...appium-adb@16.4.0) (2026-11-07)
 
 ### Features

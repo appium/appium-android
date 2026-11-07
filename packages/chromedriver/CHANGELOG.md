@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [9.2.3](https://github.com/appium/appium-android/compare/appium-chromedriver@9.2.2...appium-chromedriver@9.2.3) (2026-11-07)
+
+### Code Refactoring
+
+* use ConditionUnmetError instead of message matching ([#89](https://github.com/appium/appium-android/issues/89)) ([0270c94](https://github.com/appium/appium-android/commit/0270c944c04cec9452eecb39ff1dd8bbde13d6b1))
+
+
 ## [9.2.2](https://github.com/appium/appium-android/compare/appium-chromedriver@9.2.1...appium-chromedriver@9.2.2) (2026-11-05)
 
 ### Miscellaneous Chores

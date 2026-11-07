@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [15.1.8](https://github.com/appium/appium-android/compare/appium-android-driver@15.1.7...appium-android-driver@15.1.8) (2026-11-07)
+
+### Code Refactoring
+
+* use ConditionUnmetError instead of message matching ([#89](https://github.com/appium/appium-android/issues/89)) ([0270c94](https://github.com/appium/appium-android/commit/0270c944c04cec9452eecb39ff1dd8bbde13d6b1))
+
+
 ## [15.1.7](https://github.com/appium/appium-android/compare/appium-android-driver@15.1.6...appium-android-driver@15.1.7) (2026-11-07)
 
 **Note:** Version bump only for package appium-android-driver
