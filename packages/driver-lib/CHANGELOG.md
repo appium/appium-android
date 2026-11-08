@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [15.1.9](https://github.com/appium/appium-android/compare/appium-android-driver@15.1.8...appium-android-driver@15.1.9) (2026-11-08)
+
+### Bug Fixes
+
+* **driver-lib:** skip CDP requests to frozen webview processes ([#88](https://github.com/appium/appium-android/issues/88)) ([6ad5f2f](https://github.com/appium/appium-android/commit/6ad5f2f990a101d4c5459fa97e627df97022434c))
+
+
 ## [15.1.8](https://github.com/appium/appium-android/compare/appium-android-driver@15.1.7...appium-android-driver@15.1.8) (2026-11-07)
 
 ### Code Refactoring
