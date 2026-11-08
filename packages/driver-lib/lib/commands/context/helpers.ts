@@ -668,7 +668,6 @@ async function getFrozenPids(this: AndroidDriver): Promise<Set<string>> {
   }
   const header = FROZEN_APPS_HEADER_PATTERN.exec(output);
   if (!header) {
-    this.log.debug(`The device does not report frozen processes`);
     return pids;
   }
   let remaining = Number(header[1]);
