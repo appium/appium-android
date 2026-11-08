@@ -75,6 +75,9 @@ const WEBVIEW_PID_PATTERN = new RegExp(`^${WEBVIEW_BASE}(\\d+)`);
 const WEBVIEW_PKG_PATTERN = new RegExp(`^${WEBVIEW_BASE}([^\\d\\s][\\w.]*)`);
 const WEBVIEW_WAIT_INTERVAL_MS = 200;
 const CDP_REQ_TIMEOUT = 2000; // ms
+const FROZEN_PIDS_TIMEOUT_MS = 1000;
+const FROZEN_APPS_HEADER_PATTERN = /^\s*Apps frozen:\s*(\d+)/m;
+const FROZEN_APP_PATTERN = /^\s+\d+:\s+(\d+)\s/;
 const DEVTOOLS_PORTS_RANGE = [10900, 11000] as const;
 const DEVTOOLS_PORT_ALLOCATION_GUARD = util.getLockFileGuard(path.resolve(os.tmpdir(), 'android_devtools_port_guard'), {
   timeout: 7,
@@ -607,10 +610,18 @@ async function collectWebviewsDetails(
     return;
   }
 
+  // A frozen process keeps its devtools socket open but never answers on it
+  const pids = webviewsMapping.map(({webview}) => WEBVIEW_PID_PATTERN.exec(webview)?.[1]);
+  const frozenPids = pids.some(Boolean) ? await getFrozenPids.bind(this)() : new Set<string>();
   // Connect to each devtools socket and retrieve web view details
   this.log.debug(`Collecting CDP data of ${util.pluralize('webview', webviewsMapping.length, true)}`);
   const detailCollectors: Promise<void>[] = [];
-  for (const item of webviewsMapping) {
+  for (const [index, item] of webviewsMapping.entries()) {
+    const pid = pids[index];
+    if (pid && frozenPids.has(pid)) {
+      this.log.info(`CDP data for '${item.webview}' cannot be collected since its process is frozen`);
+      continue;
+    }
     detailCollectors.push(
       (async (): Promise<void> => {
         let port: number | undefined;
@@ -640,6 +651,42 @@ async function collectWebviewsDetails(
   }
   await Promise.all(detailCollectors);
   this.log.debug(`CDP data collection completed`);
+}
+
+/**
+ * Reads the PIDs of the processes the Android cached apps freezer has frozen.
+ * Returns an empty set if the device does not report them.
+ */
+async function getFrozenPids(this: AndroidDriver): Promise<Set<string>> {
+  const pids = new Set<string>();
+  let output: string;
+  try {
+    output = await this.adb.shell(['dumpsys', 'activity', 'cao'], {timeout: FROZEN_PIDS_TIMEOUT_MS});
+  } catch (e) {
+    this.log.debug(`Cannot read the list of frozen processes: ${(e as Error).message}`);
+    return pids;
+  }
+  const header = FROZEN_APPS_HEADER_PATTERN.exec(output);
+  if (!header) {
+    return pids;
+  }
+  let remaining = Number(header[1]);
+  for (const line of output.slice(header.index).split('\n').slice(1)) {
+    if (remaining <= 0) {
+      break;
+    }
+    if (!line.trim()) {
+      continue;
+    }
+    const match = FROZEN_APP_PATTERN.exec(line);
+    if (!match) {
+      this.log.debug(`Cannot parse the frozen process entry '${line.trim()}'`);
+      break;
+    }
+    pids.add(match[1]);
+    remaining--;
+  }
+  return pids;
 }
 
 /**

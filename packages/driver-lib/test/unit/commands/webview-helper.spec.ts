@@ -106,6 +106,100 @@ describe('Webview Helpers', function () {
       });
     });
 
+    describe('and the webview process may be frozen', function () {
+      const pidSockets =
+        'Num       RefCount Protocol Flags    Type St Inode Path\n' +
+        '0000000000000000: 00000002 00000000 00010000 0001 01 245445 @webview_devtools_remote_123\n';
+      let adbShell: sinon.SinonStub;
+      let adbExec: sinon.SinonStub;
+
+      async function getWebviews(cao: () => Promise<string>, unixSockets = pidSockets): Promise<void> {
+        adbShell = sandbox
+          .stub(adb, 'shell')
+          .callsFake(async (args) => ((args as string[])[0] === 'dumpsys' ? cao() : unixSockets));
+        sandbox.stub(adb, 'getProcessNameById').resolves('io.appium.android.apis');
+        adbExec = sandbox.stub(adb, 'adbExec').rejects(new Error('forward failed'));
+        await webviewHelpers.getWebViewsMapping.bind(driver)();
+      }
+
+      function frozenApps(...apps: string[]): () => Promise<string> {
+        return async () =>
+          `  freeze_binder_async_threshold=1024\n  Apps frozen: ${apps.length}\n${apps.map((app) => `    ${app}\n`).join('')}`;
+      }
+
+      function assertPagesRequested(): void {
+        assert.strictEqual(adbExec.firstCall?.args[0][0], 'forward');
+      }
+
+      it('then a frozen webview process is not asked for its pages', async function () {
+        await getWebviews(
+          frozenApps('65581: 1855 com.android.cellbroadcastreceiver', '802918: 123 io.appium.android.apis (sticky)'),
+        );
+        assert.strictEqual(adbExec.called, false);
+      });
+
+      it('then a frozen webview process listed after a blank line is not asked for its pages', async function () {
+        await getWebviews(async () => '  Apps frozen: 1\n\n    802918: 123 io.appium.android.apis\n');
+        assert.strictEqual(adbExec.called, false);
+      });
+
+      it('then a process listed after the counted frozen entries is still asked for its pages', async function () {
+        await getWebviews(
+          async () =>
+            '  Apps frozen: 1\n    65581: 1855 com.android.cellbroadcastreceiver\n\n    802918: 123 io.appium.android.apis\n',
+        );
+        assertPagesRequested();
+      });
+
+      it('then a process listed after zero frozen apps is still asked for its pages', async function () {
+        await getWebviews(async () => '  Apps frozen: 0\n\n    802918: 123 io.appium.android.apis\n');
+        assertPagesRequested();
+      });
+
+      it('then a running webview process is still asked for its pages', async function () {
+        await getWebviews(frozenApps('65581: 1234 com.android.cellbroadcastreceiver'));
+        assertPagesRequested();
+      });
+
+      it('then the webview is asked for its pages if no process is frozen', async function () {
+        await getWebviews(frozenApps());
+        assertPagesRequested();
+      });
+
+      it('then the webview is asked for its pages if the device does not list frozen processes', async function () {
+        await getWebviews(async () => '  freeze_binder_async_threshold=1024\n');
+        assertPagesRequested();
+      });
+
+      it('then the webview is asked for its pages if the frozen process entry cannot be parsed', async function () {
+        await getWebviews(
+          async () =>
+            '  Apps frozen: 2\n    pid 1855 com.android.cellbroadcastreceiver\n    802918: 123 io.appium.android.apis\n',
+        );
+        assertPagesRequested();
+      });
+
+      it('then the webview is asked for its pages if frozen processes cannot be read', async function () {
+        await getWebviews(async () => {
+          throw new Error('Unknown command');
+        });
+        assertPagesRequested();
+      });
+
+      it('then frozen processes are not read for a webview socket without a process id', async function () {
+        await getWebviews(
+          frozenApps('802918: 123 com.example.browser'),
+          'Num       RefCount Protocol Flags    Type St Inode Path\n' +
+            '0000000000000000: 00000002 00000000 00010000 0001 01 245445 @com.example.browser_devtools_remote\n',
+        );
+        assert.strictEqual(
+          adbShell.getCalls().some(({args}) => (args[0] as string[])[0] === 'dumpsys'),
+          false,
+        );
+        assertPagesRequested();
+      });
+    });
+
     describe('and no webviews exist', function () {
       let webViews: string[];
 
