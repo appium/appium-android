@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [10.7.13](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@10.7.12...appium-uiautomator2-server@10.7.13) (2026-11-10)
+
+### Performance Improvements
+
+* **uiautomator2-server:** reduce per-node overhead while building the page source ([#93](https://github.com/appium/appium-android/issues/93)) ([4ac2535](https://github.com/appium/appium-android/commit/4ac253568d19935019ba8469850290d8e53cdec5))
+
+
 ## [10.7.12](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@10.7.11...appium-uiautomator2-server@10.7.12) (2026-11-07)
 
 **Note:** Version bump only for package appium-uiautomator2-server
