@@ -1,9 +1,27 @@
 import assert from 'node:assert/strict';
+import {mkdtemp, mkdir, writeFile, rm} from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import {describe, it} from 'node:test';
 
-import {compareVersions, convertToInt} from '../../lib/utils.js';
+import {compareVersions, convertToInt, listFiles} from '../../lib/utils.js';
 
 describe('utils', function () {
+  describe('listFiles', function () {
+    it('should return only regular files matching the name pattern, ignoring case', async function () {
+      const dir = await mkdtemp(path.join(os.tmpdir(), 'cd-list-files-'));
+      try {
+        await writeFile(path.join(dir, 'ChromeDriver'), '');
+        await writeFile(path.join(dir, 'other'), '');
+        await mkdir(path.join(dir, 'chromedriver-linux64'));
+        assert.deepStrictEqual(await listFiles(dir, /^chromedriver/i), [path.join(dir, 'ChromeDriver')]);
+        assert.strictEqual((await listFiles(dir)).length, 2);
+      } finally {
+        await rm(dir, {recursive: true, force: true});
+      }
+    });
+  });
+
   describe('compareVersions', function () {
     it('should compare numerically rather than lexically', function () {
       assert.ok(compareVersions('2.9', '2.46') < 0);

@@ -1,6 +1,7 @@
+import {createHash, type Hash} from 'node:crypto';
 import path from 'node:path';
 
-import {system, fs, logger, tempDir, zip, util, net} from '@appium/support';
+import {system, fs, logger, tempDir, zip, util} from '@appium/support';
 import {asyncmap} from 'asyncbox';
 import * as semver from 'semver';
 
@@ -116,20 +117,15 @@ export class ChromedriverStorageClient {
     );
 
     const synchronizedDrivers: string[] = [];
-    const archivesRoot = await tempDir.openDir();
-    try {
-      await asyncmap(
-        [...driversToSync.entries()],
-        async ([idx, driverKey]) => {
-          if (await this.retrieveDriver(idx, driverKey, archivesRoot, !util.isEmpty(opts))) {
-            synchronizedDrivers.push(driverKey);
-          }
-        },
-        {concurrency: MAX_PARALLEL_DOWNLOADS},
-      );
-    } finally {
-      await fs.rimraf(archivesRoot);
-    }
+    await asyncmap(
+      driversToSync,
+      async (driverKey) => {
+        if (await this.retrieveDriver(driverKey, !util.isEmpty(opts))) {
+          synchronizedDrivers.push(driverKey);
+        }
+      },
+      {concurrency: MAX_PARALLEL_DOWNLOADS},
+    );
     if (!util.isEmpty(synchronizedDrivers)) {
       log.info(`Successfully synchronized ` + `${util.pluralize('chromedriver', synchronizedDrivers.length, true)}`);
     } else {
@@ -319,10 +315,7 @@ export class ChromedriverStorageClient {
    * Retrieves the given chromedriver from the storage
    * and unpacks it into `this.chromedriverDir` folder
    *
-   * @param index - The unique driver index
    * @param driverKey - The driver key in `this.mapping`
-   * @param archivesRoot - The temporary folder path to extract
-   * downloaded archives to
    * @param isStrict [true] - Whether to throw an error (`true`)
    * or return a boolean result if the driver retrieval process fails
    * @throws {Error} if there was a failure while retrieving the driver
@@ -330,65 +323,66 @@ export class ChromedriverStorageClient {
    * @returns if `true` then the chromedriver is successfully
    * downloaded and extracted.
    */
-  private async retrieveDriver(
-    index: number,
-    driverKey: string,
-    archivesRoot: string,
-    isStrict = false,
-  ): Promise<boolean> {
+  private async retrieveDriver(driverKey: string, isStrict = false): Promise<boolean> {
     const {url, etag, version} = this.mapping[driverKey];
-    const archivePath = path.resolve(archivesRoot, `${index}.zip`);
-    log.debug(`Retrieving '${url}' to '${archivePath}'`);
-    try {
-      await net.downloadFile(url, archivePath, {
-        isMetered: false,
-        timeout: STORAGE_REQ_TIMEOUT_MS,
-      });
-    } catch (e) {
-      const err = e as Error;
-      const msg = `Cannot download chromedriver archive. Original error: ${err.message}`;
-      if (isStrict) {
-        throw new Error(msg, {cause: e});
-      }
-      log.error(msg);
-      return false;
-    }
-    if (etag && !(await isCrcOk(archivePath, etag))) {
-      const msg = `The checksum for the downloaded chromedriver '${driverKey}' did not match`;
-      if (isStrict) {
-        throw new Error(msg);
-      }
-      log.error(msg);
-      return false;
-    }
     const fileName = `${path.parse(url).name}_v${version}` + (system.isWindows() ? '.exe' : '');
     const targetPath = path.resolve(this.chromedriverDir, fileName);
+    log.debug(`Retrieving '${url}' to '${targetPath}'`);
     try {
-      await this.unzipDriver(archivePath, targetPath);
+      await this.downloadDriver(url, etag, driverKey, targetPath);
       await fs.chmod(targetPath, 0o755);
       log.debug(`Permissions of the file '${targetPath}' have been changed to 755`);
     } catch (e) {
-      const err = e as Error;
       if (isStrict) {
-        throw err;
+        throw e;
       }
-      log.error(err.message);
+      log.error((e as Error).message);
       return false;
     }
     return true;
   }
 
   /**
-   * Extracts downloaded chromedriver archive
-   * into the given destination
+   * Streams the chromedriver archive from the given URL into a temporary folder
+   * without saving the archive itself, verifies its checksum and only then
+   * moves the extracted chromedriver executable to the given destination
    *
-   * @param src - The source archive path
+   * @param url - The archive URL
+   * @param etag - The expected MD5 checksum of the archive, if known
+   * @param driverKey - The driver key in `this.mapping`
    * @param dst - The destination chromedriver path
    */
-  private async unzipDriver(src: string, dst: string): Promise<void> {
+  private async downloadDriver(
+    url: string,
+    etag: string | null | undefined,
+    driverKey: string,
+    dst: string,
+  ): Promise<void> {
     const tmpRoot = await tempDir.openDir();
     try {
-      await zip.extractAllTo(src, tmpRoot);
+      let body: AsyncIterable<Uint8Array>;
+      try {
+        body = await retrieveData(url, undefined, {timeout: STORAGE_REQ_TIMEOUT_MS, responseType: 'stream'});
+      } catch (e) {
+        throw downloadError(e);
+      }
+      const hash = createHash('md5');
+      let streamError: unknown;
+      try {
+        await zip.extractStreamTo(
+          hashChunks(body, hash, (err) => {
+            streamError = err;
+          }),
+          tmpRoot,
+        );
+      } catch (e) {
+        // Distinguish network failures from broken archives
+        throw streamError ? downloadError(streamError) : e;
+      }
+      if (etag && hash.digest('hex') !== etag.toLowerCase()) {
+        throw new Error(`The checksum for the downloaded chromedriver '${driverKey}' did not match`);
+      }
+
       const chromedriverPath = await fs.walkDir(
         tmpRoot,
         true,
@@ -407,7 +401,27 @@ export class ChromedriverStorageClient {
   }
 }
 
-async function isCrcOk(src: string, checksum: string): Promise<boolean> {
-  const md5 = await fs.hash(src, 'md5');
-  return md5.toLowerCase() === checksum.toLowerCase();
+function downloadError(cause: unknown): Error {
+  const detail = cause instanceof Error ? cause.message : String(cause);
+  return new Error(`Cannot download chromedriver archive. Original error: ${detail}`, {cause});
+}
+
+/**
+ * Passes the chunks through while feeding them to the hash,
+ * and reports the errors of the source stream
+ */
+async function* hashChunks(
+  source: AsyncIterable<Uint8Array>,
+  hash: Hash,
+  onSourceError: (err: unknown) => void,
+): AsyncGenerator<Uint8Array> {
+  try {
+    for await (const chunk of source) {
+      hash.update(chunk);
+      yield chunk;
+    }
+  } catch (e) {
+    onSourceError(e);
+    throw e;
+  }
 }

@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-import {BaseDriver} from '@appium/base-driver';
+import {generateDriverLogPrefix} from '@appium/base-driver';
 import {system, fs, node, util} from '@appium/support';
 import axios from 'axios';
 import type {AxiosRequestConfig} from 'axios';
@@ -89,6 +89,18 @@ export function getChromedriverDir(osName: string = getOsName()): string {
 }
 
 /**
+ * Lists regular files (absolute paths) in a directory, optionally filtered by file name.
+ * @param dir - The directory to look into.
+ * @param namePattern - Only files whose base name matches this pattern are returned.
+ */
+export async function listFiles(dir: string, namePattern?: RegExp): Promise<string[]> {
+  const paths = await fs.glob('*', {cwd: dir, absolute: true});
+  const candidates = namePattern ? paths.filter((p) => namePattern.test(path.basename(p))) : paths;
+  const isFile = await Promise.all(candidates.map(async (p) => (await fs.stat(p).catch(() => null))?.isFile()));
+  return candidates.filter((_, i) => isFile[i]);
+}
+
+/**
  * Gets the path to the Chromedriver binary for a given OS.
  * @param osName - The OS name (defaults to the current OS).
  * @returns The full path to the Chromedriver binary.
@@ -96,12 +108,8 @@ export function getChromedriverDir(osName: string = getOsName()): string {
 export async function getChromedriverBinaryPath(osName: string = getOsName()): Promise<string> {
   const rootDir = getChromedriverDir(osName);
   const pathSuffix = osName === OS.WINDOWS ? '.exe' : '';
-  const paths = await fs.glob(`${CD_EXECUTABLE_PREFIX}*${pathSuffix}`, {
-    cwd: rootDir,
-    absolute: true,
-    nocase: true,
-    nodir: true,
-  });
+  const namePattern = new RegExp(`^${CD_EXECUTABLE_PREFIX}.*${pathSuffix.replace('.', '\\.')}$`, 'i');
+  const paths = await listFiles(rootDir, namePattern);
   return paths[0] ?? path.resolve(rootDir, `${CD_EXECUTABLE_PREFIX}${pathSuffix}`);
 }
 
@@ -162,19 +170,13 @@ export const getOsInfo = util.memoize(async function getOsInfo(): Promise<OSInfo
   };
 });
 
-// @ts-expect-error to avoid error
-// TS2345: Argument of type '{}' is not assignable to parameter of type 'DriverOpts<Readonly<Record<string, Constraint>>>'
-// Type '{}' is missing the following properties from type 'ServerArgs': address, allowCors, allowInsecure, basePath, and 26 more.
-const getBaseDriverInstance = util.memoize(() => new BaseDriver({}, false));
-
 /**
  * Generates log prefix string.
  * @param obj - Log owner instance.
- * @param sessionId - Optional session identifier.
  * @returns The generated log prefix string.
  */
-export function generateLogPrefix(obj: any, sessionId: string | null = null): string {
-  return getBaseDriverInstance().helpers.generateDriverLogPrefix(obj, sessionId ? sessionId : undefined);
+export function generateLogPrefix(obj: any): string {
+  return generateDriverLogPrefix(obj);
 }
 
 /**
