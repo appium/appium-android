@@ -6,7 +6,7 @@ import * as semver from 'semver';
 import {type ExecError} from 'teen_process';
 
 import type {ChromedriverVersionMapping} from '../types.js';
-import {CHROMEDRIVER_CHROME_MAPPING, getChromedriverBinaryPath, compareVersions} from '../utils.js';
+import {CHROMEDRIVER_CHROME_MAPPING, getChromedriverBinaryPath, compareVersions, listFiles} from '../utils.js';
 import type {ChromedriverCommandContext} from './types.js';
 
 const NEW_CD_VERSION_FORMAT_MAJOR_VERSION = 73;
@@ -69,11 +69,7 @@ export async function getChromedrivers(
   mapping: ChromedriverVersionMapping,
 ): Promise<ChromedriverInfo[]> {
   // enumerate available executables in configured chromedriver directory
-  const executables = await fs.glob('*', {
-    cwd: this.executableDir,
-    nodir: true,
-    absolute: true,
-  });
+  const executables = await listFiles(this.executableDir);
   this.log.debug(`Found ${util.pluralize('executable', executables.length, true)} in '${this.executableDir}'`);
   const cds = (
     await asyncmap(executables, async (executable: string) => {
