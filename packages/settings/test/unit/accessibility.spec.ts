@@ -30,7 +30,11 @@ describe('accessibility events service', function () {
   it('enables the service when no services are enabled', async function () {
     getSetting.resolves('null\n');
     assert.equal(await client.setAccessibilityEventsServiceState(true), true);
-    assert.deepEqual(setSetting.firstCall.args, ['secure', 'enabled_accessibility_services', ACCESSIBILITY_EVENTS_SERVICE]);
+    assert.deepEqual(setSetting.firstCall.args, [
+      'secure',
+      'enabled_accessibility_services',
+      ACCESSIBILITY_EVENTS_SERVICE,
+    ]);
     assert.deepEqual(setSetting.secondCall.args, ['secure', 'accessibility_enabled', 1]);
   });
 

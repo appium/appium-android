@@ -20,10 +20,7 @@ const ACCESSIBILITY_ENABLED_SETTING = 'accessibility_enabled';
  * @param enabled - True to enable and false to disable the service
  * @returns True if the state has actually been changed
  */
-export async function setAccessibilityEventsServiceState(
-  this: SettingsApp,
-  enabled: boolean,
-): Promise<boolean> {
+export async function setAccessibilityEventsServiceState(this: SettingsApp, enabled: boolean): Promise<boolean> {
   const services = await getEnabledServices(this);
   const isEnabled = services.includes(ACCESSIBILITY_EVENTS_SERVICE);
   if (enabled === isEnabled) {
