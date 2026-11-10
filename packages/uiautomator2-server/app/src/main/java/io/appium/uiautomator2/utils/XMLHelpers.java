@@ -49,8 +49,41 @@ public abstract class XMLHelpers {
 
     @Nullable
     public static String toSafeString(@Nullable Object source, String replacement) {
-        return source == null ? null : XML10_PATTERN
-                .matcher(String.valueOf(source))
-                .replaceAll(replacement);
+        if (source == null) {
+            return null;
+        }
+        String str = String.valueOf(source);
+        // This is called for every attribute of every node in the page source. Nearly all
+        // values are already valid, so avoid creating a regex matcher for them.
+        return containsOnlyValidXmlChars(str)
+                ? str
+                : XML10_PATTERN.matcher(str).replaceAll(replacement);
+    }
+
+    /**
+     * Checks whether all characters of the given string are valid XML 1.0 characters,
+     * so there is nothing for {@link #XML10_PATTERN} to replace in it.
+     */
+    private static boolean containsOnlyValidXmlChars(String str) {
+        for (int i = 0, length = str.length(); i < length; i++) {
+            char ch = str.charAt(i);
+            if (ch < '\u0020') {
+                if (ch != '\t' && ch != '\n' && ch != '\r') {
+                    return false;
+                }
+            } else if (ch > '\uD7FF') {
+                if (Character.isHighSurrogate(ch)) {
+                    // A valid surrogate pair encodes a code point in the U+10000..U+10FFFF range
+                    if (i + 1 >= length || !Character.isLowSurrogate(str.charAt(i + 1))) {
+                        return false;
+                    }
+                    i++;
+                } else if (ch < '\uE000' || ch > '\uFFFD') {
+                    // An unpaired low surrogate, U+FFFE or U+FFFF
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 }

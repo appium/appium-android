@@ -72,6 +72,8 @@ public class CustomUiDevice {
     private final Constructor<?> uiObject2Constructor;
     private final Instrumentation mInstrumentation;
     private final Object nativeGestureController;
+    private volatile Method getDisplayByIdMethod;
+    private volatile Method getDisplaySizeMethod;
 
     private CustomUiDevice() {
         this.mInstrumentation = (Instrumentation) getField(UiDevice.class, FIELD_M_INSTRUMENTATION, Device.getUiDevice());
@@ -229,22 +231,28 @@ public class CustomUiDevice {
 
     @Nullable
     public Display getDisplayById(int displayId) {
-        Method getDisplayByIdMethod = ReflectionUtils.getMethod(
-                UiDevice.class, "getDisplayById", int.class
-        );
+        // These lookups happen for every node of the page source, so the reflective
+        // method resolution is only done once.
+        Method method = getDisplayByIdMethod;
+        if (method == null) {
+            method = ReflectionUtils.getMethod(UiDevice.class, "getDisplayById", int.class);
+            getDisplayByIdMethod = method;
+        }
         try {
-            return (Display) getDisplayByIdMethod.invoke(getUiDevice(), displayId);
+            return (Display) method.invoke(getUiDevice(), displayId);
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new UiAutomator2Exception(e);
         }
     }
 
     public Point getDisplaySize(int displayId) {
-        Method getDisplaySizeMethod = ReflectionUtils.getMethod(
-                UiDevice.class, "getDisplaySize", int.class
-        );
+        Method method = getDisplaySizeMethod;
+        if (method == null) {
+            method = ReflectionUtils.getMethod(UiDevice.class, "getDisplaySize", int.class);
+            getDisplaySizeMethod = method;
+        }
         try {
-            return (Point) getDisplaySizeMethod.invoke(getUiDevice(), displayId);
+            return (Point) method.invoke(getUiDevice(), displayId);
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw new UiAutomator2Exception(e);
         }
