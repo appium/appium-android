@@ -1,7 +1,7 @@
 import {util} from '@appium/support';
 import type {StringRecord, Element} from '@appium/types';
 import type {Chromedriver} from 'appium-chromedriver';
-import {errors, PROTOCOLS} from 'appium/driver.js';
+import {errors} from 'appium/driver.js';
 
 import type {AndroidDriverConstraints} from '../constraints.js';
 import type {AndroidDriver} from '../driver.js';
@@ -34,9 +34,7 @@ export async function execute(this: AndroidDriver, script: string, args?: Execut
   if (!this.isWebContext()) {
     throw new errors.NotImplementedError();
   }
-  const endpoint =
-    (this.chromedriver as Chromedriver).jwproxy.downstreamProtocol === PROTOCOLS.MJSONWP ? '/execute' : '/execute/sync';
-  return await (this.chromedriver as Chromedriver).jwproxy.command(endpoint, 'POST', {
+  return await (this.chromedriver as Chromedriver).jwproxy.command('/execute/sync', 'POST', {
     script,
     args,
   });
