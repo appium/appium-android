@@ -20,18 +20,28 @@ const password = 'android';
 const javaDummyPath = 'java_dummy_path';
 const javaHome = 'java_home';
 const apksignerDummyPath = '/path/to/apksigner';
-const tempDir = appiumSupport.tempDir;
 const fs = appiumSupport.fs;
 
 let currentExec: (...args: any[]) => any = async () => ({stdout: '', stderr: ''});
 let currentGetResourcePath: (...args: any[]) => any = async () => '';
 let currentGetJavaForOs: (...args: any[]) => any = async () => javaDummyPath;
 let currentGetJavaHome: (...args: any[]) => any = async () => javaHome;
+let currentReadEntries: (...args: any[]) => any = async () => {};
+let currentTempDirPath: (...args: any[]) => any = async () => '';
 
 mock.module('teen_process', {
   namedExports: {
     ...teenProcess,
     exec: (...args: any[]) => currentExec(...args),
+  },
+});
+// `default` is not a valid named export
+const {default: _default, ...supportExports} = appiumSupport as Record<string, any>;
+mock.module('@appium/support', {
+  namedExports: {
+    ...supportExports,
+    zip: {...zip, readEntries: (...args: any[]) => currentReadEntries(...args)},
+    tempDir: {...appiumSupport.tempDir, path: (...args: any[]) => currentTempDirPath(...args)},
   },
 });
 mock.module('../../lib/utils/index.js', {
@@ -57,7 +67,6 @@ describe('signing', function () {
     adb: any;
     appiumSupport: any;
     fs: any;
-    tempDir: any;
   };
   const apiDemosPath = path.resolve(FIXTURES_ROOT, 'ApiDemos-debug.apk');
 
@@ -67,7 +76,6 @@ describe('signing', function () {
       adb: sandbox.mock(adb),
       appiumSupport: sandbox.mock(appiumSupport),
       fs: sandbox.mock(fs),
-      tempDir: sandbox.mock(tempDir),
     };
   });
 
@@ -165,34 +173,73 @@ describe('signing', function () {
       currentExec = innerExecStub;
       // Mock zip.readEntries to indicate no META-INF (so unsignApk returns false)
       /* eslint-disable promise/prefer-await-to-callbacks -- zip.readEntries is callback-based */
-      sandbox.stub(zip, 'readEntries').callsFake(async (apkPath, callback) => {
+      currentReadEntries = async (_apkPath: string, callback: (arg: any) => void) => {
         // Call callback with a non-META-INF entry so hasMetaInf stays false
         callback({
           entry: {fileName: 'AndroidManifest.xml'},
           extractEntryTo: async () => {},
         } as ZipEntry);
-      });
+      };
       /* eslint-enable promise/prefer-await-to-callbacks */
       await adb.signWithCustomCert(apiDemosPath);
       assert.strictEqual(innerExecStub.callCount, 2);
     });
   });
 
-  // Skipping as unable to mock mkdirp, this case is covered in e2e tests for now.
-  // TODO: find ways to mock mkdirp
-  describe.skip('zipAlignApk', function () {
-    it('should call exec with correct args', async function () {
-      const alignedApk = 'dummy_path';
-      mocks.tempDir.expects('path').once().withExactArgs({prefix: 'appium', suffix: '.tmp'}).returns(alignedApk);
-      mocks.adb.expects('initZipAlign').once().withExactArgs().returns('');
-      mocks.appiumSupport.expects('mkdirp').once().withExactArgs(path.dirname(alignedApk)).returns({});
-      currentExec = sandbox
-        .stub()
-        .withArgs(adb.binaries!.zipalign, ['-f', '4', apiDemosPath, alignedApk])
-        .onFirstCall()
-        .returns({});
-      mocks.fs.expects('mv').once().withExactArgs(alignedApk, apiDemosPath, {mkdirp: true}).returns('');
-      await adb.zipAlignApk(apiDemosPath);
+  describe('zipAlignApk', function () {
+    const zipalign = 'zipalign_dummy_path';
+    const alignedApk = path.join('tmp_dir', 'aligned.tmp');
+    let origBinaries: typeof adb.binaries;
+    let execCalls: string[][];
+
+    beforeEach(function () {
+      origBinaries = adb.binaries;
+      adb.binaries = {...origBinaries, zipalign} as typeof adb.binaries;
+      execCalls = [];
+      mocks.adb.expects('initZipAlign').once().withExactArgs().resolves();
+    });
+
+    afterEach(function () {
+      adb.binaries = origBinaries;
+    });
+
+    it('should do nothing if the apk is already zip-aligned', async function () {
+      currentExec = async (_bin: string, args: string[]) => {
+        execCalls.push(args);
+        return {stdout: '', stderr: ''};
+      };
+      assert.strictEqual(await adb.zipAlignApk(apiDemosPath), false);
+      assert.deepStrictEqual(execCalls, [['-c', '4', apiDemosPath]]);
+    });
+
+    it('should zip-align the apk and replace the original one', async function () {
+      currentExec = async (_bin: string, args: string[]) => {
+        execCalls.push(args);
+        if (args[0] === '-c') {
+          throw new Error('not aligned');
+        }
+        return {stdout: '', stderr: ''};
+      };
+      mocks.fs.expects('access').once().withArgs(apiDemosPath).resolves();
+      currentTempDirPath = async (opts: unknown) => {
+        assert.deepStrictEqual(opts, {prefix: 'appium', suffix: '.tmp'});
+        return alignedApk;
+      };
+      mocks.fs.expects('mkdirp').once().withExactArgs(path.dirname(alignedApk)).resolves();
+      mocks.fs.expects('mv').once().withExactArgs(alignedApk, apiDemosPath, {mkdirp: true}).resolves();
+      assert.strictEqual(await adb.zipAlignApk(apiDemosPath), true);
+      assert.deepStrictEqual(execCalls, [
+        ['-c', '4', apiDemosPath],
+        ['-f', '4', apiDemosPath, alignedApk],
+      ]);
+    });
+
+    it('should throw if the apk is not writeable', async function () {
+      currentExec = async () => {
+        throw new Error('not aligned');
+      };
+      mocks.fs.expects('access').once().withArgs(apiDemosPath).rejects(new Error('EACCES'));
+      await assert.rejects(adb.zipAlignApk(apiDemosPath), /is not writeable/);
     });
   });
 
