@@ -266,11 +266,18 @@ public class XMLHelpersTests {
     public void toSafeStringKeepsValidXmlCharacters() {
         for (String value : new String[]{
                 "", "true", "[0,283][91,361]", "com.example:id/title",
-                "tab\tnew\nline\rreturn", "Ünïcödé çğıöşü", "日本語のテキスト",
-                // U+E000 and U+FFFD are the bounds of the second valid BMP range
-                "�",
+                "tab\tnew\nline\rreturn",
+                // Latin letters with diacritics
+                "\u00DCn\u00EFc\u00F6d\u00E9 \u00E7\u011F\u0131\u00F6\u015F\u00FC",
+                // CJK text
+                "\u65E5\u672C\u8A9E",
+                // The bounds of the valid BMP ranges
+                "\u0020\uD7FF\uE000\uFFFD",
                 // U+1F600 is a valid supplementary code point encoded as a surrogate pair
-                "smile 😀 end",
+                "smile \uD83D\uDE00 end",
+                "\uD83D\uDE00",
+                // The bounds of the supplementary range, U+10000 and U+10FFFF
+                "\uD800\uDC00\uDBFF\uDFFF",
         }) {
             assertEquals(value, XMLHelpers.toSafeString(value, "?"));
         }
@@ -281,12 +288,27 @@ public class XMLHelpersTests {
         assertEquals("a?b", XMLHelpers.toSafeString("a\u0000b", "?"));
         assertEquals("?bell", XMLHelpers.toSafeString("\u0007bell", "?"));
         assertEquals("esc?", XMLHelpers.toSafeString("esc\u001B", "?"));
-        assertEquals("a??b", XMLHelpers.toSafeString("a￾￿b", "?"));
-        // an unpaired surrogate is not a valid XML character
+        assertEquals("a??b", XMLHelpers.toSafeString("a\uFFFE\uFFFFb", "?"));
+    }
+
+    @Test
+    public void toSafeStringReplacesUnpairedSurrogates() {
+        // a high surrogate that is not followed by a low one
         assertEquals("a?b", XMLHelpers.toSafeString("a\uD83Db", "?"));
+        assertEquals("a?", XMLHelpers.toSafeString("a\uD83D", "?"));
+        assertEquals("??", XMLHelpers.toSafeString("\uD83D\uD83D", "?"));
+        // a low surrogate that does not follow a high one
         assertEquals("a?", XMLHelpers.toSafeString("a\uDE00", "?"));
-        // a valid pair next to an invalid character must survive the replacement
-        assertEquals("😀?", XMLHelpers.toSafeString("😀\u0001", "?"));
+        assertEquals("?a", XMLHelpers.toSafeString("\uDE00a", "?"));
+        // low then high is two unpaired surrogates, not a pair
+        assertEquals("??", XMLHelpers.toSafeString("\uDE00\uD83D", "?"));
+    }
+
+    @Test
+    public void toSafeStringKeepsValidPairsNextToInvalidCharacters() {
+        assertEquals("\uD83D\uDE00?", XMLHelpers.toSafeString("\uD83D\uDE00\u0001", "?"));
+        assertEquals("?\uD83D\uDE00", XMLHelpers.toSafeString("\uDE00\uD83D\uDE00", "?"));
+        assertEquals("\uD83D\uDE00?", XMLHelpers.toSafeString("\uD83D\uDE00\uD83D", "?"));
     }
 
     @Test
