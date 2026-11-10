@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [15.1.11](https://github.com/appium/appium-android/compare/appium-android-driver@15.1.10...appium-android-driver@15.1.11) (2026-11-10)
+
+### Bug Fixes
+
+* **driver-lib:** use W3C-only endpoints for execute and window commands ([#95](https://github.com/appium/appium-android/issues/95)) ([d5e48cc](https://github.com/appium/appium-android/commit/d5e48cc7d3e9fa408dc237aaa489842d136ee542))
+
+
 ## [15.1.10](https://github.com/appium/appium-android/compare/appium-android-driver@15.1.9...appium-android-driver@15.1.10) (2026-11-10)
 
 **Note:** Version bump only for package appium-android-driver
