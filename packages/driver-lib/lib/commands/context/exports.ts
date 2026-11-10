@@ -1,7 +1,7 @@
 import {util} from '@appium/support';
 import type {StringRecord} from '@appium/types';
 import {Chromedriver} from 'appium-chromedriver';
-import {errors, PROTOCOLS} from 'appium/driver.js';
+import {errors} from 'appium/driver.js';
 
 import type {AndroidDriverConstraints} from '../../constraints.js';
 import type {AndroidDriver} from '../../driver.js';
@@ -221,9 +221,7 @@ export async function getWindowHandle(this: AndroidDriver): Promise<string> {
   }
 
   const chromedriver = this.chromedriver as Chromedriver;
-  const isJwp = chromedriver.jwproxy.downstreamProtocol === PROTOCOLS.MJSONWP;
-  const endpoint = isJwp ? '/window_handle' : '/window/handle';
-  return (await chromedriver.jwproxy.command(endpoint, 'GET')) as string;
+  return (await chromedriver.jwproxy.command('/window/handle', 'GET')) as string;
 }
 
 /**
@@ -237,9 +235,7 @@ export async function getWindowHandles(this: AndroidDriver): Promise<string[]> {
   }
 
   const chromedriver = this.chromedriver as Chromedriver;
-  const isJwp = chromedriver.jwproxy.downstreamProtocol === PROTOCOLS.MJSONWP;
-  const endpoint = isJwp ? '/window_handles' : '/window/handles';
-  return (await chromedriver.jwproxy.command(endpoint, 'GET')) as string[];
+  return (await chromedriver.jwproxy.command('/window/handles', 'GET')) as string[];
 }
 
 /**
@@ -253,9 +249,7 @@ export async function setWindow(this: AndroidDriver, handle: string): Promise<vo
   }
 
   const chromedriver = this.chromedriver as Chromedriver;
-  const isJwp = chromedriver.jwproxy.downstreamProtocol === PROTOCOLS.MJSONWP;
-  const paramName = isJwp ? 'name' : 'handle';
-  await chromedriver.jwproxy.command('/window', 'POST', {[paramName]: handle});
+  await chromedriver.jwproxy.command('/window', 'POST', {handle});
 }
 
 /**
