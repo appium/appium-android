@@ -256,4 +256,42 @@ public class XMLHelpersTests {
         List<Node> nodes = findNodesUsingXpath2(XML, query, false);
         assertEquals("Should find TextView using substring function", 1, nodes.size());
     }
+
+    @Test
+    public void toSafeStringReturnsNullForNull() {
+        assertEquals(null, XMLHelpers.toSafeString(null, "?"));
+    }
+
+    @Test
+    public void toSafeStringKeepsValidXmlCharacters() {
+        for (String value : new String[]{
+                "", "true", "[0,283][91,361]", "com.example:id/title",
+                "tab\tnew\nline\rreturn", "Ünïcödé çğıöşü", "日本語のテキスト",
+                // U+E000 and U+FFFD are the bounds of the second valid BMP range
+                "�",
+                // U+1F600 is a valid supplementary code point encoded as a surrogate pair
+                "smile 😀 end",
+        }) {
+            assertEquals(value, XMLHelpers.toSafeString(value, "?"));
+        }
+    }
+
+    @Test
+    public void toSafeStringReplacesInvalidXmlCharacters() {
+        assertEquals("a?b", XMLHelpers.toSafeString("a\u0000b", "?"));
+        assertEquals("?bell", XMLHelpers.toSafeString("\u0007bell", "?"));
+        assertEquals("esc?", XMLHelpers.toSafeString("esc\u001B", "?"));
+        assertEquals("a??b", XMLHelpers.toSafeString("a￾￿b", "?"));
+        // an unpaired surrogate is not a valid XML character
+        assertEquals("a?b", XMLHelpers.toSafeString("a\uD83Db", "?"));
+        assertEquals("a?", XMLHelpers.toSafeString("a\uDE00", "?"));
+        // a valid pair next to an invalid character must survive the replacement
+        assertEquals("😀?", XMLHelpers.toSafeString("😀\u0001", "?"));
+    }
+
+    @Test
+    public void toSafeStringStringifiesNonStringValues() {
+        assertEquals("true", XMLHelpers.toSafeString(Boolean.TRUE, "?"));
+        assertEquals("42", XMLHelpers.toSafeString(42, "?"));
+    }
 }

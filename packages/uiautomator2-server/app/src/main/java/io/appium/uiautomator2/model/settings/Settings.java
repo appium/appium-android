@@ -16,6 +16,10 @@
 
 package io.appium.uiautomator2.model.settings;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 public enum Settings {
     ACTION_ACKNOWLEDGMENT_TIMEOUT(new ActionAcknowledgmentTimeout()),
     ALLOW_INVISIBLE_ELEMENTS(new AllowInvisibleElements()),
@@ -53,6 +57,10 @@ public enum Settings {
     DEFER_ACCESSIBILITY_CACHE_RESET(new DeferAccessibilityCacheReset()),
     MAP_TEST_TAG_TO_RESOURCE_ID(new MapTestTagToResourceId());
 
+    // Settings are looked up several times per node while the page source is built,
+    // so the lookup must not allocate or scan all the items.
+    private static final Map<Class<?>, ISetting<?>> SETTINGS_BY_TYPE = indexByType();
+
     private final ISetting<?> setting;
 
     Settings(ISetting<?> setting) {
@@ -64,12 +72,12 @@ public enum Settings {
     }
 
     public static <T extends ISetting<?>> T get(Class<T> settingType) {
-        return java.util.Arrays.stream(values())
-                .filter(enumItem -> enumItem.getSetting().getClass() == settingType)
-                .map(enumItem -> settingType.cast(enumItem.getSetting()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException(String.format("%s setting is not known",
-                        settingType.getCanonicalName())));
+        ISetting<?> result = SETTINGS_BY_TYPE.get(settingType);
+        if (result == null) {
+            throw new IllegalArgumentException(String.format("%s setting is not known",
+                    settingType.getCanonicalName()));
+        }
+        return settingType.cast(result);
     }
 
     public static void resetForNewSession() {
@@ -83,5 +91,13 @@ public enum Settings {
     @Override
     public String toString() {
         return setting.getName();
+    }
+
+    private static Map<Class<?>, ISetting<?>> indexByType() {
+        Map<Class<?>, ISetting<?>> result = new HashMap<>();
+        for (Settings enumItem : values()) {
+            result.put(enumItem.getSetting().getClass(), enumItem.getSetting());
+        }
+        return Collections.unmodifiableMap(result);
     }
 }

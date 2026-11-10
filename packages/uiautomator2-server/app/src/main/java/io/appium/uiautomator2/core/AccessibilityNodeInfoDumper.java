@@ -52,11 +52,14 @@ import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Semaphore;
+import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 
 import io.appium.uiautomator2.common.exceptions.InvalidSelectorException;
@@ -93,12 +96,19 @@ public class AccessibilityNodeInfoDumper {
     private static final String XML_ENCODING = "UTF-8";
     private final Semaphore RESOURCES_GUARD = new Semaphore(1);
     private static final XPathFactory XPATH_FACTORY = XPathFactory.newInstance();
+    private static final Pattern CLASS_NAME_SPECIAL_CHARS = Pattern.compile("[$@#&]");
+    private static final Pattern CLASS_NAME_REPEATED_DOTS = Pattern.compile("\\.+");
+    private static final Pattern CLASS_NAME_EDGE_DOTS = Pattern.compile("(^\\.|\\.$)");
+    private static final Pattern CLASS_NAME_NON_NORMALIZED_CHARS = Pattern.compile("[^A-Za-z0-9\\-._]");
 
     @Nullable
     private final AccessibilityNodeInfo root;
     private final SparseArray<UiElement<?, ?>> uiElementsMapping = new SparseArray<>();
     private final Set<Attribute> includedAttributes;
     private boolean shouldAddDisplayInfo;
+    private boolean shouldNormalizeTagNames;
+    // Class name -> XML node name mapping for the tree, which is currently being serialized
+    private final Map<String, String> xmlNodeNames = new HashMap<>();
     private XmlSerializer serializer;
     // The most recently built source snapshot tree, so its transient nodes can be recycled
     // once the tree has been fully consumed (serialized and/or matched against).
@@ -168,20 +178,19 @@ public class AccessibilityNodeInfoDumper {
         serializer.attribute(NAMESPACE, "height", Integer.toString(size.y));
     }
 
-    private static String toXmlNodeName(@Nullable String className) {
+    private static String toXmlNodeName(@Nullable String className, boolean shouldNormalize) {
         if (StringHelpers.isBlank(className)) {
             return DEFAULT_VIEW_CLASS_NAME;
         }
 
-        String fixedName = className
-                .replaceAll("[$@#&]", ".")
-                .replaceAll("\\.+", ".")
-                .replaceAll("(^\\.|\\.$)", "");
+        String fixedName = CLASS_NAME_SPECIAL_CHARS.matcher(className).replaceAll(".");
+        fixedName = CLASS_NAME_REPEATED_DOTS.matcher(fixedName).replaceAll(".");
+        fixedName = CLASS_NAME_EDGE_DOTS.matcher(fixedName).replaceAll("");
 
-        if (Settings.get(NormalizeTagNames.class).getValue()) {
+        if (shouldNormalize) {
             // A workaround for the Apache Harmony bug described in https://github.com/appium/appium/issues/11854
             // The buggy implementation: https://android.googlesource.com/platform/dalvik/+/21d27c095fee51fd6eac6a68d50b79df4dc97d85/libcore/xml/src/main/java/org/apache/harmony/xml/dom/DocumentImpl.java#84
-            fixedName = unidecode(fixedName).replaceAll("[^A-Za-z0-9\\-._]", "_");
+            fixedName = CLASS_NAME_NON_NORMALIZED_CHARS.matcher(unidecode(fixedName)).replaceAll("_");
         }
 
         fixedName = toNodeName(fixedName);
@@ -194,9 +203,25 @@ public class AccessibilityNodeInfoDumper {
         return fixedName;
     }
 
+    /**
+     * A screen usually consists of many nodes of a few classes, so the node name
+     * is only computed once per class name while a single tree is being serialized.
+     */
+    private String toCachedXmlNodeName(@Nullable String className) {
+        if (StringHelpers.isBlank(className)) {
+            return DEFAULT_VIEW_CLASS_NAME;
+        }
+        String nodeName = xmlNodeNames.get(className);
+        if (nodeName == null) {
+            nodeName = toXmlNodeName(className, shouldNormalizeTagNames);
+            xmlNodeNames.put(className, nodeName);
+        }
+        return nodeName;
+    }
+
     private void serializeUiElement(UiElement<?, ?> uiElement, boolean isIndexed) throws IOException {
         final String className = uiElement.getClassName();
-        final String nodeName = toXmlNodeName(className);
+        final String nodeName = toCachedXmlNodeName(className);
         serializer.startTag(NAMESPACE, nodeName);
 
         for (Attribute attr : uiElement.attributeKeys()) {
@@ -232,6 +257,8 @@ public class AccessibilityNodeInfoDumper {
         try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
             serializer = Xml.newSerializer();
             shouldAddDisplayInfo = root == null;
+            shouldNormalizeTagNames = Settings.get(NormalizeTagNames.class).getValue();
+            xmlNodeNames.clear();
             serializer.setOutput(outputStream, XML_ENCODING);
             serializer.startDocument(XML_ENCODING, true);
             serializer.setFeature("http://xmlpull.org/v1/doc/features.html#indent-output", true);

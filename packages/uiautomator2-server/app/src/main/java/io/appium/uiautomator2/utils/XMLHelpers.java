@@ -49,8 +49,30 @@ public abstract class XMLHelpers {
 
     @Nullable
     public static String toSafeString(@Nullable Object source, String replacement) {
-        return source == null ? null : XML10_PATTERN
-                .matcher(String.valueOf(source))
-                .replaceAll(replacement);
+        if (source == null) {
+            return null;
+        }
+        String str = String.valueOf(source);
+        // This is called for every attribute of every node in the page source. Nearly all
+        // values are already valid, so avoid creating a regex matcher for them.
+        return containsOnlyValidBmpXmlChars(str)
+                ? str
+                : XML10_PATTERN.matcher(str).replaceAll(replacement);
+    }
+
+    /**
+     * Checks whether all characters of the given string are valid XML 1.0 characters
+     * from the Basic Multilingual Plane. Strings containing surrogates are reported
+     * as not matching, so the caller could validate them properly as code points.
+     */
+    private static boolean containsOnlyValidBmpXmlChars(String str) {
+        for (int i = 0, length = str.length(); i < length; i++) {
+            char ch = str.charAt(i);
+            if (ch >= ' ' ? (ch > '퟿' && (ch < '' || ch > '�'))
+                    : (ch != '\t' && ch != '\n' && ch != '\r')) {
+                return false;
+            }
+        }
+        return true;
     }
 }
