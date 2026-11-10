@@ -32,6 +32,8 @@ describe('chromedriver', function () {
 
   beforeEach(function () {
     sandbox = sinon.createSandbox();
+    // stubbed glob results are fake paths
+    sandbox.stub(fs, 'stat').resolves({isFile: () => true} as any);
   });
   afterEach(function () {
     sandbox.restore();
