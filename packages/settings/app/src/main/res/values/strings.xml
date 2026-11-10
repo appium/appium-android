@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">Appium Settings</string>
     <string name="placeholder"></string>
+    <string name="accessibility_events_service_description">Keeps web content (e.g. Chrome) emitting accessibility events while Appium automation is running. Does nothing else.</string>
     <string name="data_on">Enabling data service.</string>
     <string name="data_off">Disabling data service.</string>
     <string name="wifi_on">Enabling wifi service.</string>

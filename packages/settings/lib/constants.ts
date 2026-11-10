@@ -36,6 +36,8 @@ export const SMS_LIST_RETRIEVAL_ACTION = `${SETTINGS_HELPER_ID}.sms.read`;
 export const MEDIA_SCAN_RECEIVER = `${RECEIVERS_PKG}.MediaScannerReceiver`;
 export const MEDIA_SCAN_ACTION = `${SETTINGS_HELPER_ID}.scan_media`;
 
+export const ACCESSIBILITY_EVENTS_SERVICE = `${SETTINGS_HELPER_ID}/.AccessibilityEventsService`;
+
 export const SETTING_NOTIFICATIONS_LISTENER_SERVICE = `${SETTINGS_HELPER_ID}/.NLService`;
 export const NOTIFICATIONS_RETRIEVAL_ACTION = `${SETTINGS_HELPER_ID}.notifications`;
 

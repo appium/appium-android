@@ -330,6 +330,28 @@ and https://developer.android.com/reference/android/app/Notification.html
 for more information on available notification properties and their values.
 
 
+## Accessibility Events Service
+
+Chrome emits no `AccessibilityEvent`s for web content if UiAutomation is the only accessibility
+client, because it only dispatches the event types requested by enabled accessibility services.
+Automation servers relying on these events to invalidate accessibility caches (for example the
+`deferAccessibilityCacheReset` setting of UiAutomator2 server) then keep returning a stale tree.
+
+Appium Settings ships a no-op accessibility service, `io.appium.settings/.AccessibilityEventsService`,
+that only requests window content/state change events and does nothing with them. Enabling it
+makes Chrome emit these events. UiAutomation must not suppress accessibility services while
+it is connected (e.g. the `DISABLE_SUPPRESS_ACCESSIBILITY_SERVICES` instrumentation argument
+of UiAutomator2 server).
+
+```js
+await settingsApp.setAccessibilityEventsServiceState(true);
+// ... run the automation
+await settingsApp.setAccessibilityEventsServiceState(false);
+```
+
+Other enabled accessibility services are preserved. Changing the state requires the
+`WRITE_SECURE_SETTINGS` permission (granted to the `adb shell` user).
+
 ## SMS
 
 **Trust requirement:** Once this helper has `READ_SMS`, other apps on the device can
