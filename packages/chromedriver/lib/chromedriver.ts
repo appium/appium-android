@@ -1,6 +1,6 @@
 import events from 'node:events';
 
-import {WebDriverProxy, PROTOCOLS} from '@appium/base-driver';
+import {WebDriverProxy} from '@appium/base-driver';
 import {logger, util} from '@appium/support';
 import type {ProxyOptions, HTTPMethod, HTTPBody} from '@appium/types';
 import type {Request, Response} from 'express';
@@ -14,15 +14,13 @@ import {
   initChromedriverPath,
 } from './commands/binary.js';
 import {buildChromedriverArgs, waitForOnline, getStatus, killAll} from './commands/process.js';
-import {syncProtocol, startSession, changeState, getCapValue, type SessionCapabilities} from './commands/session.js';
+import {startSession, changeState, getCapValue, type SessionCapabilities} from './commands/session.js';
 import {getChromeVersionForAutodetection} from './commands/version.js';
 import {CHROMEDRIVER_EVENTS, CHROMEDRIVER_STATES} from './constants.js';
 import {ChromedriverStorageClient} from './storage-client/storage-client.js';
 import type {ChromedriverAdb, ChromedriverOpts} from './types.js';
 import {getChromedriverDir, generateLogPrefix} from './utils.js';
 
-// Keep this import marked as used at runtime when it is otherwise only referenced in type positions.
-void PROTOCOLS;
 export type ChromedriverState = (typeof CHROMEDRIVER_STATES)[keyof typeof CHROMEDRIVER_STATES];
 
 const DEFAULT_HOST = '127.0.0.1';
@@ -64,7 +62,6 @@ export class Chromedriver extends events.EventEmitter<ChromedriverEventMap> {
   readonly storageClient: ChromedriverStorageClient | null;
   readonly details?: ChromedriverOpts['details'];
   capabilities: SessionCapabilities;
-  _desiredProtocol: keyof typeof PROTOCOLS | null;
   _driverVersion: string | null;
   _onlineStatus: Record<string, any> | null;
 
@@ -78,7 +75,6 @@ export class Chromedriver extends events.EventEmitter<ChromedriverEventMap> {
   private getCompatibleChromedriver = getCompatibleChromedriver;
   private initChromedriverPath = initChromedriverPath;
   private getChromeVersion = getChromeVersionForAutodetection;
-  private syncProtocol = syncProtocol;
   private waitForOnline = waitForOnline;
   private getStatus = getStatus;
   private killAll = killAll;
@@ -138,7 +134,6 @@ export class Chromedriver extends events.EventEmitter<ChromedriverEventMap> {
       : null;
     this.details = details;
     this.capabilities = {};
-    this._desiredProtocol = null;
     this._driverVersion = null;
     this._onlineStatus = null;
   }
@@ -169,7 +164,6 @@ export class Chromedriver extends events.EventEmitter<ChromedriverEventMap> {
 
     try {
       await this.launchChromedriverProcess(args, webviewVersionHolder);
-      this.syncProtocol();
       return await this.startSession();
     } catch (e) {
       return await this.handleChromedriverStartFailure(e as Error, webviewVersionHolder.version);
@@ -300,7 +294,6 @@ export class Chromedriver extends events.EventEmitter<ChromedriverEventMap> {
 
     proc.once('exit', (code: number | null, signal: string | null) => {
       this._driverVersion = null;
-      this._desiredProtocol = null;
       this._onlineStatus = null;
       if (
         this.state !== Chromedriver.STATE_STOPPED &&
