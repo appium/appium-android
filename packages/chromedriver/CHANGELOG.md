@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [9.2.4](https://github.com/appium/appium-android/compare/appium-chromedriver@9.2.3...appium-chromedriver@9.2.4) (2026-11-10)
+
+### Miscellaneous Chores
+
+* **chromedriver:** ChromeDriver Bump to v157.0.8103.50 ([#92](https://github.com/appium/appium-android/issues/92)) ([a1abaca](https://github.com/appium/appium-android/commit/a1abaca4da84b1d2d512c7f42bc919eab33fe728))
+
+
 ## [9.2.3](https://github.com/appium/appium-android/compare/appium-chromedriver@9.2.2...appium-chromedriver@9.2.3) (2026-11-07)
 
 ### Code Refactoring
