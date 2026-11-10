@@ -1,7 +1,7 @@
 import os from 'node:os';
 import path from 'node:path';
 
-import {fs, util, mkdirp, timing} from '@appium/support';
+import {fs, util, timing} from '@appium/support';
 import {LRUCache} from 'lru-cache';
 import * as semver from 'semver';
 import {exec, type ExecError} from 'teen_process';
@@ -498,7 +498,7 @@ export async function extractStringsFromApk(
   }
 
   const localPath = path.resolve(outRoot, 'strings.json');
-  await mkdirp(outRoot);
+  await fs.mkdirp(outRoot);
   await fs.writeFile(localPath, JSON.stringify(apkStrings, null, 2), 'utf-8');
   return {apkStrings, localPath};
 }

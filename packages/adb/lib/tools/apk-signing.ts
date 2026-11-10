@@ -1,7 +1,7 @@
 import _fs from 'node:fs';
 import path from 'node:path';
 
-import {tempDir, system, mkdirp, fs, util, zip} from '@appium/support';
+import {tempDir, system, fs, util, zip} from '@appium/support';
 import {LRUCache} from 'lru-cache';
 import {exec, type ExecError} from 'teen_process';
 
@@ -242,7 +242,7 @@ export async function zipAlignApk(this: ADB, apk: string): Promise<boolean> {
     );
   }
   const alignedApk = await tempDir.path({prefix: 'appium', suffix: '.tmp'});
-  await mkdirp(path.dirname(alignedApk));
+  await fs.mkdirp(path.dirname(alignedApk));
   try {
     await exec((this.binaries as StringRecord).zipalign as string, ['-f', '4', apk, alignedApk]);
     await fs.mv(alignedApk, apk, {mkdirp: true});
