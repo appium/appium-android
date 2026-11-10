@@ -27,11 +27,18 @@ let currentExec: (...args: any[]) => any = async () => ({stdout: '', stderr: ''}
 let currentGetResourcePath: (...args: any[]) => any = async () => '';
 let currentGetJavaForOs: (...args: any[]) => any = async () => javaDummyPath;
 let currentGetJavaHome: (...args: any[]) => any = async () => javaHome;
+let currentReadEntries: (...args: any[]) => any = async () => {};
 
 mock.module('teen_process', {
   namedExports: {
     ...teenProcess,
     exec: (...args: any[]) => currentExec(...args),
+  },
+});
+mock.module('@appium/support', {
+  namedExports: {
+    ...appiumSupport,
+    zip: {...zip, readEntries: (...args: any[]) => currentReadEntries(...args)},
   },
 });
 mock.module('../../lib/utils/index.js', {
@@ -165,13 +172,13 @@ describe('signing', function () {
       currentExec = innerExecStub;
       // Mock zip.readEntries to indicate no META-INF (so unsignApk returns false)
       /* eslint-disable promise/prefer-await-to-callbacks -- zip.readEntries is callback-based */
-      sandbox.stub(zip, 'readEntries').callsFake(async (apkPath, callback) => {
+      currentReadEntries = async (_apkPath: string, callback: (arg: any) => void) => {
         // Call callback with a non-META-INF entry so hasMetaInf stays false
         callback({
           entry: {fileName: 'AndroidManifest.xml'},
           extractEntryTo: async () => {},
         } as ZipEntry);
-      });
+      };
       /* eslint-enable promise/prefer-await-to-callbacks */
       await adb.signWithCustomCert(apiDemosPath);
       assert.strictEqual(innerExecStub.callCount, 2);
@@ -185,7 +192,7 @@ describe('signing', function () {
       const alignedApk = 'dummy_path';
       mocks.tempDir.expects('path').once().withExactArgs({prefix: 'appium', suffix: '.tmp'}).returns(alignedApk);
       mocks.adb.expects('initZipAlign').once().withExactArgs().returns('');
-      mocks.appiumSupport.expects('mkdirp').once().withExactArgs(path.dirname(alignedApk)).returns({});
+      mocks.fs.expects('mkdirp').once().withExactArgs(path.dirname(alignedApk)).returns({});
       currentExec = sandbox
         .stub()
         .withArgs(adb.binaries!.zipalign, ['-f', '4', apiDemosPath, alignedApk])
