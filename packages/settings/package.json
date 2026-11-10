@@ -50,24 +50,24 @@
     "version": "npm run bump-gradle-version"
   },
   "dependencies": {
-    "@appium/logger": "^2.0.0-rc.1",
+    "@appium/logger": "^3.0.0-beta.2",
     "asyncbox": "^6.6.0",
     "semver": "^7.5.4",
     "teen_process": "^4.0.4"
   },
   "devDependencies": {
-    "@appium/tsconfig": "^1.2.0",
-    "@appium/types": "^1.0.0-rc.1",
+    "@appium/tsconfig": "^2.0.0-beta.1",
+    "@appium/types": "^2.0.0-beta.5",
     "@types/node": "^26.6.5",
     "@types/sinon": "^22.0.2",
     "appium-adb": "^16.4.1",
     "sinon": "^22.0.0"
   },
   "peerDependencies": {
-    "appium-adb": "^16.3.1"
+    "appium-adb": "^16.3.1 || ^17.0.0"
   },
   "engines": {
-    "node": "^20.19.0 || ^22.12.0 || >=24.0.0",
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0",
     "npm": ">=10"
   }
 }
