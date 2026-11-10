@@ -51,12 +51,12 @@
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
-    "@appium/support": "^7.2.0",
+    "@appium/support": "^8.0.0-beta.6",
     "appium-adb": "^16.4.1",
     "semver": "^7.3.7"
   },
   "engines": {
-    "node": "^20.19.0 || ^22.12.0 || >=24.0.0",
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0",
     "npm": ">=10"
   }
 }
