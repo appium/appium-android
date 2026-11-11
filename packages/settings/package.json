@@ -64,7 +64,7 @@
     "sinon": "^22.0.0"
   },
   "peerDependencies": {
-    "appium-adb": "^16.3.1 || ^17.0.0"
+    "appium-adb": "^17.0.0"
   },
   "engines": {
     "node": "^22.22.2 || ^24.15.0 || >=26.0.0",
