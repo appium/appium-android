@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [9.0.1](https://github.com/appium/appium-android/compare/io.appium.settings@9.0.0...io.appium.settings@9.0.1) (2026-11-11)
+
+### Miscellaneous Chores
+
+* **settings:** drop appium-adb 16 from peer dependencies ([#105](https://github.com/appium/appium-android/issues/105)) ([c9d9cf3](https://github.com/appium/appium-android/commit/c9d9cf3899b1014e3e5452efd4c3dcf967ec81d1))
+
+
 ## [9.0.0](https://github.com/appium/appium-android/compare/io.appium.settings@8.5.5...io.appium.settings@9.0.0) (2026-11-11)
 
 ### ⚠ BREAKING CHANGES
