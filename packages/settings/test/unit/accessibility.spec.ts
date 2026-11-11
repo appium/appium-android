@@ -61,10 +61,16 @@ describe('accessibility events service', function () {
     assert.deepEqual(store, {});
   });
 
-  it('removes the setting and turns accessibility off if it was the only service', async function () {
-    store = {enabled_accessibility_services: ACCESSIBILITY_EVENTS_SERVICE, accessibility_enabled: '1'};
+  it('removes the setting and restores the global toggle if it was off before enabling', async function () {
+    await client.setAccessibilityEventsServiceState(true);
     assert.equal(await client.setAccessibilityEventsServiceState(false), true);
     assert.deepEqual(store, {accessibility_enabled: '0'});
+  });
+
+  it('leaves the global toggle on if it was not switched on by the helper and it was the only service', async function () {
+    store = {enabled_accessibility_services: ACCESSIBILITY_EVENTS_SERVICE, accessibility_enabled: '1'};
+    assert.equal(await client.setAccessibilityEventsServiceState(false), true);
+    assert.deepEqual(store, {accessibility_enabled: '1'});
   });
 
   it('does not report the service as enabled while the global toggle is off', async function () {

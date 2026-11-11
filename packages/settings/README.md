@@ -349,8 +349,8 @@ await settingsApp.setAccessibilityEventsServiceState(true);
 await settingsApp.setAccessibilityEventsServiceState(false);
 ```
 
-Other enabled accessibility services are preserved. The global accessibility toggle is switched on if needed and,
-if it was off, switched off again when the service is disabled through the same `SettingsApp` instance. Changing the state requires the
+Other enabled accessibility services are preserved. The global accessibility toggle is switched on if needed and
+is switched off again only if the same `SettingsApp` instance has switched it on. Changing the state requires the
 `WRITE_SECURE_SETTINGS` permission (granted to the `adb shell` user).
 
 ## SMS

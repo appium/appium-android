@@ -16,8 +16,8 @@ const ACCESSIBILITY_ENABLED_SETTING = 'accessibility_enabled';
  * appium-uiautomator2-server).
  *
  * Other enabled accessibility services are left untouched. The global accessibility toggle
- * (`accessibility_enabled`) is switched on if needed. If it was off when the service has been
- * enabled through the same `SettingsApp` instance, it is switched off again on disabling.
+ * (`accessibility_enabled`) is switched on if needed. It is only switched off again on disabling
+ * if this `SettingsApp` instance has switched it on before; otherwise it is left as is.
  *
  * @param enabled - True to enable and false to disable the service
  * @returns True if the state has actually been changed
@@ -51,7 +51,7 @@ export async function setAccessibilityEventsServiceState(this: SettingsApp, enab
     } else {
       await this.adb.shell(['settings', 'delete', 'secure', ENABLED_SERVICES_SETTING]);
     }
-    if (this._accessibilityToggleWasOff || newServices.length === 0) {
+    if (this._accessibilityToggleWasOff) {
       await this.adb.setSetting('secure', ACCESSIBILITY_ENABLED_SETTING, 0);
     }
     this._accessibilityToggleWasOff = false;
