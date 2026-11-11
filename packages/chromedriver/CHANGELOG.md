@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [10.0.1](https://github.com/appium/appium-android/compare/appium-chromedriver@10.0.0...appium-chromedriver@10.0.1) (2026-11-11)
+
+### Miscellaneous Chores
+
+* **chromedriver:** remove unsupported versions from mapping file ([#104](https://github.com/appium/appium-android/issues/104)) ([1206851](https://github.com/appium/appium-android/commit/120685160a29e581e562056a5a370c6a2c83d1fc))
+
+
 ## [10.0.0](https://github.com/appium/appium-android/compare/appium-chromedriver@9.2.4...appium-chromedriver@10.0.0) (2026-11-11)
 
 ### ⚠ BREAKING CHANGES
