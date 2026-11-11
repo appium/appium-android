@@ -15,27 +15,47 @@ const ACCESSIBILITY_ENABLED_SETTING = 'accessibility_enabled';
  * (see the `DISABLE_SUPPRESS_ACCESSIBILITY_SERVICES` instrumentation argument of
  * appium-uiautomator2-server).
  *
- * Other enabled accessibility services are left untouched.
+ * Other enabled accessibility services are left untouched. The global accessibility toggle
+ * (`accessibility_enabled`) is switched on if needed. If it was off when the service has been
+ * enabled through the same `SettingsApp` instance, it is switched off again on disabling.
  *
  * @param enabled - True to enable and false to disable the service
  * @returns True if the state has actually been changed
  */
 export async function setAccessibilityEventsServiceState(this: SettingsApp, enabled: boolean): Promise<boolean> {
-  const services = await getEnabledServices(this);
-  const isEnabled = services.includes(ACCESSIBILITY_EVENTS_SERVICE);
-  if (enabled === isEnabled) {
-    return false;
-  }
+  const [services, isToggleOn] = await Promise.all([getEnabledServices(this), isAccessibilityToggleOn(this)]);
+  const isListed = services.includes(ACCESSIBILITY_EVENTS_SERVICE);
 
-  const newServices = enabled
-    ? [...services, ACCESSIBILITY_EVENTS_SERVICE]
-    : services.filter((s) => s !== ACCESSIBILITY_EVENTS_SERVICE);
-  if (newServices.length > 0) {
-    await this.adb.setSetting('secure', ENABLED_SERVICES_SETTING, newServices.join(':'));
+  if (enabled) {
+    if (isListed && isToggleOn) {
+      return false;
+    }
+    if (!isListed) {
+      await this.adb.setSetting(
+        'secure',
+        ENABLED_SERVICES_SETTING,
+        [...services, ACCESSIBILITY_EVENTS_SERVICE].join(':'),
+      );
+    }
+    if (!isToggleOn) {
+      this._accessibilityToggleWasOff = true;
+      await this.adb.setSetting('secure', ACCESSIBILITY_ENABLED_SETTING, 1);
+    }
   } else {
-    await this.adb.shell(['settings', 'delete', 'secure', ENABLED_SERVICES_SETTING]);
+    if (!isListed) {
+      return false;
+    }
+    const newServices = services.filter((s) => s !== ACCESSIBILITY_EVENTS_SERVICE);
+    if (newServices.length > 0) {
+      await this.adb.setSetting('secure', ENABLED_SERVICES_SETTING, newServices.join(':'));
+    } else {
+      await this.adb.shell(['settings', 'delete', 'secure', ENABLED_SERVICES_SETTING]);
+    }
+    if (this._accessibilityToggleWasOff || newServices.length === 0) {
+      await this.adb.setSetting('secure', ACCESSIBILITY_ENABLED_SETTING, 0);
+    }
+    this._accessibilityToggleWasOff = false;
   }
-  await this.adb.setSetting('secure', ACCESSIBILITY_ENABLED_SETTING, newServices.length > 0 ? 1 : 0);
   this.log.debug(
     LOG_PREFIX,
     `${enabled ? 'Enabled' : 'Disabled'} accessibility service '${ACCESSIBILITY_EVENTS_SERVICE}'`,
@@ -44,13 +64,19 @@ export async function setAccessibilityEventsServiceState(this: SettingsApp, enab
 }
 
 /**
- * @returns True if the accessibility service of Appium Settings is currently enabled
+ * @returns True if the accessibility service of Appium Settings is enabled and
+ * accessibility is switched on globally
  */
 export async function isAccessibilityEventsServiceEnabled(this: SettingsApp): Promise<boolean> {
-  return (await getEnabledServices(this)).includes(ACCESSIBILITY_EVENTS_SERVICE);
+  const [services, isToggleOn] = await Promise.all([getEnabledServices(this), isAccessibilityToggleOn(this)]);
+  return isToggleOn && services.includes(ACCESSIBILITY_EVENTS_SERVICE);
 }
 
 async function getEnabledServices(settingsApp: SettingsApp): Promise<string[]> {
   const output = (await settingsApp.adb.getSetting('secure', ENABLED_SERVICES_SETTING)).trim();
   return !output || output === 'null' ? [] : output.split(':').filter(Boolean);
+}
+
+async function isAccessibilityToggleOn(settingsApp: SettingsApp): Promise<boolean> {
+  return (await settingsApp.adb.getSetting('secure', ACCESSIBILITY_ENABLED_SETTING)).trim() === '1';
 }

@@ -36,6 +36,9 @@ export class SettingsApp {
   readonly adb: ADB;
   readonly log: Logger;
 
+  /** @internal Whether the global accessibility toggle has been switched on by `setAccessibilityEventsServiceState` */
+  _accessibilityToggleWasOff = false;
+
   setAnimationState = setAnimationState;
 
   setBluetoothState = setBluetoothState;
