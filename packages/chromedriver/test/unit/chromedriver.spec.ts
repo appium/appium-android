@@ -108,8 +108,6 @@ describe('chromedriver', function () {
             '/path/to/chromedriver-34',
             '/path/to/chromedriver-33',
             '/path/to/chromedriver-32',
-            '/path/to/chromedriver-31',
-            '/path/to/chromedriver-30',
           ]);
         const execStub = sandbox.stub(cd, '_execFunc');
         execStub
@@ -132,14 +130,6 @@ describe('chromedriver', function () {
           .onCall(4)
           .resolves({
             stdout: 'ChromeDriver 2.32.540469 (1881fd7f8641508feb5166b7cae561d87723cfa8)',
-          } as any)
-          .onCall(5)
-          .resolves({
-            stdout: 'ChromeDriver 2.31.540469 (1881fd7f8641508feb5166b7cae561d87723cfa8)',
-          } as any)
-          .onCall(6)
-          .resolves({
-            stdout: 'ChromeDriver 2.30.540469 (1881fd7f8641508feb5166b7cae561d87723cfa8)',
           } as any);
 
         const binPath = await (cd as any).getCompatibleChromedriver();
@@ -156,8 +146,6 @@ describe('chromedriver', function () {
             '/path/to/chromedriver-34',
             '/path/to/chromedriver-33',
             '/path/to/chromedriver-32',
-            '/path/to/chromedriver-31',
-            '/path/to/chromedriver-30',
           ]);
         const execStub = sandbox.stub(cd, '_execFunc');
         execStub
@@ -184,18 +172,10 @@ describe('chromedriver', function () {
           .onCall(5)
           .resolves({
             stdout: 'ChromeDriver 2.32.540469 (1881fd7f8641508feb5166b7cae561d87723cfa8)',
-          } as any)
-          .onCall(6)
-          .resolves({
-            stdout: 'ChromeDriver 2.31.540469 (1881fd7f8641508feb5166b7cae561d87723cfa8)',
-          } as any)
-          .onCall(7)
-          .resolves({
-            stdout: 'ChromeDriver 2.30.540469 (1881fd7f8641508feb5166b7cae561d87723cfa8)',
           } as any);
 
         const chromedrivers = await (cd as any).getChromedrivers(utils.CHROMEDRIVER_CHROME_MAPPING);
-        const expectedVersions = ['74.0.3729.6', '2.36', '2.35', '2.34', '2.33', '2.32', '2.31', '2.30'];
+        const expectedVersions = ['74.0.3729.6', '2.36', '2.35', '2.34', '2.33', '2.32'];
         for (let i = 0; i < chromedrivers.length; i++) {
           const chromedriver = chromedrivers[i];
           const expectedVersion = expectedVersions[i];
