@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [17.0.0](https://github.com/appium/appium-android/compare/appium-adb@16.4.1...appium-adb@17.0.0) (2026-11-11)
+
+### ⚠ BREAKING CHANGES
+
+* **adb:** the package requires the Appium 4 versions of the @appium/* dependencies and Node.js 22.22.2+, 24.15.0+ or 26+.
+
+### Features
+
+* **adb:** add Appium 4 support ([05ebba9](https://github.com/appium/appium-android/commit/05ebba9b2680f3a1ce6fbb11b2367fbb8098d6e5))
+
+
 ## [16.4.1](https://github.com/appium/appium-android/compare/appium-adb@16.4.0...appium-adb@16.4.1) (2026-11-07)
 
 ### Code Refactoring

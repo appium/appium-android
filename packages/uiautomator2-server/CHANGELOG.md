@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.0.0](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@10.7.13...appium-uiautomator2-server@11.0.0) (2026-11-11)
+
+### ⚠ BREAKING CHANGES
+
+* **uiautomator2-server:** the package requires Node.js 22.22.2+, 24.15.0+ or 26+.
+
+### Features
+
+* **uiautomator2-server:** add Appium 4 support ([c87efab](https://github.com/appium/appium-android/commit/c87efab9d22bc02dcf537c2205ce44ffce313fbc))
+
+
 ## [10.7.13](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@10.7.12...appium-uiautomator2-server@10.7.13) (2026-11-10)
 
 ### Performance Improvements

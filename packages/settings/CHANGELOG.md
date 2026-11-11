@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [9.0.0](https://github.com/appium/appium-android/compare/io.appium.settings@8.5.5...io.appium.settings@9.0.0) (2026-11-11)
+
+### ⚠ BREAKING CHANGES
+
+* **settings:** the package requires the Appium 4 versions of the @appium/* dependencies and Node.js 22.22.2+, 24.15.0+ or 26+.
+
+### Features
+
+* **settings:** add Appium 4 support ([fe5ecea](https://github.com/appium/appium-android/commit/fe5eceaa36ed8ffe7041647a09a406dbe5e1d90e))
+
+
 ## [8.5.5](https://github.com/appium/appium-android/compare/io.appium.settings@8.5.4...io.appium.settings@8.5.5) (2026-11-07)
 
 ### Code Refactoring

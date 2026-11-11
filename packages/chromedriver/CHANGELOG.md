@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [10.0.0](https://github.com/appium/appium-android/compare/appium-chromedriver@9.2.4...appium-chromedriver@10.0.0) (2026-11-11)
+
+### ⚠ BREAKING CHANGES
+
+* **chromedriver:** the package requires the Appium 4 versions of the @appium/* dependencies and Node.js 22.22.2+, 24.15.0+ or 26+.
+* **chromedriver:** clients relying on the legacy JSONWP protocol or on chromeOptions.w3c: false to force it now get a W3C session instead.
+* **chromedriver:** Chromedriver versions older than 2.32, which have no W3C support, are not supported anymore.
+
+### Features
+
+* **chromedriver:** add Appium 4 support and drop JSONWP protocol support ([a1e508e](https://github.com/appium/appium-android/commit/a1e508e5f09ba85587b99022ca096e59aef00329))
+
+
 ## [9.2.4](https://github.com/appium/appium-android/compare/appium-chromedriver@9.2.3...appium-chromedriver@9.2.4) (2026-11-10)
 
 ### Miscellaneous Chores
