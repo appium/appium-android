@@ -2,6 +2,7 @@ import type {Logger} from '@appium/logger';
 import type {ADB} from 'appium-adb';
 import {waitForCondition} from 'asyncbox';
 
+import {setAccessibilityEventsServiceState, isAccessibilityEventsServiceEnabled} from './commands/accessibility.js';
 import {setAnimationState} from './commands/animation.js';
 import {setBluetoothState, unpairAllBluetoothDevices} from './commands/bluetooth.js';
 import {getClipboard} from './commands/clipboard.js';
@@ -35,6 +36,9 @@ export class SettingsApp {
   readonly adb: ADB;
   readonly log: Logger;
 
+  /** @internal Whether the global accessibility toggle has been switched on by `setAccessibilityEventsServiceState` */
+  _accessibilityToggleWasOff = false;
+
   setAnimationState = setAnimationState;
 
   setBluetoothState = setBluetoothState;
@@ -53,6 +57,9 @@ export class SettingsApp {
 
   setDataState = setDataState;
   setWifiState = setWifiState;
+
+  setAccessibilityEventsServiceState = setAccessibilityEventsServiceState;
+  isAccessibilityEventsServiceEnabled = isAccessibilityEventsServiceEnabled;
 
   getNotifications = getNotifications;
   adjustNotificationsPermissions = adjustNotificationsPermissions;
