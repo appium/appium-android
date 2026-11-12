@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [9.1.0](https://github.com/appium/appium-android/compare/io.appium.settings@9.0.1...io.appium.settings@9.1.0) (2026-11-12)
+
+### Features
+
+* **settings:** add no-op accessibility events service ([#103](https://github.com/appium/appium-android/issues/103)) ([b6d36cb](https://github.com/appium/appium-android/commit/b6d36cb6db2eea35410a981f8382a3d107b7349d))
+
+
 ## [9.0.1](https://github.com/appium/appium-android/compare/io.appium.settings@9.0.0...io.appium.settings@9.0.1) (2026-11-11)
 
 ### Miscellaneous Chores
