@@ -213,6 +213,54 @@ describe('accessibility events service', function () {
       assert.equal(store.accessibility_enabled, '1');
     });
 
+    it('drops the pending restoration if a failed enabling has seen the toggle switched off', async function () {
+      await client.setAccessibilityEventsServiceState(true);
+      failFirstToggleRestoration();
+      await assert.rejects(client.setAccessibilityEventsServiceState(false), /denied/);
+      // the user switches accessibility off, then switching it on by the helper fails
+      store.accessibility_enabled = '0';
+      (client.adb.setSetting as sinon.SinonStub).callsFake(
+        async (_ns: string, name: string, value: string | number) => {
+          if (name === 'accessibility_enabled') {
+            throw new Error('denied');
+          }
+          store[name] = `${value}`;
+          return '';
+        },
+      );
+      await assert.rejects(client.setAccessibilityEventsServiceState(true), /denied/);
+
+      // the user switches accessibility on again, so the stale marker must not switch it off
+      store = {enabled_accessibility_services: ACCESSIBILITY_EVENTS_SERVICE, accessibility_enabled: '1'};
+      await client.setAccessibilityEventsServiceState(false);
+      assert.equal(store.accessibility_enabled, '1');
+    });
+
+    it('keeps the pending restoration if a failed enabling has seen the toggle still on', async function () {
+      await client.setAccessibilityEventsServiceState(true);
+      failFirstToggleRestoration();
+      await assert.rejects(client.setAccessibilityEventsServiceState(false), /denied/);
+      (client.adb.setSetting as sinon.SinonStub).callsFake(
+        async (_ns: string, name: string, value: string | number) => {
+          if (name === 'enabled_accessibility_services') {
+            throw new Error('denied');
+          }
+          store[name] = `${value}`;
+          return '';
+        },
+      );
+      await assert.rejects(client.setAccessibilityEventsServiceState(true), /denied/);
+
+      (client.adb.setSetting as sinon.SinonStub).callsFake(
+        async (_ns: string, name: string, value: string | number) => {
+          store[name] = `${value}`;
+          return '';
+        },
+      );
+      assert.equal(await client.setAccessibilityEventsServiceState(false), true);
+      assert.equal(store.accessibility_enabled, '0');
+    });
+
     it('keeps the pending restoration if removing the service fails', async function () {
       await client.setAccessibilityEventsServiceState(true);
       (client.adb.shell as sinon.SinonStub).rejects(new Error('shell failed'));

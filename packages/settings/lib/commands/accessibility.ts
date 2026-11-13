@@ -32,7 +32,8 @@ export async function setAccessibilityEventsServiceState(this: SettingsApp, enab
     if (isListed && isToggleOn) {
       return false;
     }
-    const previousMarker = this._accessibilityToggleOffServices;
+    // A pending restoration is only applicable while the toggle is still on
+    const previousMarker = isToggleOn ? this._accessibilityToggleOffServices : null;
     try {
       if (!isListed) {
         await this.adb.setSetting(
