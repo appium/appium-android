@@ -117,4 +117,46 @@ describe('accessibility events service', function () {
     await client.setAccessibilityEventsServiceState(false);
     assert.deepEqual(store, {enabled_accessibility_services: 'com.foo/.Svc', accessibility_enabled: '1'});
   });
+
+  describe('rollback on failure', function () {
+    function failToggleWrite() {
+      (client.adb.setSetting as sinon.SinonStub)
+        .withArgs('secure', 'accessibility_enabled')
+        .rejects(new Error('denied'));
+    }
+
+    it('removes the added service if switching the global toggle on fails', async function () {
+      failToggleWrite();
+      await assert.rejects(client.setAccessibilityEventsServiceState(true), /denied/);
+      assert.deepEqual(store, {});
+    });
+
+    it('restores the previous services list if switching the global toggle on fails', async function () {
+      store = {enabled_accessibility_services: 'com.foo/.Svc'};
+      failToggleWrite();
+      await assert.rejects(client.setAccessibilityEventsServiceState(true), /denied/);
+      assert.deepEqual(store, {enabled_accessibility_services: 'com.foo/.Svc'});
+    });
+
+    it('does not touch the services list if the service was already listed', async function () {
+      store = {enabled_accessibility_services: ACCESSIBILITY_EVENTS_SERVICE};
+      failToggleWrite();
+      await assert.rejects(client.setAccessibilityEventsServiceState(true), /denied/);
+      assert.deepEqual(store, {enabled_accessibility_services: ACCESSIBILITY_EVENTS_SERVICE});
+    });
+
+    it('does not remember switching the global toggle on after a failure', async function () {
+      failToggleWrite();
+      await assert.rejects(client.setAccessibilityEventsServiceState(true), /denied/);
+      store = {enabled_accessibility_services: ACCESSIBILITY_EVENTS_SERVICE, accessibility_enabled: '1'};
+      await client.setAccessibilityEventsServiceState(false);
+      assert.deepEqual(store, {accessibility_enabled: '1'});
+    });
+
+    it('rethrows the original error if the rollback fails too', async function () {
+      failToggleWrite();
+      (client.adb.shell as sinon.SinonStub).rejects(new Error('rollback failed'));
+      await assert.rejects(client.setAccessibilityEventsServiceState(true), /denied/);
+    });
+  });
 });
