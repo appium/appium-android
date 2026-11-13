@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [15.1.20](https://github.com/appium/appium-android/compare/appium-android-driver@15.1.19...appium-android-driver@15.1.20) (2026-11-13)
+
+### Miscellaneous Chores
+
+* **settings:** update dependency asyncbox to v7 ([#112](https://github.com/appium/appium-android/issues/112)) ([010a80f](https://github.com/appium/appium-android/commit/010a80f062a767e2181f1c5f3277ac986c002794))
+
+
 ## [15.1.19](https://github.com/appium/appium-android/compare/appium-android-driver@15.1.18...appium-android-driver@15.1.19) (2026-11-13)
 
 ### Code Refactoring

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [10.0.4](https://github.com/appium/appium-android/compare/appium-chromedriver@10.0.3...appium-chromedriver@10.0.4) (2026-11-13)
+
+### Miscellaneous Chores
+
+* **settings:** update dependency asyncbox to v7 ([#112](https://github.com/appium/appium-android/issues/112)) ([010a80f](https://github.com/appium/appium-android/commit/010a80f062a767e2181f1c5f3277ac986c002794))
+
+
 ## [10.0.3](https://github.com/appium/appium-android/compare/appium-chromedriver@10.0.2...appium-chromedriver@10.0.3) (2026-11-13)
 
 ### Miscellaneous Chores
