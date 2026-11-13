@@ -6,10 +6,10 @@ name: appium-uiautomator2-server CI
 on:
   push:
     branches: [main]
-    paths: ['packages/uiautomator2-server/**', 'packages/xpath2-processor/**', '.github/workflows/uiautomator2-server-ci.yml']
+    paths: ['packages/uiautomator2-server/**', '.github/workflows/uiautomator2-server-ci.yml']
   pull_request:
     branches: [main]
-    paths: ['packages/uiautomator2-server/**', 'packages/xpath2-processor/**', '.github/workflows/uiautomator2-server-ci.yml']
+    paths: ['packages/uiautomator2-server/**', '.github/workflows/uiautomator2-server-ci.yml']
 
 permissions:
   contents: read
