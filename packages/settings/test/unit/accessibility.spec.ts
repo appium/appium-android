@@ -101,4 +101,20 @@ describe('accessibility events service', function () {
     await client.setAccessibilityEventsServiceState(false);
     assert.deepEqual(store, {enabled_accessibility_services: 'com.foo/.Svc', accessibility_enabled: '1'});
   });
+
+  it('recognizes the fully qualified component name', async function () {
+    const flat = 'io.appium.settings/io.appium.settings.AccessibilityEventsService';
+    store = {enabled_accessibility_services: `com.foo/.Svc:${flat}`, accessibility_enabled: '1'};
+    assert.equal(await client.isAccessibilityEventsServiceEnabled(), true);
+    assert.equal(await client.setAccessibilityEventsServiceState(true), false);
+    assert.equal(await client.setAccessibilityEventsServiceState(false), true);
+    assert.deepEqual(store, {enabled_accessibility_services: 'com.foo/.Svc', accessibility_enabled: '1'});
+  });
+
+  it('keeps the global toggle on if another service has been enabled since the helper switched it on', async function () {
+    await client.setAccessibilityEventsServiceState(true);
+    store.enabled_accessibility_services += ':com.foo/.Svc';
+    await client.setAccessibilityEventsServiceState(false);
+    assert.deepEqual(store, {enabled_accessibility_services: 'com.foo/.Svc', accessibility_enabled: '1'});
+  });
 });

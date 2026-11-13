@@ -17,14 +17,15 @@ const ACCESSIBILITY_ENABLED_SETTING = 'accessibility_enabled';
  *
  * Other enabled accessibility services are left untouched. The global accessibility toggle
  * (`accessibility_enabled`) is switched on if needed. It is only switched off again on disabling
- * if this `SettingsApp` instance has switched it on before; otherwise it is left as is.
+ * if this `SettingsApp` instance has switched it on before and no other services have been
+ * enabled since; otherwise it is left as is.
  *
  * @param enabled - True to enable and false to disable the service
  * @returns True if the state has actually been changed
  */
 export async function setAccessibilityEventsServiceState(this: SettingsApp, enabled: boolean): Promise<boolean> {
   const [services, isToggleOn] = await Promise.all([getEnabledServices(this), isAccessibilityToggleOn(this)]);
-  const isListed = services.includes(ACCESSIBILITY_EVENTS_SERVICE);
+  const isListed = services.some(isOurService);
 
   if (enabled) {
     if (isListed && isToggleOn) {
@@ -38,23 +39,24 @@ export async function setAccessibilityEventsServiceState(this: SettingsApp, enab
       );
     }
     if (!isToggleOn) {
-      this._accessibilityToggleWasOff = true;
+      this._accessibilityToggleOffServices = services.filter((s) => !isOurService(s)).map(normalizeComponent);
       await this.adb.setSetting('secure', ACCESSIBILITY_ENABLED_SETTING, 1);
     }
   } else {
     if (!isListed) {
       return false;
     }
-    const newServices = services.filter((s) => s !== ACCESSIBILITY_EVENTS_SERVICE);
+    const newServices = services.filter((s) => !isOurService(s));
     if (newServices.length > 0) {
       await this.adb.setSetting('secure', ENABLED_SERVICES_SETTING, newServices.join(':'));
     } else {
       await this.adb.shell(['settings', 'delete', 'secure', ENABLED_SERVICES_SETTING]);
     }
-    if (this._accessibilityToggleWasOff) {
+    const initialServices = this._accessibilityToggleOffServices;
+    if (initialServices && newServices.every((s) => initialServices.includes(normalizeComponent(s)))) {
       await this.adb.setSetting('secure', ACCESSIBILITY_ENABLED_SETTING, 0);
     }
-    this._accessibilityToggleWasOff = false;
+    this._accessibilityToggleOffServices = null;
   }
   this.log.debug(
     LOG_PREFIX,
@@ -69,7 +71,7 @@ export async function setAccessibilityEventsServiceState(this: SettingsApp, enab
  */
 export async function isAccessibilityEventsServiceEnabled(this: SettingsApp): Promise<boolean> {
   const [services, isToggleOn] = await Promise.all([getEnabledServices(this), isAccessibilityToggleOn(this)]);
-  return isToggleOn && services.includes(ACCESSIBILITY_EVENTS_SERVICE);
+  return isToggleOn && services.some(isOurService);
 }
 
 async function getEnabledServices(settingsApp: SettingsApp): Promise<string[]> {
@@ -79,4 +81,14 @@ async function getEnabledServices(settingsApp: SettingsApp): Promise<string[]> {
 
 async function isAccessibilityToggleOn(settingsApp: SettingsApp): Promise<boolean> {
   return (await settingsApp.adb.getSetting('secure', ACCESSIBILITY_ENABLED_SETTING)).trim() === '1';
+}
+
+/** Expands the short `pkg/.Cls` form to `pkg/pkg.Cls`, as stored by `ComponentName.flattenToString()` */
+function normalizeComponent(component: string): string {
+  const [pkg, cls] = component.split('/');
+  return cls?.startsWith('.') ? `${pkg}/${pkg}${cls}` : component;
+}
+
+function isOurService(component: string): boolean {
+  return normalizeComponent(component) === normalizeComponent(ACCESSIBILITY_EVENTS_SERVICE);
 }

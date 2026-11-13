@@ -36,8 +36,11 @@ export class SettingsApp {
   readonly adb: ADB;
   readonly log: Logger;
 
-  /** @internal Whether the global accessibility toggle has been switched on by `setAccessibilityEventsServiceState` */
-  _accessibilityToggleWasOff = false;
+  /**
+   * @internal Normalized services that were listed when `setAccessibilityEventsServiceState`
+   * switched the global accessibility toggle on; null if it has not done so
+   */
+  _accessibilityToggleOffServices: string[] | null = null;
 
   setAnimationState = setAnimationState;
 
