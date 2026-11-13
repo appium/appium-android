@@ -4,13 +4,12 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 
-import {util, timing} from '@appium/support';
+import {util, timing, net as supportNet} from '@appium/support';
 import type {StringRecord} from '@appium/types';
 import {Chromedriver} from 'appium-chromedriver';
 import type {ChromedriverOpts} from 'appium-chromedriver';
 import {sleep} from 'asyncbox';
 import axios from 'axios';
-import {findAPortNotInUse} from 'portscanner';
 
 import type {AndroidDriver, AndroidDriverOpts} from '../../driver.js';
 import type {
@@ -380,23 +379,6 @@ export async function dismissChromeWelcome(this: AndroidDriver): Promise<void> {
 // #endregion
 // #region Internal Helper Functions
 
-async function getFreePort(): Promise<number> {
-  return await new Promise((resolve, reject) => {
-    const srv = net.createServer();
-    srv.listen(0, () => {
-      const address = srv.address();
-      let port: number;
-      if (address && typeof address === 'object' && 'port' in address) {
-        port = address.port;
-      } else {
-        reject(new Error('Cannot determine any free port number'));
-        return;
-      }
-      srv.close(() => resolve(port));
-    });
-  });
-}
-
 /**
  * https://chromedevtools.github.io/devtools-protocol/
  */
@@ -555,7 +537,7 @@ async function allocateDevtoolsChannel(
   const port = await DEVTOOLS_PORT_ALLOCATION_GUARD(async () => {
     let localPort: number;
     try {
-      localPort = await findAPortNotInUse(startPort, endPort);
+      localPort = await supportNet.getFreePort({port: [startPort, endPort]});
     } catch {
       throw new Error(
         `Cannot find any free port to forward the Devtools socket ` +
@@ -801,7 +783,7 @@ async function getChromedriverPort(this: AndroidDriver, portSpec?: PortSpec): Pr
   // if the user didn't give us any specific information about chromedriver
   // port ranges, just find any free port
   if (!portSpec) {
-    const port = await getFreePort();
+    const port = await supportNet.getFreePort();
     this.log.debug(`A port was not given, using random free port: ${port}`);
     return port;
   }
@@ -820,7 +802,7 @@ async function getChromedriverPort(this: AndroidDriver, portSpec?: PortSpec): Pr
     }
     this.log.debug(`Checking port range ${port}:${stopPort}`);
     try {
-      foundPort = await findAPortNotInUse(port, stopPort);
+      foundPort = await supportNet.getFreePort({port: [port, stopPort]});
       break;
     } catch {
       this.log.debug(`Nothing in port range ${port}:${stopPort} was available`);
