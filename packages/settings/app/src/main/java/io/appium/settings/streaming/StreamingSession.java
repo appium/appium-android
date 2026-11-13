@@ -193,6 +193,7 @@ public abstract class StreamingSession implements Runnable {
     public void stopSession() {
         stopped = true;
         unblockAccept();
+        shutdownQuietly(clientSocket);
         closeQuietly(clientSocket);
     }
 
@@ -340,11 +341,25 @@ public abstract class StreamingSession implements Runnable {
             if (writerThread != null) {
                 writerThread.interrupt();
             }
+            shutdownQuietly(clientSocket);
             closeQuietly(clientSocket);
             closeQuietly(serverSocket);
             if (listener != null) {
                 listener.onSessionEnded();
             }
+        }
+    }
+
+    // close() alone does not end the connection while the disconnect watcher is blocked in
+    // read() on the same socket, so the host would never see EOF after a capture failure.
+    private static void shutdownQuietly(LocalSocket socket) {
+        if (socket == null) {
+            return;
+        }
+        try {
+            socket.shutdownOutput();
+            socket.shutdownInput();
+        } catch (IOException ignored) {
         }
     }
 
