@@ -6,6 +6,7 @@ import type {BiDiEvent} from '@appium/types';
 import type {AccessUnit, JpegFrame} from 'io.appium.settings';
 
 import {UnitBatcher} from '../../../lib/commands/media-stream/batcher.js';
+import {parseVideoEncoders} from '../../../lib/commands/media-stream/capabilities.js';
 import {readJpegSize} from '../../../lib/commands/media-stream/jpeg.js';
 import {MediaStream} from '../../../lib/commands/media-stream/stream.js';
 import type {MediaUnit} from '../../../lib/commands/media-stream/types.js';
@@ -82,7 +83,14 @@ function setup(kind: 'video' | 'jpeg', subscribed = true, extra: Record<string, 
     },
   );
   const tick = () => new Promise((r) => setImmediate(r));
-  return {session, events, state, emitter, stream, tick};
+  // A video stream is only started once the encoder reported its config
+  const begin = async () => {
+    if (kind === 'video') {
+      session.push(au('video', 0, {isConfig: true, data: Buffer.from('C0')}));
+    }
+    return await stream.start();
+  };
+  return {session, events, state, emitter, stream, tick, begin};
 }
 
 const unitEvents = (events: BiDiEvent[]) => events.filter((e) => e.method === 'appium:mediaStream.units');
@@ -128,8 +136,8 @@ describe('readJpegSize', function () {
 
 describe('MediaStream', function () {
   it('inlines config into keyframes and does not forward it', async function () {
-    const {session, events, stream, tick} = setup('video');
-    await stream.start();
+    const {session, events, stream, tick, begin} = setup('video');
+    await begin();
     session.push(au('video', 1, {isConfig: true, data: Buffer.from('CFG')}));
     session.push(au('video', 2, {isKeyFrame: true, data: Buffer.from('KEY')}));
     session.push(au('video', 3));
@@ -143,18 +151,17 @@ describe('MediaStream', function () {
   });
 
   it('announces a format change on the second config', async function () {
-    const {session, events, stream, tick} = setup('video');
-    await stream.start();
+    const {session, events, stream, tick, begin} = setup('video');
+    await begin();
     session.push(au('video', 1, {isConfig: true}));
-    session.push(au('video', 2, {isConfig: true}));
     await tick();
     assert.equal(events.filter((e) => e.method === 'appium:mediaStream.formatChanged').length, 1);
     await stream.stop();
   });
 
   it('waits for a keyframe after the subscriber appears', async function () {
-    const {session, events, state, stream, tick} = setup('video', false);
-    await stream.start();
+    const {session, events, state, stream, tick, begin} = setup('video', false);
+    await begin();
     session.push(au('video', 1, {isKeyFrame: true}));
     await tick();
     state.subscribed = true;
@@ -169,8 +176,8 @@ describe('MediaStream', function () {
   });
 
   it('marks audio reliable and not part of the video chain', async function () {
-    const {session, events, stream, tick} = setup('video', true, {audio: true});
-    await stream.start();
+    const {session, events, stream, tick, begin} = setup('video', true, {audio: true});
+    await begin();
     session.push(au('audio', 1));
     await tick();
     assert.deepEqual(unitEvents(events)[0].delivery, {policy: 'reliable'});
@@ -215,8 +222,8 @@ describe('MediaStream', function () {
   });
 
   it('requests a keyframe when a subscriber appears and when core starts dropping, rate-limited', async function () {
-    const {session, state, emitter, stream, tick} = setup('video', false);
-    await stream.start();
+    const {session, state, emitter, stream, tick, begin} = setup('video', false);
+    await begin();
     session.push(au('video', 1, {isKeyFrame: true}));
     await tick();
     assert.equal(session.keyFrameRequests, 0);
@@ -299,6 +306,7 @@ describe('MediaStream', function () {
           start: async () => true,
           stop: async () => true,
           async *accessUnits() {
+            yield au('video', 0, {isConfig: true});
             await gate;
             yield au('audio', 1);
           },
@@ -315,5 +323,150 @@ describe('MediaStream', function () {
       assert.equal(events.slice(endedAt + 1).length, 0);
       assert.equal(unitEvents(events).length, 0);
     });
+  });
+
+  describe('first output of a video stream', function () {
+    it('announces started only after the encoder reported its config', async function () {
+      const {session, events, stream, tick} = setup('video');
+      const started = stream.start();
+      await tick();
+      assert.equal(events.length, 0);
+      session.push(au('video', 0, {isConfig: true}));
+      await started;
+      assert.deepEqual(
+        events.map((e) => e.method),
+        ['appium:mediaStream.started'],
+      );
+      await stream.stop();
+    });
+
+    it('fails and stops the device session if the stream ends without any output', async function () {
+      let stops = 0;
+      const events: BiDiEvent[] = [];
+      const stream = new MediaStream(
+        {
+          start: async () => true,
+          stop: async () => {
+            stops++;
+            return true;
+          },
+          async *accessUnits() {},
+        } as any,
+        {kind: 'video', batchMs: 0, idleHeartbeatMs: 0},
+        {emit: (e) => events.push(e), emitter: new EventEmitter(), hasSubscribers: () => true, log, onEnded: () => {}},
+      );
+      await assert.rejects(stream.start(), /ended before producing any output.*device encoder may not support/s);
+      await stream.stop('failed to start');
+      assert.equal(stops, 1);
+      assert.deepEqual(events, [], 'neither started nor ended is announced');
+    });
+
+    it('fails if no output arrives in time', async function (t) {
+      t.mock.timers.enable({apis: ['setTimeout']});
+      let stops = 0;
+      let closeSource!: () => void;
+      const sourceClosed = new Promise<void>((resolve) => (closeSource = resolve));
+      const stream = new MediaStream(
+        {
+          start: async () => true,
+          stop: async () => {
+            stops++;
+            closeSource();
+            return true;
+          },
+          async *accessUnits() {
+            yield await sourceClosed;
+          },
+        } as any,
+        {kind: 'video', batchMs: 0, idleHeartbeatMs: 0},
+        {emit() {}, emitter: new EventEmitter(), hasSubscribers: () => true, log, onEnded() {}},
+      );
+      const started = assert.rejects(stream.start(), /no output within \d+ms.*device encoder may not support/s);
+      await new Promise((r) => setImmediate(r));
+      t.mock.timers.tick(10_000);
+      await started;
+      await stream.stop('failed to start');
+      assert.equal(stops, 1);
+      t.mock.timers.reset();
+    });
+
+    it('does not wait for output on jpeg streams', async function () {
+      const {events, stream} = setup('jpeg');
+      await stream.start();
+      assert.deepEqual(
+        events.map((e) => e.method),
+        ['appium:mediaStream.started'],
+      );
+      await stream.stop();
+    });
+  });
+});
+describe('parseVideoEncoders', function () {
+  // Trimmed from `dumpsys media.player` of an API 36 emulator
+  const dump = `
+Decoder infos by media types:
+=============================
+
+Media type 'video/hevc':
+  Decoder "c2.goldfish.hevc.decoder" supports
+    attributes: 0xa: [
+      encoder: 0,
+      vendor: 1,
+      software-only: 0,
+      hw-accelerated: 1 ]
+    details: AMessage(what = 0x00000000) = {
+        string size-range = "64x64-4096x4096"
+      }
+
+Encoder infos by media types:
+=============================
+
+Media type 'audio/mp4a-latm':
+  Encoder "c2.android.aac.encoder" supports
+    attributes: 0x5: [
+      encoder: 1,
+      vendor: 0,
+      software-only: 1,
+      hw-accelerated: 0 ]
+
+Media type 'video/avc':
+  Encoder "c2.android.avc.encoder" supports
+    attributes: 0x5: [
+      encoder: 1,
+      vendor: 0,
+      software-only: 1,
+      hw-accelerated: 0 ]
+    details: AMessage(what = 0x00000000) = {
+        string size-range = "16x16-2048x2048"
+      }
+Media type 'video/hevc':
+  Encoder "c2.android.hevc.encoder" supports
+    attributes: 0x5: [
+      encoder: 1,
+      vendor: 0,
+      software-only: 1,
+      hw-accelerated: 0 ]
+    details: AMessage(what = 0x00000000) = {
+        string size-range = "2x2-512x512"
+      }
+  Encoder "c2.vendor.hevc.encoder" supports
+    attributes: 0xa: [
+      encoder: 1,
+      vendor: 1,
+      software-only: 0,
+      hw-accelerated: 1 ]
+`;
+
+  it('lists the video encoders with their limits and ignores decoders and audio', function () {
+    assert.deepEqual(parseVideoEncoders(dump), [
+      {name: 'c2.android.avc.encoder', codec: 'h264', softwareOnly: true, maxWidth: 2048, maxHeight: 2048},
+      {name: 'c2.android.hevc.encoder', codec: 'hevc', softwareOnly: true, maxWidth: 512, maxHeight: 512},
+      {name: 'c2.vendor.hevc.encoder', codec: 'hevc', softwareOnly: false},
+    ]);
+  });
+
+  it('returns null if the device does not list its codecs', function () {
+    assert.equal(parseVideoEncoders(''), null);
+    assert.equal(parseVideoEncoders("Can't find service: media.player"), null);
   });
 });

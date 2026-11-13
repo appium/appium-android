@@ -9,6 +9,7 @@ import {
   AUDIO_CHANNELS,
   AUDIO_SAMPLE_RATE,
   BACKPRESSURE_EVENT_NAME,
+  FIRST_UNIT_TIMEOUT_MS,
   KEYFRAME_REQUEST_MIN_INTERVAL_MS,
   MEDIA_ENDED_EVENT,
   MEDIA_FORMAT_CHANGED_EVENT,
@@ -51,6 +52,9 @@ export class MediaStream {
   // Whether the device-side session is ours to stop (false if another client's stream was found running)
   private owned = false;
   private announced = false;
+  private endReason = 'ended';
+  private firstUnitSeen!: () => void;
+  private readonly firstUnit = new Promise<void>((resolve) => (this.firstUnitSeen = resolve));
   private stopped = false;
 
   constructor(
@@ -83,14 +87,52 @@ export class MediaStream {
     }
 
     this.deps.emitter.on(BACKPRESSURE_EVENT_NAME, this.onBackpressure);
-    const info = this.info();
-    this.announced = true;
-    this.deps.emit({method: MEDIA_STARTED_EVENT, params: {...info}});
     if (opts.kind === 'jpeg' && opts.idleHeartbeatMs > 0) {
       this.heartbeat = setInterval(() => this.replayLastJpeg(), opts.idleHeartbeatMs);
     }
     this.pump = this.runPump();
-    return info;
+    if (opts.kind === 'jpeg') {
+      // A static screen yields no frames, so there is nothing to wait for
+      this.announce();
+    } else {
+      await this.waitForFirstUnit(this.pump);
+    }
+    return this.info();
+  }
+
+  // Fails fast if the device encoder rejected the configuration (the on-device session
+  // then ends without any output) or never produced anything
+  private async waitForFirstUnit(pump: Promise<void>): Promise<void> {
+    let timer: NodeJS.Timeout | undefined;
+    const hint =
+      'The device encoder may not support the requested configuration, check the logcat of io.appium.settings.';
+    try {
+      await Promise.race([
+        this.firstUnit,
+        new Promise<never>((_resolve, reject) => {
+          timer = setTimeout(
+            () =>
+              reject(
+                new Error(`The ${this.kind} stream produced no output within ${FIRST_UNIT_TIMEOUT_MS}ms. ${hint}`),
+              ),
+            FIRST_UNIT_TIMEOUT_MS,
+          );
+        }),
+        pump.then(() => {
+          throw new Error(`The ${this.kind} stream ended before producing any output (${this.endReason}). ${hint}`);
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  private announce(): void {
+    if (this.announced || this.stopped) {
+      return;
+    }
+    this.announced = true;
+    this.deps.emit({method: MEDIA_STARTED_EVENT, params: {...this.info()}});
   }
 
   get isStopped(): boolean {
@@ -153,6 +195,7 @@ export class MediaStream {
     } catch (e) {
       reason = `error: ${(e as Error).message}`;
     }
+    this.endReason = reason;
     await this.finish(reason);
   }
 
@@ -160,6 +203,9 @@ export class MediaStream {
     if (this.stopped) {
       return;
     }
+    // The config unit counts too: it is the first thing the encoder reports
+    this.announce();
+    this.firstUnitSeen();
     if (au.track === 'video' && au.isConfig) {
       // Config is never forwarded; it is prepended to every keyframe instead
       if (++this.configCount > 1) {

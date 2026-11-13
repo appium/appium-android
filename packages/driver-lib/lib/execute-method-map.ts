@@ -252,6 +252,9 @@ export const executeMethodMap = {
       optional: ['codec', 'fps', 'bitrate', 'quality', 'scale', 'resolution', 'audio', 'batchMs', 'idleHeartbeatMs'],
     },
   },
+  'mobile: getMediaStreamCapabilities': {
+    command: 'mobileGetMediaStreamCapabilities',
+  },
   'mobile: stopMediaStream': {
     command: 'mobileStopMediaStream',
     params: {

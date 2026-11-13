@@ -153,7 +153,12 @@ import {
   mobileStartMediaProjectionRecording,
   mobileStopMediaProjectionRecording,
 } from './commands/media-projection.js';
-import {mobileStartMediaStream, mobileStopMediaStream, stopAllMediaStreams} from './commands/media-stream/exports.js';
+import {
+  mobileGetMediaStreamCapabilities,
+  mobileStartMediaStream,
+  mobileStopMediaStream,
+  stopAllMediaStreams,
+} from './commands/media-stream/exports.js';
 import type {MediaStream} from './commands/media-stream/stream.js';
 import {mobileSendTrimMemory} from './commands/memory.js';
 import {
@@ -594,6 +599,7 @@ Object.assign(AndroidDriver.prototype, {
   mobileShell,
 
   // media-stream
+  mobileGetMediaStreamCapabilities,
   mobileStartMediaStream,
   mobileStopMediaStream,
 

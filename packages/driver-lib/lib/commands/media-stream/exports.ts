@@ -3,6 +3,7 @@ import {errors} from 'appium/driver.js';
 import type {AndroidDriverConstraints} from '../../constraints.js';
 import type {AndroidDriver} from '../../driver.js';
 import {BIDI_EVENT_NAME} from '../bidi/constants.js';
+import {getCapabilities, queryVideoEncoders} from './capabilities.js';
 import {
   DEFAULT_BATCH_MS,
   DEFAULT_IDLE_HEARTBEAT_MS,
@@ -11,13 +12,16 @@ import {
   MIN_API_LEVEL,
 } from './constants.js';
 import {MediaStream} from './stream.js';
-import type {MediaKind, MediaStreamInfo, StartMediaStreamOpts} from './types.js';
+import type {MediaKind, MediaStreamCapabilities, MediaStreamInfo, StartMediaStreamOpts} from './types.js';
 
 declare module '../../driver.js' {
   interface AndroidDriver<C extends AndroidDriverConstraints> {
     mobileStartMediaStream(
       ...args: Parameters<typeof mobileStartMediaStream>
     ): ReturnType<typeof mobileStartMediaStream>;
+    mobileGetMediaStreamCapabilities(
+      ...args: Parameters<typeof mobileGetMediaStreamCapabilities>
+    ): ReturnType<typeof mobileGetMediaStreamCapabilities>;
     mobileStopMediaStream(...args: Parameters<typeof mobileStopMediaStream>): ReturnType<typeof mobileStopMediaStream>;
   }
 }
@@ -70,6 +74,12 @@ export async function mobileStartMediaStream(
       `Media streaming is not available on API Level ${apiLevel}. Minimum required API Level is ${MIN_API_LEVEL}.`,
     );
   }
+  if (kind === 'video' && codec === 'hevc') {
+    const encoders = await queryVideoEncoders(this.adb);
+    if (encoders && !encoders.some((e) => e.codec === 'hevc')) {
+      throw new errors.InvalidArgumentError('This device has no HEVC encoder, use codec=h264');
+    }
+  }
   const streams = (this._mediaStreams ??= new Map());
   for (const [id, s] of streams) {
     if (s.isStopped) {
@@ -103,6 +113,14 @@ export async function mobileStartMediaStream(
     await stream.stop('failed to start');
     throw e instanceof TypeError || e instanceof RangeError ? new errors.InvalidArgumentError(e.message) : e;
   }
+}
+
+/**
+ * Reports whether media streaming works on the device, and which video codecs it can encode.
+ * A software-only encoder may be limited to small frame sizes, the stream is scaled down to fit.
+ */
+export async function mobileGetMediaStreamCapabilities(this: AndroidDriver): Promise<MediaStreamCapabilities> {
+  return await getCapabilities(this.adb);
 }
 
 /**

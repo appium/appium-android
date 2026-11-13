@@ -44,3 +44,22 @@ export interface MediaStreamInfo {
 }
 
 export type MediaBiDiEvent = BiDiEvent;
+
+export interface VideoEncoderInfo {
+  name: string;
+  codec: 'h264' | 'hevc';
+  softwareOnly: boolean;
+  /** Largest frame size the encoder accepts; the stream is scaled down to fit it */
+  maxWidth?: number;
+  maxHeight?: number;
+}
+
+export interface MediaStreamCapabilities {
+  supported: boolean;
+  reason?: {code: 'api_level_too_low' | 'settings_app_missing'; message: string};
+  apiLevel: number;
+  kinds: MediaKind[];
+  audio?: boolean;
+  /** Video encoders per codec; null if the device does not list its codecs */
+  codecs?: {h264: VideoEncoderInfo[]; hevc: VideoEncoderInfo[]} | null;
+}
