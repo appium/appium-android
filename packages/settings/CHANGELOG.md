@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [9.1.1](https://github.com/appium/appium-android/compare/io.appium.settings@9.1.0...io.appium.settings@9.1.1) (2026-11-13)
+
+### Miscellaneous Chores
+
+* **deps:** bump @appium/* packages to latest 4.0 betas ([#113](https://github.com/appium/appium-android/issues/113)) ([d141d39](https://github.com/appium/appium-android/commit/d141d39c963ca73375107296a6af6ded848a9938))
+
+
 ## [9.1.0](https://github.com/appium/appium-android/compare/io.appium.settings@9.0.1...io.appium.settings@9.1.0) (2026-11-12)
 
 ### Features

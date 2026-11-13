@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [10.0.3](https://github.com/appium/appium-android/compare/appium-chromedriver@10.0.2...appium-chromedriver@10.0.3) (2026-11-13)
+
+### Miscellaneous Chores
+
+* **deps:** bump @appium/* packages to latest 4.0 betas ([#113](https://github.com/appium/appium-android/issues/113)) ([d141d39](https://github.com/appium/appium-android/commit/d141d39c963ca73375107296a6af6ded848a9938))
+
+
 ## [10.0.2](https://github.com/appium/appium-android/compare/appium-chromedriver@10.0.1...appium-chromedriver@10.0.2) (2026-11-12)
 
 ### Miscellaneous Chores

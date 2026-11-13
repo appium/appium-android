@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [6.1.4](https://github.com/appium/appium-android/compare/android-apidemos@6.1.3...android-apidemos@6.1.4) (2026-11-13)
+
+### Miscellaneous Chores
+
+* **deps:** bump @appium/* packages to latest 4.0 betas ([#113](https://github.com/appium/appium-android/issues/113)) ([d141d39](https://github.com/appium/appium-android/commit/d141d39c963ca73375107296a6af6ded848a9938))
+
+
 ## [6.1.3](https://github.com/appium/appium-android/compare/android-apidemos@6.1.2...android-apidemos@6.1.3) (2026-10-23)
 
 ### Miscellaneous Chores
