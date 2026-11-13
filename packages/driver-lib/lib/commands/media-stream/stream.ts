@@ -48,6 +48,9 @@ export class MediaStream {
   private dropped = 0;
   private heartbeat?: NodeJS.Timeout;
   private pump?: Promise<void>;
+  // Whether the device-side session is ours to stop (false if another client's stream was found running)
+  private owned = false;
+  private announced = false;
   private stopped = false;
 
   constructor(
@@ -61,6 +64,8 @@ export class MediaStream {
 
   async start(): Promise<MediaStreamInfo> {
     const {opts} = this;
+    // A start() that throws may still have brought the on-device service up, so it is ours
+    this.owned = true;
     const started =
       opts.kind === 'video'
         ? await (this.session as VideoStreamSession).start({
@@ -72,11 +77,14 @@ export class MediaStream {
           })
         : await (this.session as JpegStreamSession).start({fps: opts.fps, quality: opts.quality, scale: opts.scale});
     if (!started) {
+      // The device already runs a stream of this kind that is not ours: leave it alone
+      this.owned = false;
       throw new Error(`Another ${opts.kind} stream is already running on the device`);
     }
 
     this.deps.emitter.on(BACKPRESSURE_EVENT_NAME, this.onBackpressure);
     const info = this.info();
+    this.announced = true;
     this.deps.emit({method: MEDIA_STARTED_EVENT, params: {...info}});
     if (opts.kind === 'jpeg' && opts.idleHeartbeatMs > 0) {
       this.heartbeat = setInterval(() => this.replayLastJpeg(), opts.idleHeartbeatMs);
@@ -85,7 +93,18 @@ export class MediaStream {
     return info;
   }
 
+  get isStopped(): boolean {
+    return this.stopped;
+  }
+
+  /** Idempotent; resolves once the stream is torn down and its pump has finished. */
   async stop(reason = 'stopped'): Promise<void> {
+    await this.finish(reason);
+    await this.pump?.catch(() => {});
+  }
+
+  // Must not await the pump: it is also called from inside the pump itself
+  private async finish(reason: string): Promise<void> {
     if (this.stopped) {
       return;
     }
@@ -93,14 +112,17 @@ export class MediaStream {
     clearInterval(this.heartbeat);
     this.batcher.close();
     this.deps.emitter.off(BACKPRESSURE_EVENT_NAME, this.onBackpressure);
-    try {
-      await this.session.stop();
-    } catch (e) {
-      this.deps.log.warn(`Cannot stop the ${this.kind} stream session: ${(e as Error).message}`);
+    if (this.owned) {
+      try {
+        await this.session.stop();
+      } catch (e) {
+        this.deps.log.warn(`Cannot stop the ${this.kind} stream session: ${(e as Error).message}`);
+      }
     }
-    this.deps.emit({method: MEDIA_ENDED_EVENT, params: {streamId: this.streamId, reason}});
+    if (this.announced) {
+      this.deps.emit({method: MEDIA_ENDED_EVENT, params: {streamId: this.streamId, reason}});
+    }
     this.deps.onEnded(this.streamId);
-    await this.pump?.catch(() => {});
   }
 
   private info(): MediaStreamInfo {
@@ -131,10 +153,13 @@ export class MediaStream {
     } catch (e) {
       reason = `error: ${(e as Error).message}`;
     }
-    await this.stop(reason);
+    await this.finish(reason);
   }
 
   private onAccessUnit(au: AccessUnit): void {
+    if (this.stopped) {
+      return;
+    }
     if (au.track === 'video' && au.isConfig) {
       // Config is never forwarded; it is prepended to every keyframe instead
       if (++this.configCount > 1) {
@@ -172,6 +197,9 @@ export class MediaStream {
   }
 
   private onJpegFrame(frame: JpegFrame): void {
+    if (this.stopped) {
+      return;
+    }
     const unit: MediaUnit = {
       track: 'jpeg',
       seq: this.jpegSeq++,
@@ -188,7 +216,12 @@ export class MediaStream {
   }
 
   private replayLastJpeg(): void {
-    if (!this.lastJpeg || Date.now() - this.lastJpegEmitAt < this.opts.idleHeartbeatMs || !this.deps.hasSubscribers()) {
+    if (
+      this.stopped ||
+      !this.lastJpeg ||
+      Date.now() - this.lastJpegEmitAt < this.opts.idleHeartbeatMs ||
+      !this.deps.hasSubscribers()
+    ) {
       return;
     }
     this.lastJpegEmitAt = Date.now();

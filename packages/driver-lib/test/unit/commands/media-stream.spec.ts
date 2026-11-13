@@ -236,4 +236,84 @@ describe('MediaStream', function () {
     assert.equal(session.keyFrameRequests, 0);
     await stream.stop();
   });
+
+  describe('lifecycle', function () {
+    function build(session: Record<string, unknown>, extra: Record<string, unknown> = {}) {
+      const events: BiDiEvent[] = [];
+      const stream = new MediaStream(
+        session as any,
+        {kind: 'jpeg', batchMs: 0, idleHeartbeatMs: 0, ...extra},
+        {emit: (e) => events.push(e), emitter: new EventEmitter(), hasSubscribers: () => true, log, onEnded: () => {}},
+      );
+      return {stream, events};
+    }
+    const withTimeout = <T>(p: Promise<T>) =>
+      Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error('timed out')), 500))]);
+
+    it('leaves a stream of another client alone when the device is busy', async function () {
+      let stops = 0;
+      const {stream, events} = build({
+        start: async () => false,
+        stop: async () => {
+          stops++;
+          return true;
+        },
+      });
+      await assert.rejects(stream.start(), /already running/);
+      await stream.stop('failed to start');
+      assert.equal(stops, 0);
+      assert.deepEqual(events, []);
+    });
+
+    it('stops the device session if start() throws midway', async function () {
+      let stops = 0;
+      const {stream, events} = build({
+        start: async () => {
+          throw new Error('not running after 10000ms');
+        },
+        stop: async () => {
+          stops++;
+          return true;
+        },
+      });
+      await assert.rejects(stream.start(), /not running/);
+      await stream.stop('failed to start');
+      assert.equal(stops, 1);
+      assert.deepEqual(events, [], 'no ended event for a stream that never started');
+    });
+
+    it('finishes cleanly when the device ends the stream by itself', async function () {
+      const {stream, events} = build({start: async () => true, stop: async () => true, frames: async function* () {}});
+      await stream.start();
+      await withTimeout((stream as any).pump);
+      await withTimeout(stream.stop());
+      assert.equal(stream.isStopped, true);
+      assert.equal(events.filter((e) => e.method === 'appium:mediaStream.ended').length, 1);
+    });
+
+    it('does not emit units after the stream was stopped', async function () {
+      let release!: () => void;
+      const gate = new Promise<void>((r) => (release = r));
+      const {stream, events} = build(
+        {
+          start: async () => true,
+          stop: async () => true,
+          accessUnits: async function* () {
+            await gate;
+            yield au('audio', 1);
+          },
+        },
+        {kind: 'video', batchMs: 10},
+      );
+      await stream.start();
+      const stopping = stream.stop();
+      release();
+      await stopping;
+      await new Promise((r) => setTimeout(r, 50));
+      const endedAt = events.findIndex((e) => e.method === 'appium:mediaStream.ended');
+      assert.ok(endedAt >= 0);
+      assert.equal(events.slice(endedAt + 1).length, 0);
+      assert.equal(unitEvents(events).length, 0);
+    });
+  });
 });

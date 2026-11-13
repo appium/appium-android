@@ -71,6 +71,11 @@ export async function mobileStartMediaStream(
     );
   }
   const streams = (this._mediaStreams ??= new Map());
+  for (const [id, s] of streams) {
+    if (s.isStopped) {
+      streams.delete(id);
+    }
+  }
   if ([...streams.values()].some((s) => s.kind === kind)) {
     throw new errors.InvalidArgumentError(`A ${kind} media stream is already running in this session`);
   }
@@ -87,7 +92,8 @@ export async function mobileStartMediaStream(
     emitter: this.eventEmitter,
     hasSubscribers: () => hasSubscribers(this, MEDIA_UNITS_EVENT),
     log: this.log,
-    onEnded: (id) => streams.delete(id),
+    // Ended streams stay registered so that a later stop call is a no-op, see mobileStopMediaStream
+    onEnded: () => {},
   });
   streams.set(stream.streamId, stream);
   try {
@@ -101,6 +107,7 @@ export async function mobileStartMediaStream(
 
 /**
  * Stops a media stream started by `mobile: startMediaStream`.
+ * Stopping a stream that has already ended is a no-op.
  *
  * @param streamId The id returned by `mobile: startMediaStream`.
  */

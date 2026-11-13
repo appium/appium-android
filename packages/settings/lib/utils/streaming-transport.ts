@@ -447,11 +447,18 @@ export class StreamTransport {
   async sendControl(command: number, ackTimeoutMs = CONTROL_ACK_TIMEOUT_MS): Promise<boolean> {
     if (!this.controlAcked) {
       await new Promise<void>((resolve) => {
-        const timer = setTimeout(resolve, ackTimeoutMs);
-        this.controlWaiters.push(() => {
+        const waiter = () => {
           clearTimeout(timer);
           resolve();
-        });
+        };
+        const timer = setTimeout(() => {
+          const idx = this.controlWaiters.indexOf(waiter);
+          if (idx >= 0) {
+            this.controlWaiters.splice(idx, 1);
+          }
+          resolve();
+        }, ackTimeoutMs);
+        this.controlWaiters.push(waiter);
       });
     }
     if (!this.controlAcked || this.closed || this.socket.destroyed) {
