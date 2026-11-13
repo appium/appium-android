@@ -52,7 +52,7 @@
     "@appium/support": "^8.0.0-beta.7",
     "appium-adb": "^17.0.1",
     "appium-chromedriver": "^10.0.3",
-    "asyncbox": "^6.6.0",
+    "asyncbox": "^7.0.0",
     "axios": "^1.18.0",
     "dayjs": "^1.11.21",
     "io.appium.settings": "^9.1.2",
