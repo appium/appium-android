@@ -1,6 +1,6 @@
 {
   "name": "@appium/xpath2-processor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "PsychoPath XPath 2.0 processor (Eclipse WTP) shared by the Appium Android servers, published through JitPack",
   "keywords": [

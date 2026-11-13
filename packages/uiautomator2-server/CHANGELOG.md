@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.0.3](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.2...appium-uiautomator2-server@11.0.3) (2026-11-13)
+
+### Code Refactoring
+
+* extract the vendored XPath2 processor into a shared xpath2-processor package ([#111](https://github.com/appium/appium-android/issues/111)) ([c1da3bb](https://github.com/appium/appium-android/commit/c1da3bb816cac6c0723dbf2c67ba255f06c58334))
+
+
 ## [11.0.2](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.1...appium-uiautomator2-server@11.0.2) (2026-11-13)
 
 **Note:** Version bump only for package appium-uiautomator2-server
