@@ -51,7 +51,7 @@
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {
-    "@appium/support": "^8.0.0-beta.6",
+    "@appium/support": "^8.0.0-beta.7",
     "appium-adb": "^17.0.0",
     "semver": "^7.3.7"
   },

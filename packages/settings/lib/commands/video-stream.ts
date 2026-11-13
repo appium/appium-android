@@ -30,7 +30,7 @@ export function makeVideoStreamSession(this: SettingsApp): VideoStreamSession {
 function validateVideoStreamOpts(opts: StartVideoStreamOpts): void {
   const {codec, fps, bitrate} = opts;
   if (codec !== undefined && codec !== 'h264' && codec !== 'hevc') {
-    throw new TypeError(`codec must be either 'h264' or 'hevc', got ${codec}`);
+    throw new TypeError(`codec must be either 'h264' or 'hevc', got ${String(codec)}`);
   }
   if (fps !== undefined && (!Number.isInteger(fps) || fps <= 0)) {
     throw new TypeError(`fps must be a positive integer, got ${fps}`);

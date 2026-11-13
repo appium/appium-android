@@ -203,9 +203,9 @@ export class Chromedriver extends events.EventEmitter<ChromedriverEventMap> {
     if (emitStates) {
       this.changeState(Chromedriver.STATE_STOPPING);
     }
-    const runSafeStep = async (f: () => Promise<any> | any): Promise<void> => {
+    const runSafeStep = async (f: () => unknown): Promise<void> => {
       try {
-        return await f();
+        await f();
       } catch (e) {
         const err = e as Error;
         this.log.warn(err.message);

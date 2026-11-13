@@ -74,7 +74,7 @@ export async function rotate(this: ADB): Promise<void> {
 export async function powerAC(this: ADB, state: PowerAcStates = 'on'): Promise<void> {
   if (!(Object.values(this.POWER_AC_STATES) as string[]).includes(state)) {
     throw new TypeError(
-      `Wrong power AC state sent '${state}'. Supported values: ${Object.values(this.POWER_AC_STATES)}]`,
+      `Wrong power AC state sent '${state}'. Supported values: ${Object.values(this.POWER_AC_STATES).join(', ')}]`,
     );
   }
   await this.adbExecEmu(['power', 'ac', state]);
@@ -89,7 +89,9 @@ export async function powerAC(this: ADB, state: PowerAcStates = 'on'): Promise<v
  */
 export async function sensorSet(this: ADB, sensor: string, value: Sensors): Promise<void> {
   if (!(Object.values(this.SENSORS) as string[]).includes(sensor)) {
-    throw new TypeError(`Unsupported sensor sent '${sensor}'. Supported values: ${Object.values(this.SENSORS)}]`);
+    throw new TypeError(
+      `Unsupported sensor sent '${sensor}'. Supported values: ${Object.values(this.SENSORS).join(', ')}]`,
+    );
   }
   if (value == null) {
     throw new TypeError(
@@ -150,7 +152,7 @@ export async function sendSMS(this: ADB, phoneNumber: string | number, message =
 export async function gsmCall(this: ADB, phoneNumber: string | number, action: GsmCallActions): Promise<void> {
   if (!Object.values(this.GSM_CALL_ACTIONS).includes(action)) {
     throw new TypeError(
-      `Invalid gsm action param ${action}. Supported values: ${Object.values(this.GSM_CALL_ACTIONS)}`,
+      `Invalid gsm action param ${action}. Supported values: ${Object.values(this.GSM_CALL_ACTIONS).join(', ')}`,
     );
   }
   if (!Number.isInteger(phoneNumber) && util.isEmpty(phoneNumber)) {
@@ -169,7 +171,7 @@ export async function gsmSignal(this: ADB, strength: GsmSignalStrength = 4): Pro
   const strengthInt = parseInt(`${strength}`, 10);
   if (!(this.GSM_SIGNAL_STRENGTHS as readonly number[]).includes(strengthInt)) {
     throw new TypeError(
-      `Invalid signal strength param ${strength}. Supported values: ${Object.values(this.GSM_SIGNAL_STRENGTHS)}`,
+      `Invalid signal strength param ${strength}. Supported values: ${Object.values(this.GSM_SIGNAL_STRENGTHS).join(', ')}`,
     );
   }
   log.info('gsm signal-profile <strength> changes the reported strength on next (15s) update.');
@@ -186,7 +188,7 @@ export async function gsmVoice(this: ADB, state: GsmVoiceStates = 'on'): Promise
   // gsm voice <state> allows you to change the state of your GPRS connection
   if (!Object.values(this.GSM_VOICE_STATES).includes(state)) {
     throw new TypeError(
-      `Invalid gsm voice state param ${state}. Supported values: ${Object.values(this.GSM_VOICE_STATES)}`,
+      `Invalid gsm voice state param ${state}. Supported values: ${Object.values(this.GSM_VOICE_STATES).join(', ')}`,
     );
   }
   await this.adbExecEmu(['gsm', 'voice', state]);
@@ -202,7 +204,9 @@ export async function gsmVoice(this: ADB, state: GsmVoiceStates = 'on'): Promise
 export async function networkSpeed(this: ADB, speed: NetworkSpeed = 'full'): Promise<void> {
   // network speed <speed> allows you to set the network speed emulation.
   if (!Object.values(this.NETWORK_SPEED).includes(speed)) {
-    throw new Error(`Invalid network speed param ${speed}. Supported values: ${Object.values(this.NETWORK_SPEED)}`);
+    throw new Error(
+      `Invalid network speed param ${speed}. Supported values: ${Object.values(this.NETWORK_SPEED).join(', ')}`,
+    );
   }
   await this.adbExecEmu(['network', 'speed', speed]);
 }
@@ -294,7 +298,7 @@ export async function execEmuConsoleCommand(
               reject(
                 new Error(
                   `Did not get any response from the Emulator console at ${host}:${port} ` +
-                    `to '${cmd}' command after ${execTimeout}ms`,
+                    `to '${String(cmd)}' command after ${execTimeout}ms`,
                 ),
               ),
             execTimeout,
@@ -367,7 +371,7 @@ export async function getEmuImageProperties(this: ADB, avdName: string): Promise
     if (avds.length === 0) {
       msg += `No emulators have been detected on your system`;
     } else {
-      msg += `Available avd names are: ${avds.map(({name}) => name)}`;
+      msg += `Available avd names are: ${avds.map(({name}) => name).join(', ')}`;
     }
     throw new Error(msg);
   }
@@ -388,7 +392,7 @@ export async function checkAvdExist(this: ADB, avdName: string): Promise<boolean
     if (avds.length === 0) {
       msg += `No emulators have been detected on your system`;
     } else {
-      msg += `Please select your avd name from one of these: '${avds.map(({name}) => name)}'`;
+      msg += `Please select your avd name from one of these: '${avds.map(({name}) => name).join(', ')}'`;
     }
     throw new Error(msg);
   }

@@ -340,7 +340,7 @@ async function connectWithRetry(port: number, timeoutMs: number, intervalMs: num
   } catch (e) {
     throw new Error(
       `Could not connect to the local streaming socket on port ${port} after ${times} attempts. ` +
-        `Last error: ${e instanceof Error ? e.message : e}`,
+        `Last error: ${e instanceof Error ? e.message : String(e)}`,
       {cause: e},
     );
   }

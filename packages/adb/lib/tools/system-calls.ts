@@ -136,7 +136,7 @@ export async function getBinaryFromSdkRoot(this: ADB, binaryName: string): Promi
     if (util.isEmpty(buildToolsDirs)) {
       log.info(`Found no build tools whose version matches to '${this.buildToolsVersion}'`);
     } else {
-      log.info(`Using build tools at '${buildToolsDirs}'`);
+      log.info(`Using build tools at '${buildToolsDirs.join(', ')}'`);
     }
   }
   binaryLocs.push(
@@ -532,7 +532,7 @@ export async function adbExec(this: ADB, cmd: string | string[], opts?: AdbExecO
       const error = redactExecError(e, this.executable.path, args) as ExecError;
       const errText = `${error.message}, ${error.stdout}, ${error.stderr}`;
       if (ADB_RETRY_ERROR_PATTERNS.some((p) => p.test(errText))) {
-        log.info(`Error sending command, reconnecting device and retrying: ${redactSecrets(cmd)}`);
+        log.info(`Error sending command, reconnecting device and retrying: ${String(redactSecrets(cmd))}`);
         await this.getDevicesWithRetry();
 
         // try again one time
@@ -1095,7 +1095,7 @@ export async function waitForEmulatorReady(this: ADB, timeoutMs: number = 20000)
       const missingServices = zip(REQUIRED_SERVICES, requiredServicesRe)
         .filter(([, pattern]) => !(pattern as RegExp).test(servicesValue))
         .map(([name]) => name);
-      suffix = ` (${missingServices} service${missingServices.length === 1 ? ' is' : 's are'} not running)`;
+      suffix = ` (${missingServices.join(', ')} service${missingServices.length === 1 ? ' is' : 's are'} not running)`;
     }
     throw new Error(`Emulator is not ready within ${timeoutMs}ms${suffix}`);
   }
@@ -1146,7 +1146,7 @@ export async function waitForDevice(this: ADB, appDeviceReadyTimeout: number = 3
   } catch {
     let suffix = '';
     if (lastErrorMessage) {
-      suffix = ` Original error: ${lastErrorMessage}`;
+      suffix = ` Original error: ${String(lastErrorMessage)}`;
     }
     throw new Error(`The device is not ready after ${appDeviceReadyTimeout}s.${suffix}`);
   }
@@ -1254,7 +1254,7 @@ export async function changeUserPrivileges(this: ADB, isElevated: boolean): Prom
     return {isSuccessful: true, wasAlreadyRooted};
   } catch (err: unknown) {
     const error = err as ExecError;
-    const {stderr = '', message} = error;
+    const {stderr, message} = error;
     log.warn(`Unable to ${cmd} adb daemon. Original error: '${message}'. Stderr: '${stderr}'. Continuing.`);
     return {isSuccessful: false, wasAlreadyRooted};
   }

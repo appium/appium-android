@@ -80,7 +80,7 @@ export class ChromedriverStorageClient {
     if (!xmlStr && !jsonStr) {
       throw new Error(
         `Cannot retrieve the information about available Chromedrivers from ` +
-          `${STORAGE_INFOS.map(({url}) => url)}. Please make sure these URLs are available ` +
+          `${STORAGE_INFOS.map(({url}) => url).join(', ')}. Please make sure these URLs are available ` +
           `within your local network, check Appium server logs and/or ` +
           `consult the driver troubleshooting guide.`,
       );
@@ -177,7 +177,7 @@ export class ChromedriverStorageClient {
 
     if (!util.isEmpty(versions)) {
       // Handle only selected versions if requested
-      log.debug(`Selecting chromedrivers whose versions match to ${versions}`);
+      log.debug(`Selecting chromedrivers whose versions match to ${String(versions)}`);
       driversToSync = driversToSync.filter((cdName) => versions.includes(`${this.mapping[cdName].version}`));
 
       log.debug(`Got ${util.pluralize('item', driversToSync.length, true)}`);
@@ -214,7 +214,7 @@ export class ChromedriverStorageClient {
       }
       log.debug(
         `Will select candidate ${util.pluralize('driver', driversToSync.length)} ` +
-          `versioned as '${util.uniq(driversToSync.map((cdName) => this.mapping[cdName].version))}'`,
+          `versioned as '${util.uniq(driversToSync.map((cdName) => this.mapping[cdName].version)).join(', ')}'`,
       );
     }
 

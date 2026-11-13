@@ -1098,7 +1098,7 @@ export function extractMatchingPermissions(
     .map((item) => item.permission);
   log.debug(
     `Retrieved ${util.pluralize('permission', filteredResult.length, true)} ` +
-      `from ${groupNames} ${util.pluralize('group', groupNames.length, false)}`,
+      `from ${groupNames.join(', ')} ${util.pluralize('group', groupNames.length, false)}`,
   );
   return filteredResult;
 }

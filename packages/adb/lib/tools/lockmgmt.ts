@@ -153,7 +153,7 @@ export async function setLockCredential(
   if (!SUPPORTED_LOCK_CREDENTIAL_TYPES.includes(credentialType)) {
     throw new Error(
       `Device lock credential type '${credentialType}' is unknown. ` +
-        `Only the following credential types are supported: ${SUPPORTED_LOCK_CREDENTIAL_TYPES}`,
+        `Only the following credential types are supported: ${SUPPORTED_LOCK_CREDENTIAL_TYPES.join(', ')}`,
     );
   }
   if (util.isEmpty(credential) && !Number.isInteger(credential)) {
