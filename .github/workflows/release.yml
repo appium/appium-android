@@ -207,3 +207,52 @@ jobs:
           gh release upload "$tag" --clobber \
             "packages/uiautomator2-server/apks/${server_apk}" \
             "packages/uiautomator2-server/apks/${test_apk}"
+
+      # JitPack only sees plain vX.Y.Z tags (it rejects Lerna's name@X.Y.Z), so tag the xpath2-processor
+      # version and request its artifacts so JitPack has built them before anything depends on them.
+      # Runs on every non-dry run so a failed attempt is retried by the next run.
+      - name: Ensure xpath2-processor is tagged for and built by JitPack
+        if: ${{ !(inputs.dry_run || false) }}
+        run: |
+          set -euo pipefail
+          version="$(jq -r .version packages/xpath2-processor/package.json)"
+          gradle_version="$(sed -n 's/^xpath2Version=//p' packages/xpath2-processor/gradle.properties)"
+          if [ "$version" != "$gradle_version" ]; then
+            echo "::error::package.json version ${version} differs from xpath2Version ${gradle_version} in gradle.properties"
+            exit 1
+          fi
+
+          tag="v${version}"
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
+            # Reuse the tag if nothing outside lerna.json ignoreChanges (*.md, test/) differs from HEAD
+            git fetch --no-tags --quiet origin "+refs/tags/${tag}:refs/tags/${tag}"
+            if ! git diff --quiet "$tag" HEAD -- packages/xpath2-processor jitpack.yml \
+              ':(exclude,glob)**/*.md' ':(exclude,glob)**/test/**'; then
+              echo "::error::${tag} already exists but its sources differ from HEAD; bump the xpath2-processor version"
+              exit 1
+            fi
+            echo "${tag} already exists and matches HEAD"
+          else
+            git tag "$tag"
+            git push origin "refs/tags/${tag}"
+          fi
+
+          base="https://jitpack.io/com/github/appium/appium-android"
+          for artifact in xpath2-processor xpath2-bom; do
+            url="${base}/${artifact}/${version}/${artifact}-${version}.pom"
+            built=false
+            # JitPack needs a few minutes to notice a new tag and build it
+            for attempt in $(seq 1 30); do
+              code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "$url" || true)"
+              if [ "$code" = 200 ]; then
+                built=true
+                break
+              fi
+              echo "${artifact} ${version}: HTTP ${code} (attempt ${attempt}/30)"
+              sleep 15
+            done
+            if [ "$built" != true ]; then
+              echo "::error::JitPack did not build ${artifact} ${version}; see https://jitpack.io/#appium/appium-android/${version}"
+              exit 1
+            fi
+          done

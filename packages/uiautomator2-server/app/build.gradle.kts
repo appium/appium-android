@@ -151,11 +151,8 @@ extensions.configure<de.mobilej.unmock.UnMockExtension>("unMock") {
     keepStartingWith("android.internal.")
 }
 
-val vendorXPath2Jar = layout.projectDirectory
-    .file("libs/org.eclipse.wst.xml.xpath2.processor.jar")
-
 dependencies {
-    implementation(files(vendorXPath2Jar) { builtBy(":vendor-xpath2:jar") })
+    implementation(libs.xpath2.processor)
     // Dependencies using the version catalog (libs)
     implementation(libs.bundles.androix.test)
     implementation(libs.uiautomator)
@@ -163,10 +160,6 @@ dependencies {
     implementation(libs.bundles.netty.core)
     implementation(libs.bundles.netty.http)
     implementation(libs.junidecode)
-    // Dependencies required for XPath search
-    implementation(libs.xercesimpl)
-    implementation(libs.java.cup.runtime)
-    implementation(libs.icu4j)
     // Test dependencies
     testImplementation(libs.junit)
     testImplementation(libs.json)

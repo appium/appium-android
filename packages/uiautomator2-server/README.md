@@ -41,14 +41,13 @@ Note: AUT apk should be installed before executing above command.
 
 ## Development tests
 
-Server JVM unit tests (including XPath 2.0 selector coverage) and the vendored PsychoPath processor suite:
+Server JVM unit tests, including XPath 2.0 selector coverage:
 
 ```bash
-npm run test:android          # rebuilds vendor JAR, runs app unit tests
-npm run test:vendor-xpath2    # runs upstream XPath2 processor tests
+npm run test:android
 ```
 
-The XPath 2.0 engine is vendored from Eclipse WTP; see [`vendor/README.md`](vendor/README.md) for build details, local patches, and troubleshooting.
+The XPath 2.0 engine lives in the shared [`xpath2-processor`](../xpath2-processor/README.md) package, which is built from source as a Gradle composite build. Its own PsychoPath test suite runs with `npm run test:java --workspace @appium/xpath2-processor`.
 
 ## Releases
 
@@ -57,4 +56,4 @@ Versioned and published by Lerna together with the other monorepo packages (Conv
 ## Other Sections
 
 * [WIKI](https://github.com/appium/appium-uiautomator2-server/wiki)
-* [Vendored dependencies](vendor/README.md)
+* [XPath2 processor](../xpath2-processor/README.md)

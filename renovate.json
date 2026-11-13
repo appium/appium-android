@@ -41,9 +41,9 @@
       "enabled": false
     },
     {
-      "description": "uiautomator2-server: group minor/patch updates",
+      "description": "uiautomator2-server and xpath2-processor: group minor/patch updates",
       "matchManagers": ["gradle"],
-      "matchFileNames": ["packages/uiautomator2-server/**"],
+      "matchFileNames": ["packages/uiautomator2-server/**", "packages/xpath2-processor/**"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "gradle-dependencies"
     }

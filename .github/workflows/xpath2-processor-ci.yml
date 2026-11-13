@@ -1,0 +1,65 @@
+name: "@appium/xpath2-processor CI"
+
+# Builds and tests packages/xpath2-processor, which is published through JitPack and
+# consumed by the Android servers. The package job runs the exact command from jitpack.yml.
+
+on:
+  push:
+    branches: [main]
+    paths: ['packages/xpath2-processor/**', 'jitpack.yml', '.github/workflows/xpath2-processor-ci.yml']
+  pull_request:
+    branches: [main]
+    paths: ['packages/xpath2-processor/**', 'jitpack.yml', '.github/workflows/xpath2-processor-ci.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: packages/xpath2-processor
+
+jobs:
+  gradle-wrapper-validation:
+    name: Validate Gradle Wrapper
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: gradle/actions/wrapper-validation@v6
+
+  package:
+    name: JitPack-equivalent package build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Use Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Publish to the local Maven repository
+        run: ./gradlew clean publishToMavenLocal -x test
+      - name: Check the published modules
+        run: |
+          version="$(sed -n 's/^xpath2Version=//p' gradle.properties)"
+          for artifact in xpath2-processor xpath2-bom; do
+            test -f "$HOME/.m2/repository/io/appium/${artifact}/${version}/${artifact}-${version}.pom"
+          done
+
+  test:
+    name: XPath2 processor unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Use Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - name: Run the PsychoPath test suite
+        run: ./gradlew test

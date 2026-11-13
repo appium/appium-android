@@ -3,7 +3,11 @@ import java.io.File
 
 plugins {
     `java-library`
+    `maven-publish`
 }
+
+group = providers.gradleProperty("group").get()
+version = providers.gradleProperty("xpath2Version").get()
 
 val xpath2Root = layout.projectDirectory.dir("org.eclipse.wst.xml.xpath2.processor")
 val xpath2TestsRoot = layout.projectDirectory.dir("org.eclipse.wst.xml.xpath2.processor.tests")
@@ -144,7 +148,7 @@ val fetchXpath2TestData = tasks.register("fetchXpath2TestData") {
             deleteUpstreamCheckout(logger)
             error(
                 "XPath2 test data fetch completed but checkout validation failed. " +
-                    "Try: ./gradlew :vendor-xpath2:cleanXpath2Upstream :vendor-xpath2:fetchXpath2TestData",
+                    "Try: ./gradlew cleanXpath2Upstream fetchXpath2TestData",
             )
         }
 
@@ -154,6 +158,7 @@ val fetchXpath2TestData = tasks.register("fetchXpath2TestData") {
 }
 
 java {
+    withSourcesJar()
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
 }
@@ -203,9 +208,9 @@ sourceSets {
 }
 
 dependencies {
-    implementation(libs.xercesimpl)
-    implementation(libs.icu4j)
-    implementation(libs.java.cup.runtime)
+    api(libs.xercesimpl)
+    api(libs.icu4j)
+    api(libs.java.cup.runtime)
 
     testImplementation(sourceSets.main.get().output)
     testImplementation(libs.xmlunit)
@@ -215,9 +220,6 @@ dependencies {
 }
 
 tasks.jar {
-    archiveBaseName.set("org.eclipse.wst.xml.xpath2.processor")
-    archiveVersion.set("")
-    destinationDirectory.set(rootProject.layout.projectDirectory.dir("app/libs"))
     // Preserve upstream Eclipse bundle license notice and OSGi metadata (build.properties bin.includes).
     from(xpath2Root) {
         include("about.html", "plugin.properties")
@@ -252,16 +254,25 @@ tasks.test {
     }
 }
 
-tasks.register("cleanXpath2Jar", Delete::class) {
-    group = "build"
-    description = "Remove the vendored XPath2 processor JAR from app/libs."
-    val libsDir = rootProject.layout.projectDirectory.dir("app/libs")
-    delete(
-        libsDir.file("org.eclipse.wst.xml.xpath2.processor.jar"),
-        libsDir.asFileTree.matching { include("org.eclipse.wst.xml.xpath2.processor*.jar") },
-    )
+tasks.named("clean") {
+    dependsOn(cleanXpath2Upstream)
 }
 
-tasks.named("clean") {
-    dependsOn("cleanXpath2Jar", cleanXpath2Upstream)
+publishing {
+    publications {
+        create<MavenPublication>("processor") {
+            artifactId = "xpath2-processor"
+            from(components["java"])
+            pom {
+                name = "xpath2-processor"
+                description = "PsychoPath XPath 2.0 processor (Eclipse WTP) for Appium Android servers"
+                licenses {
+                    license {
+                        name = "EPL-2.0"
+                        url = "https://www.eclipse.org/legal/epl-2.0/"
+                    }
+                }
+            }
+        }
+    }
 }

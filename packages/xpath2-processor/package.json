@@ -1,0 +1,38 @@
+{
+  "name": "@appium/xpath2-processor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "PsychoPath XPath 2.0 processor (Eclipse WTP) shared by the Appium Android servers, published through JitPack",
+  "keywords": [
+    "android",
+    "appium",
+    "xpath2"
+  ],
+  "homepage": "https://appium.io",
+  "bugs": {
+    "url": "https://github.com/appium/appium-android/issues"
+  },
+  "license": "Apache-2.0",
+  "author": "Appium Contributors",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/appium/appium-android.git",
+    "directory": "packages/xpath2-processor"
+  },
+  "type": "module",
+  "scripts": {
+    "bump-gradle-version": "node ./scripts/gradle-version-update.mjs --package-version=${npm_package_version} && git add gradle.properties",
+    "build": "./gradlew jar",
+    "clean": "./gradlew clean",
+    "package:local": "./gradlew clean publishToMavenLocal -x test",
+    "test:java": "./gradlew test",
+    "version": "npm run bump-gradle-version"
+  },
+  "devDependencies": {
+    "semver": "^7.5.4"
+  },
+  "engines": {
+    "node": "^20.19.0 || ^22.12.0 || >=24.0.0",
+    "npm": ">=10"
+  }
+}
