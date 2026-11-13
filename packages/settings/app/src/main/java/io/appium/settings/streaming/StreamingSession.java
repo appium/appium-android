@@ -29,6 +29,7 @@ import android.view.Display;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -50,6 +51,7 @@ public abstract class StreamingSession implements Runnable {
     private LocalSocket clientSocket;
     private Thread writerThread;
     private volatile Listener listener;
+    private volatile boolean controlEnabled = false;
 
     /**
      * Notified when the captured content's dimensions change - a device rotation, most
@@ -167,6 +169,22 @@ public abstract class StreamingSession implements Runnable {
         this.listener = listener;
     }
 
+    /**
+     * Opts into the host->device control channel: the session acknowledges it with a CONTROL
+     * frame and then treats every byte received from the client as a command instead of a
+     * disconnect. Hosts that don't opt in keep the legacy behavior (any read ends the session).
+     */
+    public void setControlEnabled(boolean enabled) {
+        this.controlEnabled = enabled;
+    }
+
+    /**
+     * Called on the control reader thread for each command byte received from the client.
+     * Unknown commands must be ignored.
+     */
+    protected void onControlCommand(int command) {
+    }
+
     public void startSession() {
         stopped = false;
         new Thread(this, getSessionThreadName()).start();
@@ -273,12 +291,23 @@ public abstract class StreamingSession implements Runnable {
 
             final OutputStream out = clientSocket.getOutputStream();
 
+            final boolean controlOn = controlEnabled;
+            if (controlOn) {
+                // Must be the first frame the host sees, so it knows the channel is supported.
+                queue.offer(new Frame(Frame.Track.CONTROL, Frame.FLAG_CONFIG, 0, 0, new byte[0]));
+            }
+
             // Detect the client going away even when nothing is being written (e.g. a JPEG
-            // stream on an unchanged screen): the client never sends data, so a blocking read
-            // here only returns once the peer closes the connection.
+            // stream on an unchanged screen). Without the control channel the client never
+            // sends data, so the first read only returns once the peer closes the connection;
+            // with it, bytes are commands and only EOF/an error ends the session.
             Thread disconnectWatcher = new Thread(() -> {
                 try {
-                    clientSocket.getInputStream().read();
+                    InputStream in = clientSocket.getInputStream();
+                    int command;
+                    while ((command = in.read()) != -1 && controlOn) {
+                        onControlCommand(command);
+                    }
                 } catch (IOException ignored) {
                     // Local socket closed already, by stopSession() or a writer error.
                 }

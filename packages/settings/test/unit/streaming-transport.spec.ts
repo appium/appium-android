@@ -133,4 +133,52 @@ describe('StreamTransport', function () {
       }
     }
   });
+  describe('control channel', function () {
+    async function freePort(): Promise<number> {
+      const probe = await listenOn(0);
+      const port = (probe.address() as net.AddressInfo).port;
+      await closeServer(probe);
+      return port;
+    }
+
+    it('should not forward the handshake frame and should deliver commands once acked', async function () {
+      const received: number[] = [];
+      const {adb, getServer} = makeFakeAdb((socket) => {
+        socket.on('data', (d: Buffer) => received.push(...d));
+        socket.write(buildFrameBuffer(StreamTrack.Control, FLAG_CONFIG, 0n));
+        socket.write(buildFrameBuffer(StreamTrack.Video, FLAG_KEYFRAME, 0n));
+      });
+      const transport = await StreamTransport.connect(adb, 'fake-socket', {localPort: await freePort()});
+      try {
+        assert.equal(await transport.sendControl(1), true);
+        const frames = await collect(transport, 1);
+        assert.deepStrictEqual(
+          frames.map((f) => StreamTrack[f.track]),
+          ['Video'],
+        );
+        await new Promise((r) => setTimeout(r, 50));
+        assert.deepStrictEqual(received, [1]);
+      } finally {
+        await transport.close();
+        await closeServer(getServer()!);
+      }
+    });
+
+    it('should not send anything to a device that never acknowledges the channel', async function () {
+      const received: number[] = [];
+      const {adb, getServer} = makeFakeAdb((socket) => {
+        socket.on('data', (d: Buffer) => received.push(...d));
+        socket.write(buildFrameBuffer(StreamTrack.Video, FLAG_KEYFRAME, 0n));
+      });
+      const transport = await StreamTransport.connect(adb, 'fake-socket', {localPort: await freePort()});
+      try {
+        assert.equal(await transport.sendControl(1, 50), false);
+        await new Promise((r) => setTimeout(r, 50));
+        assert.deepStrictEqual(received, []);
+      } finally {
+        await transport.close();
+        await closeServer(getServer()!);
+      }
+    });
+  });
 });

@@ -25,6 +25,7 @@ import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.media.projection.MediaProjection;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
@@ -278,6 +279,25 @@ public class VideoStreamSession extends StreamingSession {
         Thread newDrainThread = new Thread(() -> drainVideo(startedEncoder), "video-stream-drain");
         videoDrainThread = newDrainThread;
         newDrainThread.start();
+    }
+
+    @Override
+    protected void onControlCommand(int command) {
+        if (command != StreamingConstant.CONTROL_REQUEST_KEYFRAME) {
+            return;
+        }
+        MediaCodec encoder = videoEncoder;
+        if (encoder == null) {
+            return;
+        }
+        try {
+            Bundle params = new Bundle();
+            params.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
+            encoder.setParameters(params);
+        } catch (IllegalStateException e) {
+            // The encoder is being swapped by a rotation; the new one starts with a keyframe.
+            Log.w(TAG, "Cannot request a sync frame right now", e);
+        }
     }
 
     private static void releaseQuietly(MediaCodec codec) {

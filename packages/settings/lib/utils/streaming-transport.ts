@@ -8,6 +8,7 @@ import {createParserState, parseFrames, StreamTrack, type StreamFrame} from './s
 
 const DEFAULT_QUEUE_CAPACITY = 60;
 const CONNECT_TIMEOUT_MS = 5000;
+const CONTROL_ACK_TIMEOUT_MS = 1000;
 const CONNECT_RETRY_INTERVAL_MS = 200;
 // adb forward's host-side TCP listener accepts a connection immediately, independent of
 // whether the on-device local socket is bound yet; if it isn't, adb tears the connection
@@ -373,6 +374,9 @@ export class StreamTransport {
   // backpressure before we ever saw it - can be detected on receipt, not just when our
   // own queue evicts something locally.
   private lastVideoSequence: bigint | undefined;
+  // Set once the device acknowledged the opt-in control channel (older apps never do)
+  private controlAcked = false;
+  private readonly controlWaiters: Array<() => void> = [];
 
   private constructor(
     private readonly adb: ADB,
@@ -410,6 +414,11 @@ export class StreamTransport {
     this.socket.on('data', (chunk: Buffer) => {
       try {
         for (const frame of parseFrames(this.parserState, chunk)) {
+          if (frame.track === StreamTrack.Control) {
+            this.controlAcked = true;
+            this.controlWaiters.splice(0).forEach((resolve) => resolve());
+            continue;
+          }
           if (frame.track === StreamTrack.Video) {
             if (this.lastVideoSequence !== undefined && frame.sequence !== this.lastVideoSequence + 1n) {
               this.queue.notifyGap();
@@ -425,6 +434,33 @@ export class StreamTransport {
     });
     this.socket.on('close', () => this.queue.end());
     this.socket.on('error', (err) => this.queue.end(err));
+  }
+
+  /**
+   * Sends a one-byte command to the device. The device only listens if the session was
+   * started with the control channel and has acknowledged it.
+   *
+   * @param command - The command byte
+   * @param ackTimeoutMs - How long to wait for the device's acknowledgement
+   * @returns False if the device does not support the control channel (or the socket is gone)
+   */
+  async sendControl(command: number, ackTimeoutMs = CONTROL_ACK_TIMEOUT_MS): Promise<boolean> {
+    if (!this.controlAcked) {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(resolve, ackTimeoutMs);
+        this.controlWaiters.push(() => {
+          clearTimeout(timer);
+          resolve();
+        });
+      });
+    }
+    if (!this.controlAcked || this.closed || this.socket.destroyed) {
+      return false;
+    }
+    await new Promise<void>((resolve, reject) =>
+      this.socket.write(Buffer.from([command]), (e) => (e ? reject(e) : resolve())),
+    );
+    return true;
   }
 
   /**
