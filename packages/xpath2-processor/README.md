@@ -1,4 +1,4 @@
-# appium-xpath2-processor
+# @appium/xpath2-processor
 
 The [PsychoPath XPath 2.0 processor](https://eclipse.googlesource.com/sourceediting/webtools.sourceediting.git) from Eclipse WTP, vendored once and shared by the Appium Android servers (`appium-uiautomator2-server`, and the Espresso server).
 
@@ -28,7 +28,7 @@ The build publishes two modules (`xpath2-processor` and `xpath2-bom`); JitPack o
 1. Lerna bumps `package.json` and, through the `version` script, `xpath2Version` in `gradle.properties`.
 2. The release workflow creates a plain `vX.Y.Z` tag for that version (JitPack ignores Lerna's `name@X.Y.Z` tags) and requests the artifact from JitPack so it is built before anyone depends on it.
 
-`jitpack.yml` at the repository root builds the package with `./gradlew clean publishToMavenLocal -x test` on JDK 17. Run `npm run package:local --workspace appium-xpath2-processor` to reproduce it locally (installs into `~/.m2`).
+`jitpack.yml` at the repository root builds the package with `./gradlew clean publishToMavenLocal -x test` on JDK 17. Run `npm run package:local --workspace @appium/xpath2-processor` to reproduce it locally (installs into `~/.m2`).
 
 ## Developing against a local copy
 
@@ -53,7 +53,7 @@ This component is **PsychoPath XPath 2.0 Processor** from the Eclipse Web Tools 
 ### Build the JAR
 
 ```bash
-npm run build --workspace appium-xpath2-processor   # ./gradlew jar
+npm run build --workspace @appium/xpath2-processor   # ./gradlew jar
 ```
 
 The output is written to `build/libs/`.
@@ -72,7 +72,7 @@ Eclipse/OSGi resource loading is replaced with classpath lookup via `TestResourc
 ### Run tests
 
 ```bash
-npm run test:java --workspace appium-xpath2-processor   # ./gradlew test
+npm run test:java --workspace @appium/xpath2-processor   # ./gradlew test
 ```
 
 The `fetchXpath2TestData` task runs automatically before `test` (requires network on first run). CI runs this in `xpath2-processor-ci.yml`.

@@ -1,4 +1,4 @@
-name: appium-xpath2-processor CI
+name: "@appium/xpath2-processor CI"
 
 # Builds and tests packages/xpath2-processor, which is published through JitPack and
 # consumed by the Android servers. The package job runs the exact command from jitpack.yml.

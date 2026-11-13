@@ -47,7 +47,7 @@ Server JVM unit tests, including XPath 2.0 selector coverage:
 npm run test:android
 ```
 
-The XPath 2.0 engine lives in the shared [`xpath2-processor`](../xpath2-processor/README.md) package, which is built from source as a Gradle composite build. Its own PsychoPath test suite runs with `npm run test:java --workspace appium-xpath2-processor`.
+The XPath 2.0 engine lives in the shared [`xpath2-processor`](../xpath2-processor/README.md) package, which is built from source as a Gradle composite build. Its own PsychoPath test suite runs with `npm run test:java --workspace @appium/xpath2-processor`.
 
 ## Releases
 
