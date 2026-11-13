@@ -224,7 +224,15 @@ jobs:
 
           tag="v${version}"
           if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
-            echo "${tag} already exists"
+            # An older tag is fine if the sources JitPack builds are identical to HEAD's
+            git fetch --no-tags --quiet origin "+refs/tags/${tag}:refs/tags/${tag}"
+            for path in packages/xpath2-processor jitpack.yml; do
+              if [ "$(git rev-parse "${tag}:${path}")" != "$(git rev-parse "HEAD:${path}")" ]; then
+                echo "::error::${tag} already exists but its ${path} differs from HEAD; bump the xpath2-processor version"
+                exit 1
+              fi
+            done
+            echo "${tag} already exists and matches HEAD"
           else
             git tag "$tag"
             git push origin "refs/tags/${tag}"
