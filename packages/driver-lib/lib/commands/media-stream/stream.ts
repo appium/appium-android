@@ -260,10 +260,16 @@ export class MediaStream {
       return;
     }
     this.lastKeyFrameRequestAt = now;
-    (this.session as VideoStreamSession).requestKeyFrame().then(
-      (sent) => this.deps.log.debug(`Keyframe request for stream ${this.streamId}: ${sent ? 'sent' : 'unsupported'}`),
-      (e) => this.deps.log.debug(`Keyframe request for stream ${this.streamId} failed: ${(e as Error).message}`),
-    );
+    void this.sendKeyFrameRequest();
+  }
+
+  private async sendKeyFrameRequest(): Promise<void> {
+    try {
+      const sent = await (this.session as VideoStreamSession).requestKeyFrame();
+      this.deps.log.debug(`Keyframe request for stream ${this.streamId}: ${sent ? 'sent' : 'unsupported'}`);
+    } catch (e) {
+      this.deps.log.debug(`Keyframe request for stream ${this.streamId} failed: ${(e as Error).message}`);
+    }
   }
 
   private onBackpressure = (ev: BiDiBackpressureEvent): void => {

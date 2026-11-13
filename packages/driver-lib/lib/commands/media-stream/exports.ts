@@ -139,7 +139,7 @@ function validateOpts({
   idleHeartbeatMs,
 }: StartMediaStreamOpts & {batchMs: number; idleHeartbeatMs: number}): void {
   if (kind !== 'video' && kind !== 'jpeg') {
-    throw new errors.InvalidArgumentError(`'kind' must be either 'video' or 'jpeg', got '${kind}'`);
+    throw new errors.InvalidArgumentError(`'kind' must be either 'video' or 'jpeg', got '${String(kind)}'`);
   }
   const wrongKind = kind === 'video' ? {quality, scale} : {codec, bitrate, audio};
   const offending = Object.entries(wrongKind).filter(([, v]) => v !== undefined);

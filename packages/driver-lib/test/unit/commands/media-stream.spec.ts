@@ -283,7 +283,7 @@ describe('MediaStream', function () {
     });
 
     it('finishes cleanly when the device ends the stream by itself', async function () {
-      const {stream, events} = build({start: async () => true, stop: async () => true, frames: async function* () {}});
+      const {stream, events} = build({start: async () => true, stop: async () => true, async *frames() {}});
       await stream.start();
       await withTimeout((stream as any).pump);
       await withTimeout(stream.stop());
@@ -298,7 +298,7 @@ describe('MediaStream', function () {
         {
           start: async () => true,
           stop: async () => true,
-          accessUnits: async function* () {
+          async *accessUnits() {
             await gate;
             yield au('audio', 1);
           },
