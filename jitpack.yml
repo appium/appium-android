@@ -1,0 +1,6 @@
+# Builds packages/xpath2-processor for https://jitpack.io (tags of the form vX.Y.Z only).
+jdk:
+  - openjdk17
+install:
+  - cd packages/xpath2-processor
+  - ./gradlew clean publishToMavenLocal -x test

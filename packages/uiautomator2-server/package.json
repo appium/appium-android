@@ -36,8 +36,7 @@
   },
   "scripts": {
     "bump-gradle-version": "node ./scripts/gradle-version-update.mjs --package-version=${npm_package_version} && git add gradle.properties",
-    "build-vendor-jar": "./gradlew :vendor-xpath2:jar",
-    "build": "npm run build-vendor-jar && ./gradlew clean assembleServerDebug assembleServerDebugAndroidTest && npm run move-apks && npm run sign-apk",
+    "build": "./gradlew clean assembleServerDebug assembleServerDebugAndroidTest && npm run move-apks && npm run sign-apk",
     "sign-apk": "node ./scripts/sign-apk.mjs",
     "lint:java": "./gradlew lint",
     "move-server": "cp app/build/outputs/apk/server/debug/appium-uiautomator2-server-v${npm_package_version}.apk ./apks",
@@ -45,9 +44,8 @@
     "move-apks": "rm -rf apks && mkdir -p apks && npm run move-server && npm run move-test",
     "version": "npm run bump-gradle-version",
     "clean-device": "adb uninstall io.appium.uiautomator2.server && adb uninstall io.appium.uiautomator2.server.test",
-    "test:vendor-xpath2": "./gradlew :vendor-xpath2:test",
     "test:e2e": "./scripts/e2e.sh",
-    "test:android": "npm run build-vendor-jar && ./gradlew testServerDebugUnitTest",
+    "test:android": "./gradlew testServerDebugUnitTest",
     "prepublishOnly": "npm run build"
   },
   "devDependencies": {

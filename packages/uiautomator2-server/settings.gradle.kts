@@ -21,5 +21,9 @@ rootProject.name = "appium-uiautomator2-server"
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
 include(":app")
-include(":vendor-xpath2")
-project(":vendor-xpath2").projectDir = file("vendor")
+// Built from source for now; to be replaced with the released JitPack artifact.
+includeBuild("../xpath2-processor") {
+    dependencySubstitution {
+        substitute(module("com.github.appium.appium-android:xpath2-processor")).using(project(":"))
+    }
+}

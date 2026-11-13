@@ -1,15 +1,15 @@
 name: appium-uiautomator2-server CI
 
-# Android-side checks (Gradle lint, unit tests, vendored XPath2 tests, wrapper validation)
+# Android-side checks (Gradle lint, unit tests, wrapper validation)
 # for packages/uiautomator2-server. JS lint/format are covered by build.yml.
 
 on:
   push:
     branches: [main]
-    paths: ['packages/uiautomator2-server/**', '.github/workflows/uiautomator2-server-ci.yml']
+    paths: ['packages/uiautomator2-server/**', 'packages/xpath2-processor/**', '.github/workflows/uiautomator2-server-ci.yml']
   pull_request:
     branches: [main]
-    paths: ['packages/uiautomator2-server/**', '.github/workflows/uiautomator2-server-ci.yml']
+    paths: ['packages/uiautomator2-server/**', 'packages/xpath2-processor/**', '.github/workflows/uiautomator2-server-ci.yml']
 
 permissions:
   contents: read
@@ -47,5 +47,3 @@ jobs:
         run: npm run lint:java --workspace appium-uiautomator2-server
       - name: Server unit tests
         run: npm run test:android --workspace appium-uiautomator2-server
-      - name: Vendored XPath2 processor unit tests
-        run: npm run test:vendor-xpath2 --workspace appium-uiautomator2-server
