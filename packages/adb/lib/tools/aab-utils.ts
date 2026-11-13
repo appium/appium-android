@@ -130,7 +130,7 @@ export async function extractUniversalApk(this: ADB, aabPath: string, opts: ApkC
         await Promise.all(fileDeletionPromises);
       } catch {}
       if (!universalApkPath) {
-        log.debug(`The following items were extracted from the .aab bundle: ${allFileNames}`);
+        log.debug(`The following items were extracted from the .aab bundle: ${allFileNames.join(', ')}`);
         throw new Error(
           `${UNIVERSAL_APK} cannot be found in '${aabPath}' bundle. ` +
             `Does the archive contain a valid application bundle?`,

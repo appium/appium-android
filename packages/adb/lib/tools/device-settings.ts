@@ -312,7 +312,9 @@ export async function setHiddenApiPolicy(this: ADB, value: number | string, igno
     if (!ignoreError) {
       throw decorateWriteSecureSettingsException(err);
     }
-    log.info(`Failed to set setting keys '${HIDDEN_API_POLICY_KEYS}' to '${value}'. Original error: ${err.message}`);
+    log.info(
+      `Failed to set setting keys '${HIDDEN_API_POLICY_KEYS.join(', ')}' to '${value}'. Original error: ${err.message}`,
+    );
   }
 }
 
@@ -332,7 +334,7 @@ export async function setDefaultHiddenApiPolicy(this: ADB, ignoreError = false):
     if (!ignoreError) {
       throw decorateWriteSecureSettingsException(err);
     }
-    log.info(`Failed to delete keys '${HIDDEN_API_POLICY_KEYS}'. Original error: ${err.message}`);
+    log.info(`Failed to delete keys '${HIDDEN_API_POLICY_KEYS.join(', ')}'. Original error: ${err.message}`);
   }
 }
 

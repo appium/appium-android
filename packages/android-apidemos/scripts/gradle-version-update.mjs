@@ -58,4 +58,4 @@ async function gradleVersionUpdate() {
   await fs.promises.writeFile(gradleFile, newPayload, 'utf8');
 }
 
-(async () => await gradleVersionUpdate())();
+await gradleVersionUpdate();

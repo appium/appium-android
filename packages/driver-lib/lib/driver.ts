@@ -265,9 +265,9 @@ class AndroidDriver<C extends AndroidDriverConstraints = AndroidDriverConstraint
     max: 20,
     updateAgeOnGet: true,
   });
-  opts: DriverOpts<C>;
+  override opts: DriverOpts<C>;
 
-  supportedLogTypes = supportedLogTypes;
+  override supportedLogTypes = supportedLogTypes;
 
   constructor(opts: InitialOpts = {} as InitialOpts, shouldValidateCaps = true) {
     super(opts, shouldValidateCaps);
@@ -282,7 +282,7 @@ class AndroidDriver<C extends AndroidDriverConstraints = AndroidDriverConstraint
     this._cachedActivityArgs = {};
   }
 
-  get bidiProxyUrl(): string | null {
+  override get bidiProxyUrl(): string | null {
     return this.opts.chromedriverForwardBiDi ? this._bidiProxyUrl : null;
   }
 

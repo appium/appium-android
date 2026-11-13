@@ -195,7 +195,7 @@ export async function getCompatibleChromedriver(this: ChromedriverCommandContext
     if (!chromeVersion) {
       return pickChromedriverWhenChromeUnknown(ctx, cds);
     }
-    ctx.log.debug(`Found Chrome bundle '${ctx.bundleId}' version '${chromeVersion}'`);
+    ctx.log.debug(`Found Chrome bundle '${ctx.bundleId}' version '${chromeVersion.version}'`);
 
     const matchingDrivers = filterChromedriversMatchingChrome(cds, chromeVersion);
     if (matchingDrivers.length === 0) {
@@ -355,7 +355,7 @@ function makeNoMatchingChromedriverError(ctx: ChromedriverSelectionSelf, chromeV
   const autodownloadSuggestion =
     'You could also try to enable automated chromedrivers download as a possible workaround.';
   return new Error(
-    `No Chromedriver found that can automate Chrome '${chromeVersion}'.` +
+    `No Chromedriver found that can automate Chrome '${chromeVersion.version}'.` +
       (ctx.storageClient ? '' : ` ${autodownloadSuggestion}`),
   );
 }
@@ -368,7 +368,7 @@ function logChosenMatchingChromedriver(
   const binPath = matchingDrivers[0].executable;
   ctx.log.debug(
     `Found ${util.pluralize('executable', matchingDrivers.length, true)} ` +
-      `capable of automating Chrome '${chromeVersion}'.\nChoosing the most recent, '${binPath}'.`,
+      `capable of automating Chrome '${chromeVersion.version}'.\nChoosing the most recent, '${binPath}'.`,
   );
   ctx.log.debug(`If a specific version is required, specify it with the 'chromedriverExecutable' capability.`);
   return binPath;

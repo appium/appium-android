@@ -181,7 +181,7 @@ export class Logcat extends EventEmitter {
 
 function requireFormat(format: string): LogFormat {
   if (!SUPPORTED_FORMATS.includes(format as LogFormat)) {
-    log.info(`The format value '${format}' is unknown. Supported values are: ${SUPPORTED_FORMATS}`);
+    log.info(`The format value '${format}' is unknown. Supported values are: ${SUPPORTED_FORMATS.join(', ')}`);
     log.info(`Defaulting to '${DEFAULT_FORMAT}'`);
     return DEFAULT_FORMAT;
   }
@@ -209,7 +209,9 @@ function requireSpec(spec: string): string {
     return `${resultTag}:${DEFAULT_PRIORITY}`;
   }
   if (!SUPPORTED_PRIORITIES.some((p) => priority.toLowerCase() === p.toLowerCase())) {
-    log.info(`The priority value in spec '${spec}' is unknown. Supported values are: ${SUPPORTED_PRIORITIES}`);
+    log.info(
+      `The priority value in spec '${spec}' is unknown. Supported values are: ${SUPPORTED_PRIORITIES.join(', ')}`,
+    );
     log.info(`Defaulting to Verbose (${DEFAULT_PRIORITY})`);
     return `${resultTag}:${DEFAULT_PRIORITY}`;
   }
