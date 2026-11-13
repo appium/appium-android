@@ -28,7 +28,8 @@ declare module '../../driver.js' {
 
 /**
  * Starts streaming the screen as `appium:mediaStream.*` BiDi events.
- * Subscribe to `appium:mediaStream` before calling this.
+ * Subscribe to `appium:mediaStream` before calling this. The result and the `started` event of a
+ * video stream carry the frame size (after any scaling to the encoder's limits).
  *
  * @param kind 'video' (H.264/HEVC, optionally with AAC audio) or 'jpeg'.
  * @param codec Video codec, 'h264' by default.

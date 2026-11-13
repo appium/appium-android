@@ -325,6 +325,58 @@ describe('MediaStream', function () {
     });
   });
 
+  describe('video size', function () {
+    const config = (sps: string) => Buffer.concat([Buffer.from([0, 0, 0, 1]), Buffer.from(sps, 'hex')]);
+    // Real SPS units, see media-stream-sps.spec.ts
+    const SIZE_1080x1920 = config('6742c0298d6804403c7979080808083c2211a8');
+    const SIZE_640x480 = config('677a0016bcd940a03db0110000030001000003000a0f162d96');
+    const formatChanges = (events: BiDiEvent[]) =>
+      events.filter((e) => e.method === 'appium:mediaStream.formatChanged');
+
+    it('reports the size from the SPS in started and in the start result', async function () {
+      const {session, events, stream} = setup('video');
+      const started = stream.start();
+      session.push(au('video', 0, {isConfig: true, data: SIZE_1080x1920}));
+      const info = await started;
+      assert.deepEqual([info.width, info.height], [1080, 1920]);
+      const startedEvent = events.find((e) => e.method === 'appium:mediaStream.started');
+      assert.deepEqual([startedEvent?.params?.width, startedEvent?.params?.height], [1080, 1920]);
+      assert.equal(formatChanges(events).length, 0, 'the first config is not a format change');
+      await stream.stop();
+    });
+
+    it('announces the new size after an encoder restart, but not if the size is the same', async function () {
+      const {session, events, stream, tick} = setup('video');
+      const started = stream.start();
+      session.push(au('video', 0, {isConfig: true, data: SIZE_1080x1920}));
+      await started;
+      session.push(au('video', 1, {isConfig: true, data: SIZE_1080x1920}));
+      await tick();
+      assert.equal(formatChanges(events).length, 0);
+      session.push(au('video', 2, {isConfig: true, data: SIZE_640x480}));
+      await tick();
+      assert.deepEqual(
+        formatChanges(events).map((e) => e.params),
+        [{streamId: stream.streamId, width: 640, height: 480}],
+      );
+      await stream.stop();
+    });
+
+    it('still announces a restart if the size cannot be read', async function () {
+      const {session, events, stream, tick} = setup('video');
+      const started = stream.start();
+      session.push(au('video', 0, {isConfig: true, data: SIZE_1080x1920}));
+      await started;
+      session.push(au('video', 1, {isConfig: true, data: Buffer.from([1, 2, 3])}));
+      await tick();
+      assert.deepEqual(
+        formatChanges(events).map((e) => e.params),
+        [{streamId: stream.streamId}],
+      );
+      await stream.stop();
+    });
+  });
+
   describe('first output of a video stream', function () {
     it('announces started only after the encoder reported its config', async function () {
       const {session, events, stream, tick} = setup('video');

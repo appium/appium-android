@@ -18,6 +18,7 @@ import {
   MEDIA_UNITS_EVENT,
 } from './constants.js';
 import {readJpegSize} from './jpeg.js';
+import {parseVideoSize} from './sps.js';
 import type {MediaStreamInfo, MediaUnit, StartMediaStreamOpts, WireUnit} from './types.js';
 
 export interface MediaStreamDeps {
@@ -176,6 +177,7 @@ export class MediaStream {
       tracks: isVideo ? (opts.audio ? ['video', 'audio'] : ['video']) : ['jpeg'],
       codec: isVideo ? (opts.codec ?? 'h264') : 'jpeg',
       event: MEDIA_STREAM_MODULE,
+      ...this.size,
       ...(isVideo && opts.audio ? {audio: {sampleRate: AUDIO_SAMPLE_RATE, channels: AUDIO_CHANNELS}} : {}),
     };
   }
@@ -203,15 +205,15 @@ export class MediaStream {
     if (this.stopped) {
       return;
     }
+    if (au.track === 'video' && au.isConfig) {
+      // Config is never forwarded; it is prepended to every keyframe instead
+      this.config = au.data;
+      this.onVideoConfig(au.data);
+    }
     // The config unit counts too: it is the first thing the encoder reports
     this.announce();
     this.firstUnitSeen();
     if (au.track === 'video' && au.isConfig) {
-      // Config is never forwarded; it is prepended to every keyframe instead
-      if (++this.configCount > 1) {
-        this.deps.emit({method: MEDIA_FORMAT_CHANGED_EVENT, params: {streamId: this.streamId}});
-      }
-      this.config = au.data;
       return;
     }
     const subscribed = this.deps.hasSubscribers();
@@ -240,6 +242,20 @@ export class MediaStream {
       }
     }
     this.batcher.push(unit);
+  }
+
+  // The first config sets the size announced in `started`; later ones are a restart of the
+  // encoder (rotation), announced with the new size if it can be read from the SPS
+  private onVideoConfig(config: Buffer): void {
+    const size = parseVideoSize(config, this.opts.codec ?? 'h264');
+    const isFirst = this.configCount++ === 0;
+    const changed = !size || size.width !== this.size?.width || size.height !== this.size?.height;
+    if (size) {
+      this.size = size;
+    }
+    if (!isFirst && changed) {
+      this.deps.emit({method: MEDIA_FORMAT_CHANGED_EVENT, params: {streamId: this.streamId, ...size}});
+    }
   }
 
   private onJpegFrame(frame: JpegFrame): void {
