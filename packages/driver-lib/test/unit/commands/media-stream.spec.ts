@@ -231,9 +231,44 @@ describe('MediaStream', function () {
     session.push(au('video', 2));
     await tick();
     assert.equal(session.keyFrameRequests, 1);
-    emitter.emit('bidiBackpressure', {method: 'appium:mediaStream.units', state: 'dropping', dropped: 1});
+    emitter.emit('bidiBackpressure', {
+      method: 'appium:mediaStream.units',
+      chain: `${stream.streamId}:video`,
+      state: 'dropping',
+      dropped: 1,
+    });
     assert.equal(session.keyFrameRequests, 1, 'rate-limited within the minimum interval');
     await stream.stop();
+  });
+
+  it('ignores backpressure of other streams', async function () {
+    const video = setup('video');
+    await video.begin();
+    video.emitter.emit('bidiBackpressure', {method: 'appium:mediaStream.units', state: 'dropping', dropped: 3});
+    video.emitter.emit('bidiBackpressure', {
+      method: 'appium:mediaStream.units',
+      chain: 'other:video',
+      state: 'dropping',
+      dropped: 3,
+    });
+    assert.equal(video.session.keyFrameRequests, 0);
+    video.session.push(au('video', 1, {isKeyFrame: true}));
+    await video.tick();
+    assert.equal(unitEvents(video.events)[0].params!.dropped, 0);
+    await video.stream.stop();
+
+    const jpeg = setup('jpeg');
+    await jpeg.stream.start();
+    jpeg.emitter.emit('bidiBackpressure', {
+      method: 'appium:mediaStream.units',
+      chain: `${jpeg.stream.streamId}:video`,
+      state: 'dropping',
+      dropped: 5,
+    });
+    jpeg.session.push({data: Buffer.from([1]), sequence: 0, timestampMicros: 0} as JpegFrame);
+    await jpeg.tick();
+    assert.equal(unitEvents(jpeg.events)[0].params!.dropped, 0);
+    await jpeg.stream.stop();
   });
 
   it('does not request keyframes for jpeg streams', async function () {
@@ -332,6 +367,24 @@ describe('MediaStream', function () {
     const SIZE_640x480 = config('677a0016bcd940a03db0110000030001000003000a0f162d96');
     const formatChanges = (events: BiDiEvent[]) =>
       events.filter((e) => e.method === 'appium:mediaStream.formatChanged');
+
+    it('does not start on audio that precedes the video config', async function () {
+      const {session, events, stream, tick} = setup('video', true, {audio: true});
+      let resolved = false;
+      const started = stream.start().then((info) => {
+        resolved = true;
+        return info;
+      });
+      session.push(au('audio', 0));
+      await tick();
+      assert.equal(resolved, false);
+      assert.equal(events.length, 0);
+      session.push(au('video', 0, {isConfig: true, data: SIZE_1080x1920}));
+      const info = await started;
+      assert.deepEqual([info.width, info.height], [1080, 1920]);
+      assert.equal(events[0].method, 'appium:mediaStream.started');
+      await stream.stop();
+    });
 
     it('reports the size from the SPS in started and in the start result', async function () {
       const {session, events, stream} = setup('video');

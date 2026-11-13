@@ -57,6 +57,9 @@ export class MediaStream {
   private firstUnitSeen!: () => void;
   private readonly firstUnit = new Promise<void>((resolve) => (this.firstUnitSeen = resolve));
   private stopped = false;
+  private get videoChain(): string {
+    return `${this.streamId}:video`;
+  }
 
   constructor(
     private readonly session: VideoStreamSession | JpegStreamSession,
@@ -210,6 +213,10 @@ export class MediaStream {
       this.config = au.data;
       this.onVideoConfig(au.data);
     }
+    if (au.track === 'audio' && !this.announced) {
+      // Audio may precede the video config; `started` must carry the video size
+      return;
+    }
     // The config unit counts too: it is the first thing the encoder reports
     this.announce();
     this.firstUnitSeen();
@@ -306,7 +313,7 @@ export class MediaStream {
         ? {policy: 'reliable'}
         : first.track === 'jpeg'
           ? {policy: 'droppable'}
-          : {policy: 'droppable', chain: `${this.streamId}:video`, syncPoint: first.key};
+          : {policy: 'droppable', chain: this.videoChain, syncPoint: first.key};
     const dropped = this.dropped;
     this.dropped = 0;
     this.deps.emit({
@@ -335,7 +342,8 @@ export class MediaStream {
   }
 
   private onBackpressure = (ev: BiDiBackpressureEvent): void => {
-    if (ev.method !== MEDIA_UNITS_EVENT) {
+    // The shared emitter reports all streams: video drops carry its chain, JPEG ones have none
+    if (ev.method !== MEDIA_UNITS_EVENT || ev.chain !== (this.kind === 'video' ? this.videoChain : undefined)) {
       return;
     }
     // Core skips the video chain until a sync point; get one without waiting for the GOP
