@@ -29,7 +29,7 @@ import org.eclipse.wst.xml.xpath2.processor.internal.SeqType;
 import org.eclipse.wst.xml.xpath2.processor.internal.types.QName;
 import org.eclipse.wst.xml.xpath2.processor.internal.types.XSString;
 
-import com.ibm.icu.text.Normalizer;
+import java.text.Normalizer;
 
 /**
  * <p>
@@ -65,23 +65,23 @@ public class FnNormalizeUnicode extends Function {
 	};
 	
 	/**
-	 * W3C normalizer implemented via IBM's ICU
+	 * W3C normalizer implemented via java.text.Normalizer
 	 */
-	static class ICUNormalizer implements W3CNormalizer {
+	static class JDKNormalizer implements W3CNormalizer {
 		
 		private Map modeMap = new HashMap();
 		{
 			// Can't handle "FULLY-NORMALIZED" yet
 			
-			modeMap.put("NFC", Normalizer.NFC);
-			modeMap.put("NFD", Normalizer.NFD);
-			modeMap.put("NFKC", Normalizer.NFKC);
-			modeMap.put("NFKD", Normalizer.NFKD);
+			modeMap.put("NFC", Normalizer.Form.NFC);
+			modeMap.put("NFD", Normalizer.Form.NFD);
+			modeMap.put("NFKC", Normalizer.Form.NFKC);
+			modeMap.put("NFKD", Normalizer.Form.NFKD);
 		}
 		
 		public String normalize(String argument, String normalizationForm)
 				throws DynamicError {
-			Normalizer.Mode mode = (Normalizer.Mode)modeMap.get(normalizationForm);
+			Normalizer.Form mode = (Normalizer.Form)modeMap.get(normalizationForm);
 			if (mode != null) {
 				return Normalizer.normalize(argument, mode);
 			} else {
@@ -188,17 +188,7 @@ public class FnNormalizeUnicode extends Function {
 
 	private static W3CNormalizer getNormalizer() {
 		if (normalizer == null) {
-			ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-			
-			normalizer = createICUNormalizer(classLoader);
-			/*
-			if (normalizer == null) {
-				normalizer = createJDKNormalizer(classLoader);
-			}
-			*/
-			if (normalizer == null) {
-				normalizer = new FailingNormalizer();
-			}
+			normalizer = new JDKNormalizer();
 		}
 		return normalizer;
 	}
@@ -219,17 +209,6 @@ public class FnNormalizeUnicode extends Function {
 	}
 	*/
 
-	private static W3CNormalizer createICUNormalizer(ClassLoader classLoader) {
-		// First attempt is to try the IBM ICU library
-		try {
-			if (classLoader.loadClass("com.ibm.icu.text.Normalizer") != null) {
-				return new ICUNormalizer();
-			}
-		} catch (ClassNotFoundException e) {
-		}
-		return null;
-	}
-	
 	/**
 	 * Calculate the expected arguments.
 	 * 

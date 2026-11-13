@@ -1,5 +1,4 @@
 [versions]
-icu4j = "73.1"
 javaCupRuntime = "11b-20160615-3"
 junit = "4.13.2"
 junitVintage = "5.10.2"
@@ -8,7 +7,6 @@ xmlunit = "1.6"
 xercesimpl = "2.12.2"
 
 [libraries]
-icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
 java-cup-runtime = { module = "com.github.vbmacher:java-cup-runtime", version.ref = "javaCupRuntime" }
 junit = { module = "junit:junit", version.ref = "junit" }
 junit-vintage-engine = { module = "org.junit.vintage:junit-vintage-engine", version.ref = "junitVintage" }

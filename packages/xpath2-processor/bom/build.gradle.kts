@@ -9,7 +9,6 @@ version = providers.gradleProperty("xpath2Version").get()
 dependencies {
     constraints {
         api(libs.xercesimpl)
-        api(libs.icu4j)
         api(libs.java.cup.runtime)
     }
 }
