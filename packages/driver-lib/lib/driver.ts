@@ -153,6 +153,8 @@ import {
   mobileStartMediaProjectionRecording,
   mobileStopMediaProjectionRecording,
 } from './commands/media-projection.js';
+import {mobileStartMediaStream, mobileStopMediaStream, stopAllMediaStreams} from './commands/media-stream/exports.js';
+import type {MediaStream} from './commands/media-stream/stream.js';
 import {mobileSendTrimMemory} from './commands/memory.js';
 import {
   getWindowRect,
@@ -223,6 +225,7 @@ import './commands/permissions.js';
 import './commands/recordscreen.js';
 import './commands/resources.js';
 import './commands/shell.js';
+import './commands/media-stream/exports.js';
 import './commands/streamscreen.js';
 import './commands/system-bars.js';
 import './commands/time.js';
@@ -257,6 +260,7 @@ class AndroidDriver<C extends AndroidDriverConstraints = AndroidDriverConstraint
   _wasWindowAnimationDisabled?: boolean;
   _cachedActivityArgs: StringRecord;
   _screenStreamingProps?: ScreenStreamingProps;
+  _mediaStreams?: Map<string, MediaStream>;
   _screenRecordingProperties?: ScreenRecordingProperties;
   _logcatWebsocketListener?: LogcatListener;
   _bidiServerLogListener?: (...args: any[]) => void;
@@ -350,6 +354,7 @@ class AndroidDriver<C extends AndroidDriverConstraints = AndroidDriverConstraint
 
   override async deleteSession(sessionId?: string | null) {
     await removeAllSessionWebSocketHandlers.bind(this)();
+    await stopAllMediaStreams.bind(this)();
 
     try {
       this.adb?.logcat?.removeAllListeners();
@@ -587,6 +592,10 @@ Object.assign(AndroidDriver.prototype, {
 
   // shell
   mobileShell,
+
+  // media-stream
+  mobileStartMediaStream,
+  mobileStopMediaStream,
 
   // streamscreen
   mobileStartScreenStreaming,
