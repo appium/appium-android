@@ -224,14 +224,13 @@ jobs:
 
           tag="v${version}"
           if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1; then
-            # An older tag is fine if the sources JitPack builds are identical to HEAD's
+            # Reuse the tag if nothing outside lerna.json ignoreChanges (*.md, test/) differs from HEAD
             git fetch --no-tags --quiet origin "+refs/tags/${tag}:refs/tags/${tag}"
-            for path in packages/xpath2-processor jitpack.yml; do
-              if [ "$(git rev-parse "${tag}:${path}")" != "$(git rev-parse "HEAD:${path}")" ]; then
-                echo "::error::${tag} already exists but its ${path} differs from HEAD; bump the xpath2-processor version"
-                exit 1
-              fi
-            done
+            if ! git diff --quiet "$tag" HEAD -- packages/xpath2-processor jitpack.yml \
+              ':(exclude,glob)**/*.md' ':(exclude,glob)**/test/**'; then
+              echo "::error::${tag} already exists but its sources differ from HEAD; bump the xpath2-processor version"
+              exit 1
+            fi
             echo "${tag} already exists and matches HEAD"
           else
             git tag "$tag"
