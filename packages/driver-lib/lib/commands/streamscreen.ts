@@ -3,11 +3,10 @@ import http from 'node:http';
 import net from 'node:net';
 import url from 'node:url';
 
-import {fs, logger, system, util} from '@appium/support';
+import {fs, logger, system, util, net as supportNet} from '@appium/support';
 import type {AppiumLogger} from '@appium/types';
 import type {ADB} from 'appium-adb';
 import {waitForCondition} from 'asyncbox';
-import {checkPortStatus} from 'portscanner';
 import {SubProcess, exec} from 'teen_process';
 
 import type {AndroidDriverConstraints} from '../constraints.js';
@@ -108,11 +107,11 @@ export async function mobileStartScreenStreaming(
     this.log.info(`The screen streaming session is already running. Stop it first in order to start a new one.`);
     return;
   }
-  if ((await checkPortStatus(port, host)) === 'open') {
+  if ((await supportNet.checkPortStatus(port, {host})) === 'open') {
     this.log.info(`The port #${port} at ${host} is busy. Assuming the screen streaming is already running`);
     return;
   }
-  if ((await checkPortStatus(tcpPort, TCP_HOST)) === 'open') {
+  if ((await supportNet.checkPortStatus(tcpPort, {host: TCP_HOST})) === 'open') {
     throw this.log.errorWithException(
       `The port #${tcpPort} at ${TCP_HOST} is busy. Make sure there are no leftovers from previous sessions.`,
     );
@@ -483,7 +482,7 @@ async function initGstreamerPipeline(
     await waitForCondition(
       async () => {
         try {
-          return (await checkPortStatus(tcpPort, TCP_HOST)) === 'open';
+          return (await supportNet.checkPortStatus(tcpPort, {host: TCP_HOST})) === 'open';
         } catch {
           return false;
         }
