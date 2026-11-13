@@ -18,6 +18,7 @@ const ACCESSIBILITY_ENABLED_SETTING = 'accessibility_enabled';
  * Other enabled accessibility services are left untouched. The global accessibility toggle
  * (`accessibility_enabled`) is switched on if needed. It is only switched off again on disabling
  * if this `SettingsApp` instance has switched it on before; otherwise it is left as is.
+ * If enabling fails midway, the already applied changes are rolled back before the error is thrown.
  *
  * @param enabled - True to enable and false to disable the service
  * @returns True if the state has actually been changed
@@ -30,16 +31,25 @@ export async function setAccessibilityEventsServiceState(this: SettingsApp, enab
     if (isListed && isToggleOn) {
       return false;
     }
-    if (!isListed) {
-      await this.adb.setSetting(
-        'secure',
-        ENABLED_SERVICES_SETTING,
-        [...services, ACCESSIBILITY_EVENTS_SERVICE].join(':'),
-      );
-    }
-    if (!isToggleOn) {
-      this._accessibilityToggleWasOff = true;
-      await this.adb.setSetting('secure', ACCESSIBILITY_ENABLED_SETTING, 1);
+    try {
+      if (!isListed) {
+        await this.adb.setSetting(
+          'secure',
+          ENABLED_SERVICES_SETTING,
+          [...services, ACCESSIBILITY_EVENTS_SERVICE].join(':'),
+        );
+      }
+      if (!isToggleOn) {
+        this._accessibilityToggleWasOff = true;
+        await this.adb.setSetting('secure', ACCESSIBILITY_ENABLED_SETTING, 1);
+      }
+    } catch (err) {
+      // Do not leave a partially applied state behind, so the caller has nothing to clean up
+      this._accessibilityToggleWasOff = false;
+      if (!isListed) {
+        await restoreEnabledServices(this, services);
+      }
+      throw err;
     }
   } else {
     if (!isListed) {
@@ -70,6 +80,18 @@ export async function setAccessibilityEventsServiceState(this: SettingsApp, enab
 export async function isAccessibilityEventsServiceEnabled(this: SettingsApp): Promise<boolean> {
   const [services, isToggleOn] = await Promise.all([getEnabledServices(this), isAccessibilityToggleOn(this)]);
   return isToggleOn && services.includes(ACCESSIBILITY_EVENTS_SERVICE);
+}
+
+async function restoreEnabledServices(settingsApp: SettingsApp, services: string[]): Promise<void> {
+  try {
+    if (services.length > 0) {
+      await settingsApp.adb.setSetting('secure', ENABLED_SERVICES_SETTING, services.join(':'));
+    } else {
+      await settingsApp.adb.shell(['settings', 'delete', 'secure', ENABLED_SERVICES_SETTING]);
+    }
+  } catch (e) {
+    settingsApp.log.warn(LOG_PREFIX, `Cannot roll back the enabled accessibility services: ${(e as Error).message}`);
+  }
 }
 
 async function getEnabledServices(settingsApp: SettingsApp): Promise<string[]> {
