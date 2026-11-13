@@ -159,4 +159,70 @@ describe('accessibility events service', function () {
       await assert.rejects(client.setAccessibilityEventsServiceState(true), /denied/);
     });
   });
+
+  describe('pending toggle restoration', function () {
+    // Fails the first write of `accessibility_enabled=0` only
+    function failFirstToggleRestoration() {
+      let failed = false;
+      (client.adb.setSetting as sinon.SinonStub).callsFake(
+        async (_ns: string, name: string, value: string | number) => {
+          if (name === 'accessibility_enabled' && `${value}` === '0' && !failed) {
+            failed = true;
+            throw new Error('denied');
+          }
+          store[name] = `${value}`;
+          return '';
+        },
+      );
+    }
+
+    it('retries the toggle restoration even though the service is no longer listed', async function () {
+      await client.setAccessibilityEventsServiceState(true);
+      failFirstToggleRestoration();
+      await assert.rejects(client.setAccessibilityEventsServiceState(false), /denied/);
+      assert.deepEqual(store, {accessibility_enabled: '1'});
+
+      assert.equal(await client.setAccessibilityEventsServiceState(false), true);
+      assert.deepEqual(store, {accessibility_enabled: '0'});
+      // the marker is cleared after a successful restoration
+      assert.equal(await client.setAccessibilityEventsServiceState(false), false);
+    });
+
+    it('retries the restoration if other services have been listed before enabling', async function () {
+      store = {enabled_accessibility_services: 'com.foo/.Svc'};
+      await client.setAccessibilityEventsServiceState(true);
+      failFirstToggleRestoration();
+      await assert.rejects(client.setAccessibilityEventsServiceState(false), /denied/);
+      assert.deepEqual(store, {enabled_accessibility_services: 'com.foo/.Svc', accessibility_enabled: '1'});
+
+      assert.equal(await client.setAccessibilityEventsServiceState(false), true);
+      assert.deepEqual(store, {enabled_accessibility_services: 'com.foo/.Svc', accessibility_enabled: '0'});
+    });
+
+    it('drops the pending restoration if another service has been enabled before the retry', async function () {
+      await client.setAccessibilityEventsServiceState(true);
+      failFirstToggleRestoration();
+      await assert.rejects(client.setAccessibilityEventsServiceState(false), /denied/);
+      store.enabled_accessibility_services = 'com.foo/.Svc';
+
+      assert.equal(await client.setAccessibilityEventsServiceState(false), false);
+      assert.deepEqual(store, {enabled_accessibility_services: 'com.foo/.Svc', accessibility_enabled: '1'});
+      // the stale marker must not switch the toggle off later
+      await client.setAccessibilityEventsServiceState(true);
+      await client.setAccessibilityEventsServiceState(false);
+      assert.equal(store.accessibility_enabled, '1');
+    });
+
+    it('keeps the pending restoration if removing the service fails', async function () {
+      await client.setAccessibilityEventsServiceState(true);
+      (client.adb.shell as sinon.SinonStub).rejects(new Error('shell failed'));
+      await assert.rejects(client.setAccessibilityEventsServiceState(false), /shell failed/);
+      (client.adb.shell as sinon.SinonStub).callsFake(async (args: string[]) => {
+        delete store[args[3]];
+        return '';
+      });
+      assert.equal(await client.setAccessibilityEventsServiceState(false), true);
+      assert.deepEqual(store, {accessibility_enabled: '0'});
+    });
+  });
 });

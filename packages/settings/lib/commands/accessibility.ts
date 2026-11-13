@@ -18,7 +18,7 @@ const ACCESSIBILITY_ENABLED_SETTING = 'accessibility_enabled';
  * Other enabled accessibility services are left untouched. The global accessibility toggle
  * (`accessibility_enabled`) is switched on if needed. It is only switched off again on disabling
  * if this `SettingsApp` instance has switched it on before and no other services have been
- * enabled since; otherwise it is left as is.
+ * enabled since; otherwise it is left as is. A failed restoration is retried on the next disabling call.
  * If enabling fails midway, the already applied changes are rolled back before the error is thrown.
  *
  * @param enabled - True to enable and false to disable the service
@@ -32,6 +32,7 @@ export async function setAccessibilityEventsServiceState(this: SettingsApp, enab
     if (isListed && isToggleOn) {
       return false;
     }
+    const previousMarker = this._accessibilityToggleOffServices;
     try {
       if (!isListed) {
         await this.adb.setSetting(
@@ -46,27 +47,26 @@ export async function setAccessibilityEventsServiceState(this: SettingsApp, enab
       }
     } catch (err) {
       // Do not leave a partially applied state behind, so the caller has nothing to clean up
-      this._accessibilityToggleOffServices = null;
+      this._accessibilityToggleOffServices = previousMarker;
       if (!isListed) {
         await restoreEnabledServices(this, services);
       }
       throw err;
     }
   } else {
-    if (!isListed) {
+    const newServices = services.filter((s) => !isOurService(s));
+    if (isListed) {
+      if (newServices.length > 0) {
+        await this.adb.setSetting('secure', ENABLED_SERVICES_SETTING, newServices.join(':'));
+      } else {
+        await this.adb.shell(['settings', 'delete', 'secure', ENABLED_SERVICES_SETTING]);
+      }
+    }
+    // Also retries a toggle restoration that failed on a previous call
+    const isToggleRestored = await restorePendingToggle(this, newServices, isToggleOn);
+    if (!isListed && !isToggleRestored) {
       return false;
     }
-    const newServices = services.filter((s) => !isOurService(s));
-    if (newServices.length > 0) {
-      await this.adb.setSetting('secure', ENABLED_SERVICES_SETTING, newServices.join(':'));
-    } else {
-      await this.adb.shell(['settings', 'delete', 'secure', ENABLED_SERVICES_SETTING]);
-    }
-    const initialServices = this._accessibilityToggleOffServices;
-    if (initialServices && newServices.every((s) => initialServices.includes(normalizeComponent(s)))) {
-      await this.adb.setSetting('secure', ACCESSIBILITY_ENABLED_SETTING, 0);
-    }
-    this._accessibilityToggleOffServices = null;
   }
   this.log.debug(
     LOG_PREFIX,
@@ -82,6 +82,30 @@ export async function setAccessibilityEventsServiceState(this: SettingsApp, enab
 export async function isAccessibilityEventsServiceEnabled(this: SettingsApp): Promise<boolean> {
   const [services, isToggleOn] = await Promise.all([getEnabledServices(this), isAccessibilityToggleOn(this)]);
   return isToggleOn && services.some(isOurService);
+}
+
+/**
+ * Switches the global accessibility toggle off if it has been switched on by this instance
+ * and no other services have been enabled since. The marker is kept if the write fails,
+ * so the restoration can be retried.
+ *
+ * @returns True if the toggle has actually been switched off
+ */
+async function restorePendingToggle(
+  settingsApp: SettingsApp,
+  services: string[],
+  isToggleOn: boolean,
+): Promise<boolean> {
+  const initialServices = settingsApp._accessibilityToggleOffServices;
+  if (!initialServices) {
+    return false;
+  }
+  const shouldRestore = isToggleOn && services.every((s) => initialServices.includes(normalizeComponent(s)));
+  if (shouldRestore) {
+    await settingsApp.adb.setSetting('secure', ACCESSIBILITY_ENABLED_SETTING, 0);
+  }
+  settingsApp._accessibilityToggleOffServices = null;
+  return shouldRestore;
 }
 
 async function restoreEnabledServices(settingsApp: SettingsApp, services: string[]): Promise<void> {
