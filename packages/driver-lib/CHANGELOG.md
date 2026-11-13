@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [15.1.19](https://github.com/appium/appium-android/compare/appium-android-driver@15.1.18...appium-android-driver@15.1.19) (2026-11-13)
+
+### Code Refactoring
+
+* **driver-lib:** use port helpers from appium/support instead of portscanner ([#114](https://github.com/appium/appium-android/issues/114)) ([bd84564](https://github.com/appium/appium-android/commit/bd8456491883c804bf8e31d7227b667e92093a63))
+
+
 ## [15.1.18](https://github.com/appium/appium-android/compare/appium-android-driver@15.1.17...appium-android-driver@15.1.18) (2026-11-13)
 
 **Note:** Version bump only for package appium-android-driver
