@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [9.1.2](https://github.com/appium/appium-android/compare/io.appium.settings@9.1.1...io.appium.settings@9.1.2) (2026-11-13)
+
+### Bug Fixes
+
+* **settings:** harden accessibility events service state handling ([#109](https://github.com/appium/appium-android/issues/109)) ([2e4b816](https://github.com/appium/appium-android/commit/2e4b81678a4c4f99948ee2186bd5e77b31e7d1f7))
+
+
 ## [9.1.1](https://github.com/appium/appium-android/compare/io.appium.settings@9.1.0...io.appium.settings@9.1.1) (2026-11-13)
 
 ### Miscellaneous Chores
