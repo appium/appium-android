@@ -320,8 +320,8 @@ public class VideoStreamSession extends StreamingSession {
             Bundle params = new Bundle();
             params.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
             encoder.setParameters(params);
-        } catch (IllegalStateException e) {
-            // The encoder is being swapped by a rotation; the new one starts with a keyframe.
+        } catch (RuntimeException e) {
+            // Typically the encoder is being swapped by a rotation; the new one starts with a keyframe.
             Log.w(TAG, "Cannot request a sync frame right now", e);
         }
     }

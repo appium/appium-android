@@ -307,7 +307,12 @@ public abstract class StreamingSession implements Runnable {
                     InputStream in = clientSocket.getInputStream();
                     int command;
                     while ((command = in.read()) != -1 && controlOn) {
-                        onControlCommand(command);
+                        try {
+                            onControlCommand(command);
+                        } catch (RuntimeException e) {
+                            // A failing command must not stop the EOF detection below.
+                            Log.w(TAG, "Control command " + command + " failed", e);
+                        }
                     }
                 } catch (IOException ignored) {
                     // Local socket closed already, by stopSession() or a writer error.
