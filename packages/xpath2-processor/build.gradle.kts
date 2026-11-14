@@ -342,11 +342,8 @@ tasks.processTestResources {
     }
 }
 
-tasks.withType<Test>().configureEach {
-    dependsOn(fetchXpath2TestData)
-}
-
 tasks.test {
+    dependsOn(fetchXpath2TestData)
     useJUnitPlatform()
     filter {
         includeTestsMatching("org.eclipse.wst.xml.xpath2.processor.test.PsychoPathTestSuiteAdapter")
