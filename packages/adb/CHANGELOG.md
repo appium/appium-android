@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [17.0.3](https://github.com/appium/appium-android/compare/appium-adb@17.0.2...appium-adb@17.0.3) (2026-11-14)
+
+### Miscellaneous Chores
+
+* **settings:** update dependency teen_process to v5 ([#108](https://github.com/appium/appium-android/issues/108)) ([748a7ec](https://github.com/appium/appium-android/commit/748a7ecb60bc59c596a69bcf2fce14dff036a4a4))
+
+
 ## [17.0.2](https://github.com/appium/appium-android/compare/appium-adb@17.0.1...appium-adb@17.0.2) (2026-11-13)
 
 ### Miscellaneous Chores

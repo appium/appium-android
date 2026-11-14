@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [10.0.5](https://github.com/appium/appium-android/compare/appium-chromedriver@10.0.4...appium-chromedriver@10.0.5) (2026-11-14)
+
+### Miscellaneous Chores
+
+* **settings:** update dependency teen_process to v5 ([#108](https://github.com/appium/appium-android/issues/108)) ([748a7ec](https://github.com/appium/appium-android/commit/748a7ecb60bc59c596a69bcf2fce14dff036a4a4))
+
+
 ## [10.0.4](https://github.com/appium/appium-android/compare/appium-chromedriver@10.0.3...appium-chromedriver@10.0.4) (2026-11-13)
 
 ### Miscellaneous Chores
