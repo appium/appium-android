@@ -74,16 +74,25 @@ export class MediaStream {
     const {opts} = this;
     // A start() that throws may still have brought the on-device service up, so it is ours
     this.owned = true;
-    const started =
-      opts.kind === 'video'
-        ? await (this.session as VideoStreamSession).start({
-            codec: opts.codec,
-            fps: opts.fps,
-            bitrate: opts.bitrate,
-            resolution: opts.resolution,
-            audio: opts.audio,
-          })
-        : await (this.session as JpegStreamSession).start({fps: opts.fps, quality: opts.quality, scale: opts.scale});
+    let started: boolean;
+    try {
+      started =
+        opts.kind === 'video'
+          ? await (this.session as VideoStreamSession).start({
+              codec: opts.codec,
+              fps: opts.fps,
+              bitrate: opts.bitrate,
+              resolution: opts.resolution,
+              audio: opts.audio,
+            })
+          : await (this.session as JpegStreamSession).start({fps: opts.fps, quality: opts.quality, scale: opts.scale});
+    } catch (e) {
+      // Option validation runs before the device is touched, so there is nothing of ours to stop
+      if (e instanceof TypeError || e instanceof RangeError) {
+        this.owned = false;
+      }
+      throw e;
+    }
     if (!started) {
       // The device already runs a stream of this kind that is not ours: leave it alone
       this.owned = false;
@@ -259,6 +268,10 @@ export class MediaStream {
     const changed = !size || size.width !== this.size?.width || size.height !== this.size?.height;
     if (size) {
       this.size = size;
+    }
+    if (!isFirst) {
+      // Units of the previous format must reach clients before the new format is announced
+      this.batcher.flush();
     }
     if (!isFirst && changed) {
       this.deps.emit({method: MEDIA_FORMAT_CHANGED_EVENT, params: {streamId: this.streamId, ...size}});

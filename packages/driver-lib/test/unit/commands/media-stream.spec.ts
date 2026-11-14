@@ -307,6 +307,22 @@ describe('MediaStream', function () {
       assert.deepEqual(events, []);
     });
 
+    it('does not stop the stream of another client if the options are invalid', async function () {
+      let stops = 0;
+      const {stream} = build({
+        start: async () => {
+          throw new TypeError('fps must be a positive integer, got 0');
+        },
+        stop: async () => {
+          stops++;
+          return true;
+        },
+      });
+      await assert.rejects(stream.start(), TypeError);
+      await stream.stop('failed to start');
+      assert.equal(stops, 0);
+    });
+
     it('stops the device session if start() throws midway', async function () {
       let stops = 0;
       const {stream, events} = build({
@@ -412,6 +428,24 @@ describe('MediaStream', function () {
         formatChanges(events).map((e) => e.params),
         [{streamId: stream.streamId, width: 640, height: 480}],
       );
+      await stream.stop();
+    });
+
+    it('flushes the pending batch of the old format before announcing the new one', async function () {
+      const {session, events, stream, tick} = setup('video', true, {batchMs: 1000});
+      const started = stream.start();
+      session.push(au('video', 0, {isConfig: true, data: SIZE_1080x1920}));
+      await started;
+      session.push(au('video', 1, {isKeyFrame: true}));
+      session.push(au('video', 2, {isConfig: true, data: SIZE_640x480}));
+      session.push(au('video', 3, {isKeyFrame: true}));
+      await tick();
+      const order = events.map((e) =>
+        e.method === 'appium:mediaStream.units'
+          ? `units:${e.params!.units.map((u: {seq: number}) => u.seq)}`
+          : e.method.split('.')[1],
+      );
+      assert.deepEqual(order.slice(order.indexOf('units:1')), ['units:1', 'formatChanged']);
       await stream.stop();
     });
 
