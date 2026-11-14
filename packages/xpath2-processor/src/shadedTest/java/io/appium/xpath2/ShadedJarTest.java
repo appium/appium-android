@@ -2,6 +2,7 @@ package io.appium.xpath2;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -15,6 +16,7 @@ import java.util.jar.JarFile;
 import org.eclipse.wst.xml.xpath2.api.Item;
 import org.eclipse.wst.xml.xpath2.api.ResultSequence;
 import org.eclipse.wst.xml.xpath2.processor.Engine;
+import org.eclipse.wst.xml.xpath2.processor.DynamicError;
 import org.eclipse.wst.xml.xpath2.processor.util.DynamicContextBuilder;
 import org.eclipse.wst.xml.xpath2.processor.util.StaticContextBuilder;
 import org.junit.Test;
@@ -60,6 +62,16 @@ public class ShadedJarTest {
         assertEquals(Collections.singletonList("2020-01-02"),
                 evaluate("xs:date('2020-01-01') + xs:dayTimeDuration('P1D')"));
         assertEquals(Collections.singletonList("true"), evaluate("xs:decimal('1.5') gt xs:decimal('1.25')"));
+    }
+
+    @Test
+    public void doesNotLoadDocumentsFromUris() throws Exception {
+        try {
+            evaluate("doc('file:///etc/hosts')");
+            fail("fn:doc has loaded a document");
+        } catch (DynamicError expected) {
+            assertEquals("FODC0002", expected.code());
+        }
     }
 
     @Test(expected = SAXParseException.class)

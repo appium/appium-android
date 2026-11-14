@@ -28,6 +28,7 @@ The published jar is self-contained: Xerces and java-cup-runtime are bundled wit
 - The parts of the DOM API that Android lacks (`org.w3c.dom.events`, `traversal`, `ranges`, `html`, `css`, `stylesheets`, `views`, `xpath`) are relocated as well. `org.w3c.dom`, `org.xml.sax` and `javax.xml` come from the platform and are not bundled.
 - `META-INF/services` is dropped, so the JAXP factories of the host process are not affected.
 - Because Xerces is relocated, do not import `org.apache.xerces` in the code that uses the processor. Use `io.appium.xpath2.DocumentLoader.parse(InputStream)` to parse the XML that expressions are evaluated against.
+- `DocumentLoader` rejects DOCTYPE declarations. The upstream loaders (`DOMBuilder`, `XercesLoader`) are left as they are, since the conformance tests need DTDs, and are not reachable from an expression with the default `DynamicContextBuilder`.
 - `./gradlew shadedTest` runs smoke tests against the shaded jar only.
 - The jar carries the `META-INF/LICENSE` and `NOTICE` of Apache Xerces (Apache-2.0), which is bundled along with java-cup-runtime (CUP license) and the DOM interfaces of `xml-apis`.
 
@@ -52,6 +53,7 @@ Local changes to re-apply when re-vendoring:
 
 - ICU4J (a 14 MB dependency) is replaced by the JDK, i.e. `Character` / `String` code point methods and `java.text.Normalizer` for `fn:normalize-unicode`.
 - `io.appium.xpath2.DocumentLoader` and `io.appium.xpath2.JaxpFactories` are added (not part of upstream).
+- `DynamicContextBuilder` does not load documents for `fn:doc` unless `withDocumentLoading(true)` is called (the upstream test harness, `AbstractPsychoPathTest`, opts in), so an expression cannot make the host process read arbitrary files or URIs.
 - `DocumentBuilderFactory.newInstance()` and `DatatypeFactory.newInstance()` are replaced by `JaxpFactories` in `DOMBuilder`, `XercesLoader`, `DynamicContextAdapter`, `DynamicContextBuilder`, `Function` and `AnyType`. Android has no `DatatypeFactory` implementation, and a lookup could pick up the one of the host process.
 
 ### License and notice

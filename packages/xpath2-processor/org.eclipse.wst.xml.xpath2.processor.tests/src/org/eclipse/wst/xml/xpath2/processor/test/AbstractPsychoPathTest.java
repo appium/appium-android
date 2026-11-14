@@ -340,7 +340,7 @@ public class AbstractPsychoPathTest extends XMLTestCase {
 			staticContextBuilder.withNamespace("fn", "http://www.w3.org/2005/xpath-functions");
 			staticContextBuilder.withNamespace("xml", "http://www.w3.org/XML/1998/namespace");
 			
-			dynamicContextBuilder = new DynamicContextBuilder(staticContextBuilder);
+			dynamicContextBuilder = new DynamicContextBuilder(staticContextBuilder).withDocumentLoading(true);
 			setupVariables(dynamicContext);
 			try {
 				dynamicContextBuilder.withTimezoneOffset(DatatypeFactory.newInstance().newDuration(false/*i.e. negative*/, 0, 0, 0, 5, 0, 0));
