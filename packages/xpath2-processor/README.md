@@ -21,7 +21,7 @@ dependencies {
 }
 ```
 
-The build publishes two modules (`xpath2-processor` and `xpath2-bom`); JitPack only uses the `com.github.appium.appium-android:<artifact>` form when a build publishes more than one. The runtime dependencies (xerces, icu4j, java-cup-runtime) come transitively from the POM.
+The build publishes two modules (`xpath2-processor` and `xpath2-bom`); JitPack only uses the `com.github.appium.appium-android:<artifact>` form when a build publishes more than one. The runtime dependencies (xerces, java-cup-runtime) come transitively from the POM.
 
 ## Releases
 
