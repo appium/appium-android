@@ -208,10 +208,20 @@ sourceSets {
     }
 }
 
+// Bundled into the shaded jar (see shadowJar) instead of being exposed as dependencies
+val bundled: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    attributes {
+        attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage.JAVA_RUNTIME))
+    }
+}
+configurations.compileOnly { extendsFrom(bundled) }
+configurations.testImplementation { extendsFrom(bundled) }
+
 dependencies {
-    // Bundled into the published jar under a private package, see shadowJar
-    implementation(libs.xercesimpl)
-    implementation(libs.java.cup.runtime)
+    bundled(libs.xercesimpl)
+    bundled(libs.java.cup.runtime)
 
     testImplementation(sourceSets.main.get().output)
     testImplementation(libs.xmlunit)
@@ -232,33 +242,40 @@ tasks.jar {
 
 val shadedPrefix = "io.appium.xpath2.shaded"
 
+// Parts of the DOM API that Android lacks, but the Xerces DOM implementation needs
+val relocatedDomPackages = listOf(
+    "org.w3c.dom.events",
+    "org.w3c.dom.traversal",
+    "org.w3c.dom.ranges",
+    "org.w3c.dom.html",
+    "org.w3c.dom.css",
+    "org.w3c.dom.stylesheets",
+    "org.w3c.dom.views",
+    "org.w3c.dom.xpath",
+    "org.w3c.dom.bootstrap",
+)
+// Single classes of the core DOM and LS packages that Android lacks (the rest of them is provided by the platform)
+val relocatedDomClasses = listOf(
+    "org.w3c.dom.ElementTraversal",
+    "org.w3c.dom.ls.LSLoadEvent",
+    "org.w3c.dom.ls.LSProgressEvent",
+    "org.w3c.dom.ls.LSSerializerFilter",
+)
+
 // Xerces and friends are bundled under a private package, so that they cannot clash with the copies
 // of the application under test when the processor is loaded into its process. The classes that
 // the Android platform (or the JDK) already provides are left out.
 tasks.shadowJar {
     archiveClassifier = ""
+    configurations = listOf(bundled)
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    listOf(
-        "org.apache.xerces",
-        "org.apache.xml",
-        "org.apache.html",
-        "org.apache.wml",
-        "java_cup",
-        // Parts of the DOM API that are absent on Android (needed by the Xerces DOM implementation)
-        "org.w3c.dom.events",
-        "org.w3c.dom.traversal",
-        "org.w3c.dom.ranges",
-        "org.w3c.dom.html",
-        "org.w3c.dom.css",
-        "org.w3c.dom.stylesheets",
-        "org.w3c.dom.views",
-        "org.w3c.dom.xpath",
-        "org.w3c.dom.bootstrap",
-        "org.w3c.dom.ElementTraversal",
-        "org.w3c.dom.ls.LSLoadEvent",
-        "org.w3c.dom.ls.LSProgressEvent",
-        "org.w3c.dom.ls.LSSerializerFilter",
-    ).forEach { relocate(it, "$shadedPrefix.$it") }
+    // The license notice of the upstream Eclipse bundle, as in the plain jar
+    from(xpath2Root) {
+        include("about.html", "plugin.properties")
+    }
+    (listOf("org.apache.xerces", "org.apache.xml", "org.apache.html", "org.apache.wml", "java_cup") +
+        relocatedDomPackages + relocatedDomClasses
+        ).forEach { relocate(it, "$shadedPrefix.$it") }
     exclude(
         "javax/**",
         "org/xml/**",
@@ -267,20 +284,21 @@ tasks.shadowJar {
         "META-INF/services/**",
         "META-INF/maven/**",
     )
-    // The core DOM and LS classes of the platform, but not those missing from the Android SDK (relocated above)
+    val relocatedClassPaths = relocatedDomClasses.map { it.replace('.', '/') }
     exclude {
         val path = it.relativePath.pathString
         path.endsWith(".class") &&
             (path.matches(Regex("org/w3c/dom/[^/]+\\.class")) || path.startsWith("org/w3c/dom/ls/")) &&
-            !path.startsWith("org/w3c/dom/ElementTraversal") &&
-            !path.startsWith("org/w3c/dom/ls/LSLoadEvent") &&
-            !path.startsWith("org/w3c/dom/ls/LSProgressEvent") &&
-            !path.startsWith("org/w3c/dom/ls/LSSerializerFilter")
+            relocatedClassPaths.none { prefix -> path.startsWith(prefix) }
     }
 }
 
-tasks.assemble {
-    dependsOn(tasks.shadowJar)
+// Project dependencies (e.g. the composite build of uiautomator2-server) get the shaded jar as well
+listOf(configurations.apiElements, configurations.runtimeElements).forEach { variant ->
+    variant.configure {
+        outgoing.artifacts.clear()
+        outgoing.artifact(tasks.shadowJar)
+    }
 }
 
 val shadedTest: SourceSet by sourceSets.creating
@@ -299,7 +317,10 @@ val shadedTestTask = tasks.register<Test>("shadedTest") {
     testClassesDirs = shadedTest.output.classesDirs
     classpath = shadedTest.runtimeClasspath
     useJUnitPlatform()
-    systemProperty("shaded.jar", tasks.shadowJar.get().archiveFile.get().asFile.absolutePath)
+    val shadedJar = tasks.shadowJar.flatMap { it.archiveFile }
+    doFirst {
+        systemProperty("shaded.jar", shadedJar.get().asFile.absolutePath)
+    }
     testLogging {
         events("failed", "skipped")
     }

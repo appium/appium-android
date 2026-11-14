@@ -20,6 +20,7 @@ import org.eclipse.wst.xml.xpath2.processor.util.StaticContextBuilder;
 import org.junit.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.xml.sax.SAXParseException;
 
 /** Runs against the shaded jar only, see the shadedTest task. */
 public class ShadedJarTest {
@@ -59,6 +60,21 @@ public class ShadedJarTest {
         assertEquals(Collections.singletonList("2020-01-02"),
                 evaluate("xs:date('2020-01-01') + xs:dayTimeDuration('P1D')"));
         assertEquals(Collections.singletonList("true"), evaluate("xs:decimal('1.5') gt xs:decimal('1.25')"));
+    }
+
+    @Test(expected = SAXParseException.class)
+    public void rejectsDoctypeDeclarations() throws Exception {
+        String xml = "<?xml version=\"1.0\"?><!DOCTYPE a [<!ENTITY x SYSTEM \"file:///etc/passwd\">]><a>&x;</a>";
+        DocumentLoader.parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    @Test
+    public void shipsLicenseNotices() throws Exception {
+        try (JarFile jar = new JarFile(new File(System.getProperty("shaded.jar")))) {
+            for (String name : new String[] {"about.html", "plugin.properties", "META-INF/LICENSE", "META-INF/NOTICE"}) {
+                assertTrue(name + " is missing", jar.getEntry(name) != null);
+            }
+        }
     }
 
     @Test

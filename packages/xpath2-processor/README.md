@@ -29,6 +29,7 @@ The published jar is self-contained: Xerces and java-cup-runtime are bundled wit
 - `META-INF/services` is dropped, so the JAXP factories of the host process are not affected.
 - Because Xerces is relocated, do not import `org.apache.xerces` in the code that uses the processor. Use `io.appium.xpath2.DocumentLoader.parse(InputStream)` to parse the XML that expressions are evaluated against.
 - `./gradlew shadedTest` runs smoke tests against the shaded jar only.
+- The jar carries the `META-INF/LICENSE` and `NOTICE` of Apache Xerces (Apache-2.0), which is bundled along with java-cup-runtime (CUP license) and the DOM interfaces of `xml-apis`.
 
 ## Releases
 
@@ -50,7 +51,8 @@ The pinned upstream commit is recorded in [`SOURCE_COMMIT`](./SOURCE_COMMIT).
 Local changes to re-apply when re-vendoring:
 
 - ICU4J (a 14 MB dependency) is replaced by the JDK, i.e. `Character` / `String` code point methods and `java.text.Normalizer` for `fn:normalize-unicode`.
-- `io.appium.xpath2.DocumentLoader` is added (not part of upstream).
+- `io.appium.xpath2.DocumentLoader` and `io.appium.xpath2.JaxpFactories` are added (not part of upstream).
+- `DocumentBuilderFactory.newInstance()` and `DatatypeFactory.newInstance()` are replaced by `JaxpFactories` in `DOMBuilder`, `XercesLoader`, `DynamicContextAdapter`, `DynamicContextBuilder`, `Function` and `AnyType`. Android has no `DatatypeFactory` implementation, and a lookup could pick up the one of the host process.
 
 ### License and notice
 
