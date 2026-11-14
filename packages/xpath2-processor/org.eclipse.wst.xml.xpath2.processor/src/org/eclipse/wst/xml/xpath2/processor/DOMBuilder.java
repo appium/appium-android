@@ -46,7 +46,7 @@ public class DOMBuilder implements DOMLoader {
 	// XXX: fix error reporting
 	public Document load(InputStream in) throws DOMLoaderException {
 
-		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+		DocumentBuilderFactory factory = io.appium.xpath2.JaxpFactories.documentBuilderFactory();
 
 		factory.setNamespaceAware(true);
 		factory.setValidating(_validating);

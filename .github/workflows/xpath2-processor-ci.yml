@@ -61,5 +61,5 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: gradle
-      - name: Run the PsychoPath test suite
-        run: ./gradlew test
+      - name: Run the PsychoPath test suite and the shaded jar smoke tests
+        run: ./gradlew test shadedTest

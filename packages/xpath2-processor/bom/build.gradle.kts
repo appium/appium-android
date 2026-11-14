@@ -6,13 +6,8 @@ plugins {
 group = providers.gradleProperty("group").get()
 version = providers.gradleProperty("xpath2Version").get()
 
-dependencies {
-    constraints {
-        api(libs.xercesimpl)
-        api(libs.java.cup.runtime)
-    }
-}
-
+// Intentionally empty: the processor bundles its dependencies. The module exists because JitPack
+// only serves a build under com.github.appium.appium-android:<artifactId> when it publishes several modules.
 publishing {
     publications {
         create<MavenPublication>("bom") {
@@ -20,7 +15,7 @@ publishing {
             from(components["javaPlatform"])
             pom {
                 name = "xpath2-bom"
-                description = "Versions of the runtime dependencies of xpath2-processor"
+                description = "Placeholder BOM of xpath2-processor, which has no external dependencies"
                 licenses {
                     license {
                         name = "EPL-2.0"

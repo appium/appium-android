@@ -1,9 +1,19 @@
 import org.gradle.api.tasks.testing.Test
 import java.io.File
 
+fun runCommand(workingDir: File?, vararg command: String) {
+    val exitCode = ProcessBuilder(*command)
+        .directory(workingDir)
+        .inheritIO()
+        .start()
+        .waitFor()
+    check(exitCode == 0) { "'${command.joinToString(" ")}' exited with $exitCode" }
+}
+
 plugins {
     `java-library`
     `maven-publish`
+    alias(libs.plugins.shadow)
 }
 
 group = providers.gradleProperty("group").get()
@@ -70,11 +80,8 @@ fun org.gradle.api.Project.deleteUpstreamCheckout(logger: org.gradle.api.logging
         }
     } catch (e: Exception) {
         logger.warn("Gradle delete failed ({}), retrying with rm -rf", e.message)
-        exec {
-            if (checkoutDir.exists()) {
-                commandLine("rm", "-rf", checkoutDir.absolutePath)
-            }
-            isIgnoreExitValue = false
+        if (checkoutDir.exists()) {
+            runCommand(null, "rm", "-rf", checkoutDir.absolutePath)
         }
         if (upstreamRootDir.exists() && upstreamRootDir.list().isNullOrEmpty()) {
             upstreamRootDir.delete()
@@ -124,13 +131,7 @@ val fetchXpath2TestData = tasks.register("fetchXpath2TestData") {
         )
         checkoutDir.mkdirs()
 
-        fun git(vararg args: String) {
-            exec {
-                workingDir(checkoutDir)
-                commandLine(listOf("git") + args)
-                isIgnoreExitValue = false
-            }
-        }
+        fun git(vararg args: String) = runCommand(checkoutDir, "git", *args)
 
         git("init", "-q")
         git("remote", "add", "origin", upstreamUrl)
@@ -208,8 +209,9 @@ sourceSets {
 }
 
 dependencies {
-    api(libs.xercesimpl)
-    api(libs.java.cup.runtime)
+    // Bundled into the published jar under a private package, see shadowJar
+    implementation(libs.xercesimpl)
+    implementation(libs.java.cup.runtime)
 
     testImplementation(sourceSets.main.get().output)
     testImplementation(libs.xmlunit)
@@ -224,6 +226,87 @@ tasks.jar {
         include("about.html", "plugin.properties")
     }
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    // The published artifact is the shadow jar
+    archiveClassifier = "plain"
+}
+
+val shadedPrefix = "io.appium.xpath2.shaded"
+
+// Xerces and friends are bundled under a private package, so that they cannot clash with the copies
+// of the application under test when the processor is loaded into its process. The classes that
+// the Android platform (or the JDK) already provides are left out.
+tasks.shadowJar {
+    archiveClassifier = ""
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    listOf(
+        "org.apache.xerces",
+        "org.apache.xml",
+        "org.apache.html",
+        "org.apache.wml",
+        "java_cup",
+        // Parts of the DOM API that are absent on Android (needed by the Xerces DOM implementation)
+        "org.w3c.dom.events",
+        "org.w3c.dom.traversal",
+        "org.w3c.dom.ranges",
+        "org.w3c.dom.html",
+        "org.w3c.dom.css",
+        "org.w3c.dom.stylesheets",
+        "org.w3c.dom.views",
+        "org.w3c.dom.xpath",
+        "org.w3c.dom.bootstrap",
+        "org.w3c.dom.ElementTraversal",
+        "org.w3c.dom.ls.LSLoadEvent",
+        "org.w3c.dom.ls.LSProgressEvent",
+        "org.w3c.dom.ls.LSSerializerFilter",
+    ).forEach { relocate(it, "$shadedPrefix.$it") }
+    exclude(
+        "javax/**",
+        "org/xml/**",
+        "org/apache/xmlcommons/**",
+        // Would make JAXP factories of the application under test resolve to the bundled Xerces
+        "META-INF/services/**",
+        "META-INF/maven/**",
+    )
+    // The core DOM and LS classes of the platform, but not those missing from the Android SDK (relocated above)
+    exclude {
+        val path = it.relativePath.pathString
+        path.endsWith(".class") &&
+            (path.matches(Regex("org/w3c/dom/[^/]+\\.class")) || path.startsWith("org/w3c/dom/ls/")) &&
+            !path.startsWith("org/w3c/dom/ElementTraversal") &&
+            !path.startsWith("org/w3c/dom/ls/LSLoadEvent") &&
+            !path.startsWith("org/w3c/dom/ls/LSProgressEvent") &&
+            !path.startsWith("org/w3c/dom/ls/LSSerializerFilter")
+    }
+}
+
+tasks.assemble {
+    dependsOn(tasks.shadowJar)
+}
+
+val shadedTest: SourceSet by sourceSets.creating
+
+dependencies {
+    // Only the shaded jar, so that the test fails if anything is still taken from the original libraries
+    "shadedTestImplementation"(files(tasks.shadowJar))
+    "shadedTestImplementation"(libs.junit)
+    "shadedTestRuntimeOnly"(libs.junit.vintage.engine)
+    "shadedTestRuntimeOnly"(libs.junit.platform.launcher)
+}
+
+val shadedTestTask = tasks.register<Test>("shadedTest") {
+    group = "verification"
+    description = "Runs smoke tests against the shaded jar."
+    testClassesDirs = shadedTest.output.classesDirs
+    classpath = shadedTest.runtimeClasspath
+    useJUnitPlatform()
+    systemProperty("shaded.jar", tasks.shadowJar.get().archiveFile.get().asFile.absolutePath)
+    testLogging {
+        events("failed", "skipped")
+    }
+}
+
+tasks.check {
+    dependsOn(shadedTestTask)
 }
 
 tasks.compileTestJava {
@@ -261,7 +344,8 @@ publishing {
     publications {
         create<MavenPublication>("processor") {
             artifactId = "xpath2-processor"
-            from(components["java"])
+            from(components["shadow"])
+            artifact(tasks.named("sourcesJar"))
             pom {
                 name = "xpath2-processor"
                 description = "PsychoPath XPath 2.0 processor (Eclipse WTP) for Appium Android servers"

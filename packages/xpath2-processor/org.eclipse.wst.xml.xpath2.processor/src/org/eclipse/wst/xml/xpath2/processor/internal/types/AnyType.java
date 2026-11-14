@@ -32,7 +32,7 @@ public abstract class AnyType implements SingleItemSequence {
 	protected static DatatypeFactory _datatypeFactory;
 	static {
 		try {
-			_datatypeFactory = DatatypeFactory.newInstance();
+			_datatypeFactory = io.appium.xpath2.JaxpFactories.datatypeFactory();
 		}
 		catch (DatatypeConfigurationException e) {
 			throw new RuntimeException("Cannot initialize XML datatypes", e);
