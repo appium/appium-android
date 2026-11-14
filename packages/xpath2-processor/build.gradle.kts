@@ -1,6 +1,12 @@
 import org.gradle.api.tasks.testing.Test
 import java.io.File
 
+plugins {
+    `java-library`
+    `maven-publish`
+    alias(libs.plugins.shadow)
+}
+
 fun runCommand(workingDir: File?, vararg command: String) {
     val exitCode = ProcessBuilder(*command)
         .directory(workingDir)
@@ -8,12 +14,6 @@ fun runCommand(workingDir: File?, vararg command: String) {
         .start()
         .waitFor()
     check(exitCode == 0) { "'${command.joinToString(" ")}' exited with $exitCode" }
-}
-
-plugins {
-    `java-library`
-    `maven-publish`
-    alias(libs.plugins.shadow)
 }
 
 group = providers.gradleProperty("group").get()
