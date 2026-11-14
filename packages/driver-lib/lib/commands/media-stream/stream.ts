@@ -220,6 +220,8 @@ export class MediaStream {
     if (au.track === 'video' && au.isConfig) {
       // Config is never forwarded; it is prepended to every keyframe instead
       this.config = au.data;
+      // A restarted encoder needs a keyframe of its own before deltas are forwarded
+      this.videoSynced = false;
       this.onVideoConfig(au.data);
     }
     if (au.track === 'audio' && !this.announced) {

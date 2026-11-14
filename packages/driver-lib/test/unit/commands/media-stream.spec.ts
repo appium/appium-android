@@ -7,6 +7,7 @@ import type {AccessUnit, JpegFrame} from 'io.appium.settings';
 
 import {UnitBatcher} from '../../../lib/commands/media-stream/batcher.js';
 import {parseVideoEncoders} from '../../../lib/commands/media-stream/capabilities.js';
+import {mobileStartMediaStream, mobileStopMediaStream} from '../../../lib/commands/media-stream/exports.js';
 import {readJpegSize} from '../../../lib/commands/media-stream/jpeg.js';
 import {MediaStream} from '../../../lib/commands/media-stream/stream.js';
 import type {MediaUnit} from '../../../lib/commands/media-stream/types.js';
@@ -279,6 +280,33 @@ describe('MediaStream', function () {
     await stream.stop();
   });
 
+  it('rejects a concurrent start of the same kind', async function () {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let sessions = 0;
+    const driver = {
+      adb: {getApiLevel: async () => 36},
+      settingsApp: {
+        adjustMediaProjectionServicePermissions: async () => await gate,
+        makeJpegStreamSession: () => {
+          sessions++;
+          return fakeSession<any>();
+        },
+      },
+      eventEmitter: new EventEmitter(),
+      bidiEventSubs: {},
+      log,
+    } as any;
+    const first = mobileStartMediaStream.call(driver, 'jpeg');
+    const second = mobileStartMediaStream.call(driver, 'jpeg');
+    await assert.rejects(second, /already running in this session/);
+    release();
+    const info = await first;
+    assert.equal(sessions, 1);
+    assert.deepEqual([...driver._mediaStreams.keys()], [info.streamId]);
+    await mobileStopMediaStream.call(driver, info.streamId);
+  });
+
   describe('lifecycle', function () {
     function build(session: Record<string, unknown>, extra: Record<string, unknown> = {}) {
       const events: BiDiEvent[] = [];
@@ -428,6 +456,21 @@ describe('MediaStream', function () {
         formatChanges(events).map((e) => e.params),
         [{streamId: stream.streamId, width: 640, height: 480}],
       );
+      await stream.stop();
+    });
+
+    it('forwards video only from the keyframe of a restarted encoder', async function () {
+      const {session, events, stream, tick} = setup('video');
+      const started = stream.start();
+      session.push(au('video', 0, {isConfig: true, data: SIZE_1080x1920}));
+      await started;
+      session.push(au('video', 1, {isKeyFrame: true}));
+      session.push(au('video', 2, {isConfig: true, data: SIZE_640x480}));
+      session.push(au('video', 3));
+      session.push(au('video', 4, {isKeyFrame: true}));
+      await tick();
+      const seqs = unitEvents(events).flatMap((e) => e.params!.units.map((u: {seq: number}) => u.seq));
+      assert.deepEqual(seqs, [1, 4]);
       await stream.stop();
     });
 

@@ -91,7 +91,7 @@ export async function mobileStartMediaStream(
     throw new errors.InvalidArgumentError(`A ${kind} media stream is already running in this session`);
   }
 
-  await this.settingsApp.adjustMediaProjectionServicePermissions();
+  // No await between the check above and the registration below, or concurrent starts could both pass
   const session =
     kind === 'video' ? this.settingsApp.makeVideoStreamSession() : this.settingsApp.makeJpegStreamSession();
   const stream = new MediaStream(session, opts, {
@@ -108,6 +108,7 @@ export async function mobileStartMediaStream(
   });
   streams.set(stream.streamId, stream);
   try {
+    await this.settingsApp.adjustMediaProjectionServicePermissions();
     return await stream.start();
   } catch (e) {
     streams.delete(stream.streamId);
