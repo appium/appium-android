@@ -83,11 +83,13 @@ export async function getCapabilities(adb: ADB): Promise<MediaStreamCapabilities
     };
   }
   const encoders = await queryVideoEncoders(adb);
+  // A listing without any video encoder means video streams cannot start
+  const hasVideo = !encoders || encoders.length > 0;
   return {
     supported: true,
     apiLevel,
-    kinds: ['video', 'jpeg'],
-    audio: true,
+    kinds: hasVideo ? ['video', 'jpeg'] : ['jpeg'],
+    audio: hasVideo,
     // Without a codec listing (older Android) the codecs are assumed rather than verified
     codecs: encoders
       ? {

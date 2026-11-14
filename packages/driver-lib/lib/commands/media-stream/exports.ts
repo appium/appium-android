@@ -75,10 +75,15 @@ export async function mobileStartMediaStream(
       `Media streaming is not available on API Level ${apiLevel}. Minimum required API Level is ${MIN_API_LEVEL}.`,
     );
   }
-  if (kind === 'video' && codec === 'hevc') {
+  if (kind === 'video') {
+    const wanted = codec ?? 'h264';
     const encoders = await queryVideoEncoders(this.adb);
-    if (encoders && !encoders.some((e) => e.codec === 'hevc')) {
-      throw new errors.InvalidArgumentError('This device has no HEVC encoder, use codec=h264');
+    if (encoders && !encoders.some((e) => e.codec === wanted)) {
+      const others = [...new Set(encoders.map((e) => e.codec))];
+      throw new errors.InvalidArgumentError(
+        `This device has no ${wanted.toUpperCase()} encoder` +
+          (others.length ? `, use codec=${others[0]}` : ', use kind=jpeg'),
+      );
     }
   }
   const streams = (this._mediaStreams ??= new Map());

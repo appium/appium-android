@@ -72,6 +72,9 @@ export class MediaStream {
 
   async start(): Promise<MediaStreamInfo> {
     const {opts} = this;
+    if (this.stopped) {
+      throw new Error('The stream was stopped before it started');
+    }
     // A start() that throws may still have brought the on-device service up, so it is ours
     this.owned = true;
     let started: boolean;
@@ -92,6 +95,11 @@ export class MediaStream {
         this.owned = false;
       }
       throw e;
+    }
+    if (this.stopped) {
+      // Stopped while the device session was starting: finish() may have run before it was up
+      await this.session.stop().catch(() => {});
+      throw new Error('The stream was stopped while it was starting');
     }
     if (!started) {
       // The device already runs a stream of this kind that is not ours: leave it alone

@@ -6,8 +6,12 @@ import type {BiDiEvent} from '@appium/types';
 import type {AccessUnit, JpegFrame} from 'io.appium.settings';
 
 import {UnitBatcher} from '../../../lib/commands/media-stream/batcher.js';
-import {parseVideoEncoders} from '../../../lib/commands/media-stream/capabilities.js';
-import {mobileStartMediaStream, mobileStopMediaStream} from '../../../lib/commands/media-stream/exports.js';
+import {getCapabilities, parseVideoEncoders} from '../../../lib/commands/media-stream/capabilities.js';
+import {
+  mobileStartMediaStream,
+  mobileStopMediaStream,
+  stopAllMediaStreams,
+} from '../../../lib/commands/media-stream/exports.js';
 import {readJpegSize} from '../../../lib/commands/media-stream/jpeg.js';
 import {MediaStream} from '../../../lib/commands/media-stream/stream.js';
 import type {MediaUnit} from '../../../lib/commands/media-stream/types.js';
@@ -280,29 +284,93 @@ describe('MediaStream', function () {
     await stream.stop();
   });
 
-  it('rejects a concurrent start of the same kind', async function () {
-    let release!: () => void;
-    const gate = new Promise<void>((r) => (release = r));
-    let sessions = 0;
+  const encoderDump = (...mimes: string[]) =>
+    mimes
+      .map((m) => `Media type '${m}':\n  Encoder "enc.${m}" supports\n    attributes: 0x1: [ software-only: 0 ]\n`)
+      .join('');
+  function fakeDriver(gate: Promise<void> = Promise.resolve(), dump = '') {
+    const sessionLog = {starts: 0, stops: 0, sessions: 0};
     const driver = {
-      adb: {getApiLevel: async () => 36},
+      adb: {getApiLevel: async () => 36, shell: async () => dump},
       settingsApp: {
         adjustMediaProjectionServicePermissions: async () => await gate,
         makeJpegStreamSession: () => {
-          sessions++;
-          return fakeSession<any>();
+          sessionLog.sessions++;
+          const session = fakeSession<any>();
+          const {start, stop} = session;
+          session.start = async () => (sessionLog.starts++, await start());
+          session.stop = async () => (sessionLog.stops++, await stop());
+          return session;
         },
+        makeVideoStreamSession: () => fakeSession<any>(),
       },
       eventEmitter: new EventEmitter(),
       bidiEventSubs: {},
       log,
     } as any;
+    return {driver, sessionLog};
+  }
+
+  it('does not start a stream that was stopped while the permissions were adjusted', async function () {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const {driver, sessionLog} = fakeDriver(gate);
+    const starting = assert.rejects(mobileStartMediaStream.call(driver, 'jpeg'), /stopped before it started/);
+    await new Promise((r) => setImmediate(r));
+    await stopAllMediaStreams.call(driver);
+    release();
+    await starting;
+    assert.equal(sessionLog.starts, 0);
+    assert.equal(driver.eventEmitter.listenerCount('bidiBackpressure'), 0);
+  });
+
+  it('stops the device session if the stream is stopped while it is starting', async function () {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const session = fakeSession<any>();
+    let stops = 0;
+    session.start = async () => (await gate, true);
+    session.stop = async () => (stops++, true);
+    const emitter = new EventEmitter();
+    const stream = new MediaStream(
+      session as any,
+      {kind: 'jpeg', batchMs: 0, idleHeartbeatMs: 0},
+      {emit() {}, emitter, hasSubscribers: () => true, log, onEnded() {}},
+    );
+    const starting = assert.rejects(stream.start(), /stopped while it was starting/);
+    await stream.stop();
+    release();
+    await starting;
+    assert.ok(stops >= 1);
+    assert.equal(emitter.listenerCount('bidiBackpressure'), 0);
+  });
+
+  it('rejects a codec the device has no encoder for', async function () {
+    const {driver} = fakeDriver(undefined, encoderDump('video/hevc'));
+    await assert.rejects(mobileStartMediaStream.call(driver, 'video'), /no H264 encoder, use codec=hevc/);
+    const {driver: noVideo} = fakeDriver(undefined, encoderDump('audio/mp4a-latm'));
+    await assert.rejects(mobileStartMediaStream.call(noVideo, 'video', 'hevc'), /no HEVC encoder, use kind=jpeg/);
+  });
+
+  it('does not advertise video if the device has no video encoder', async function () {
+    const adb = (dump: string) =>
+      ({getApiLevel: async () => 36, isAppInstalled: async () => true, shell: async () => dump}) as any;
+    const noVideo = await getCapabilities(adb(encoderDump('audio/mp4a-latm')));
+    assert.deepEqual([noVideo.kinds, noVideo.audio], [['jpeg'], false]);
+    const unknown = await getCapabilities(adb(''));
+    assert.deepEqual([unknown.kinds, unknown.audio], [['video', 'jpeg'], true]);
+  });
+
+  it('rejects a concurrent start of the same kind', async function () {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const {driver, sessionLog} = fakeDriver(gate);
     const first = mobileStartMediaStream.call(driver, 'jpeg');
     const second = mobileStartMediaStream.call(driver, 'jpeg');
     await assert.rejects(second, /already running in this session/);
     release();
     const info = await first;
-    assert.equal(sessions, 1);
+    assert.equal(sessionLog.sessions, 1);
     assert.deepEqual([...driver._mediaStreams.keys()], [info.streamId]);
     await mobileStopMediaStream.call(driver, info.streamId);
   });
