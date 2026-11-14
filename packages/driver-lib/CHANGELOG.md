@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [15.2.0](https://github.com/appium/appium-android/compare/appium-android-driver@15.1.21...appium-android-driver@15.2.0) (2026-11-14)
+
+### Features
+
+* **driver-lib:** stream screen media (video, audio, JPEG) as BiDi events ([#116](https://github.com/appium/appium-android/issues/116)) ([09d3752](https://github.com/appium/appium-android/commit/09d3752edbe43168349b662b03c6083ee8296709))
+
+
 ## [15.1.21](https://github.com/appium/appium-android/compare/appium-android-driver@15.1.20...appium-android-driver@15.1.21) (2026-11-14)
 
 ### Miscellaneous Chores

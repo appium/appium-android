@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [9.2.0](https://github.com/appium/appium-android/compare/io.appium.settings@9.1.4...io.appium.settings@9.2.0) (2026-11-14)
+
+### Features
+
+* **driver-lib:** stream screen media (video, audio, JPEG) as BiDi events ([#116](https://github.com/appium/appium-android/issues/116)) ([09d3752](https://github.com/appium/appium-android/commit/09d3752edbe43168349b662b03c6083ee8296709))
+
+
 ## [9.1.4](https://github.com/appium/appium-android/compare/io.appium.settings@9.1.3...io.appium.settings@9.1.4) (2026-11-14)
 
 ### Miscellaneous Chores
