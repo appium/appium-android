@@ -241,8 +241,9 @@ jobs:
           for artifact in xpath2-processor xpath2-bom; do
             url="${base}/${artifact}/${version}/${artifact}-${version}.pom"
             built=false
-            # JitPack needs a few minutes to notice a new tag and build it
+            # JitPack needs a few minutes to notice a new tag; a bare .pom request may not start the build, the build log does
             for attempt in $(seq 1 30); do
+              curl -s -o /dev/null --max-time 60 "${base}/${version}/build.log" || true
               code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "$url" || true)"
               if [ "$code" = 200 ]; then
                 built=true
