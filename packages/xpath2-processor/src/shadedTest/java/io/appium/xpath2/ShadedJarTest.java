@@ -1,6 +1,8 @@
 package io.appium.xpath2;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -15,6 +17,7 @@ import java.util.jar.JarFile;
 
 import org.eclipse.wst.xml.xpath2.api.Item;
 import org.eclipse.wst.xml.xpath2.api.ResultSequence;
+import org.eclipse.wst.xml.xpath2.processor.DefaultDynamicContext;
 import org.eclipse.wst.xml.xpath2.processor.Engine;
 import org.eclipse.wst.xml.xpath2.processor.DynamicError;
 import org.eclipse.wst.xml.xpath2.processor.util.DynamicContextBuilder;
@@ -71,6 +74,18 @@ public class ShadedJarTest {
             fail("fn:doc has loaded a document");
         } catch (DynamicError expected) {
             assertEquals("FODC0002", expected.code());
+        }
+    }
+
+    @Test
+    public void defaultDynamicContextLoadsDocumentsOnlyWhenAllowed() throws Exception {
+        File xml = File.createTempFile("xpath2", ".xml");
+        try {
+            java.nio.file.Files.write(xml.toPath(), "<a/>".getBytes(StandardCharsets.UTF_8));
+            assertNull(new DefaultDynamicContext(null, null).get_doc(xml.toURI()));
+            assertNotNull(new DefaultDynamicContext(null, null).withDocumentLoading(true).get_doc(xml.toURI()));
+        } finally {
+            xml.delete();
         }
     }
 

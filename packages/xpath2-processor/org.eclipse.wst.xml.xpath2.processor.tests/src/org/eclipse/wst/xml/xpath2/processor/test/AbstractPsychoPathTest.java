@@ -350,7 +350,7 @@ public class AbstractPsychoPathTest extends XMLTestCase {
 			return null;
 		}
 	
-		DefaultDynamicContext dc = new DefaultDynamicContext(typeModel);
+		DefaultDynamicContext dc = new DefaultDynamicContext(typeModel).withDocumentLoading(true);
 		dynamicContext = dc;
 
 		dc.add_namespace("xs", "http://www.w3.org/2001/XMLSchema");
