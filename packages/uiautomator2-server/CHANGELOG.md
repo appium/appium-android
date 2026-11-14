@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.0.4](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.3...appium-uiautomator2-server@11.0.4) (2026-11-14)
+
+### Code Refactoring
+
+* **uiautomator2-server:** consume the xpath2-processor JitPack artifact ([#117](https://github.com/appium/appium-android/issues/117)) ([d234ae8](https://github.com/appium/appium-android/commit/d234ae89e7cb670a2b5a4c632255c89c5e306f9c))
+
+
 ## [11.0.3](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.2...appium-uiautomator2-server@11.0.3) (2026-11-13)
 
 ### Code Refactoring
