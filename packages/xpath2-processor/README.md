@@ -40,7 +40,7 @@ The published jar is self-contained: Xerces and java-cup-runtime are bundled wit
 
 ## Developing against a local copy
 
-`appium-uiautomator2-server` uses the released JitPack artifact. To build against the checked-out sources instead, pass `-PxpathLocal` to Gradle (or set `XPATH2_LOCAL=1`), which enables a composite build, see its `settings.gradle.kts`.
+`appium-uiautomator2-server` uses the released JitPack artifact. To build against the checked-out sources instead, pass `-PxpathLocal` to Gradle (or set `XPATH2_LOCAL=1`), which enables a composite build, see its `settings.gradle.kts`. The included build runs under the Gradle version of the consuming build, which has to be 9 or newer (the processor uses the Shadow plugin 9).
 
 ## Vendored `org.eclipse.wst.xml.xpath2.processor`
 
