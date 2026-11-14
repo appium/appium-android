@@ -46,6 +46,12 @@
       "matchFileNames": ["packages/uiautomator2-server/**", "packages/xpath2-processor/**"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "gradle-dependencies"
+    },
+    {
+      "description": "xpath2-processor is only published on JitPack",
+      "matchManagers": ["gradle"],
+      "matchPackageNames": ["com.github.appium.appium-android:xpath2-processor"],
+      "registryUrls": ["https://jitpack.io"]
     }
   ]
 }

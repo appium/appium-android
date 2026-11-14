@@ -32,7 +32,7 @@ The build publishes two modules (`xpath2-processor` and `xpath2-bom`); JitPack o
 
 ## Developing against a local copy
 
-`appium-uiautomator2-server` builds this package from source (Gradle composite build, see its `settings.gradle.kts`).
+`appium-uiautomator2-server` uses the released JitPack artifact. To build against the checked-out sources instead, pass `-PxpathLocal` to Gradle (or set `XPATH2_LOCAL=1`), which enables a composite build, see its `settings.gradle.kts`.
 
 ## Vendored `org.eclipse.wst.xml.xpath2.processor`
 
