@@ -245,6 +245,23 @@ export const executeMethodMap = {
     },
   },
 
+  'mobile: startMediaStream': {
+    command: 'mobileStartMediaStream',
+    params: {
+      required: ['kind'],
+      optional: ['codec', 'fps', 'bitrate', 'quality', 'scale', 'resolution', 'audio', 'batchMs', 'idleHeartbeatMs'],
+    },
+  },
+  'mobile: getMediaStreamCapabilities': {
+    command: 'mobileGetMediaStreamCapabilities',
+  },
+  'mobile: stopMediaStream': {
+    command: 'mobileStopMediaStream',
+    params: {
+      required: ['streamId'],
+    },
+  },
+
   'mobile: startMediaProjectionRecording': {
     command: 'mobileStartMediaProjectionRecording',
     params: {

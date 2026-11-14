@@ -6,6 +6,8 @@ export enum StreamTrack {
   Jpeg = 0,
   Video = 1,
   Audio = 2,
+  /** Handshake only: the device acknowledges the control channel with one empty frame */
+  Control = 3,
 }
 
 const FLAG_CONFIG = 0x01;

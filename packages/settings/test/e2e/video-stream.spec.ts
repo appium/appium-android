@@ -122,6 +122,22 @@ describe('Video Streaming', function () {
     assert.strictEqual(stopped, true);
   });
 
+  it('should emit a new keyframe on request', async function (ctx: TestContext) {
+    if (shouldSkip) {
+      ctx.skip();
+      return;
+    }
+
+    assert.strictEqual(await session.start({codec: 'h264', fps: 15, bitrate: 1000000}), true);
+
+    // Wait for the initial keyframe, then ask for another one
+    const units = session.accessUnits();
+    assert.ok(await consumeUntil(units, 15000, (unit) => unit.isKeyFrame));
+    assert.strictEqual(await session.requestKeyFrame(), true);
+    // Keyframes are otherwise rare (GOP interval in seconds), so a second one this soon is the response
+    assert.ok(await consumeUntil(units, 8000, (unit) => unit.isKeyFrame), 'expected a keyframe after the request');
+  });
+
   it('should interleave an ADTS-framed audio track when audio is enabled', async function (ctx: TestContext) {
     if (shouldSkip) {
       ctx.skip();

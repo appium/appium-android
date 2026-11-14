@@ -28,7 +28,9 @@ public class Frame {
     public enum Track {
         JPEG((byte) 0),
         VIDEO((byte) 1),
-        AUDIO((byte) 2);
+        AUDIO((byte) 2),
+        // Handshake only: sent once if the host opted into the control channel
+        CONTROL((byte) 3);
 
         public final byte value;
 

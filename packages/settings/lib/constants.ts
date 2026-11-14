@@ -53,5 +53,7 @@ export const JPEG_STREAM_ACTION_START = `${SETTINGS_HELPER_ID}.streaming.jpeg.AC
 export const JPEG_STREAM_ACTION_STOP = `${SETTINGS_HELPER_ID}.streaming.jpeg.ACTION_STOP`;
 
 export const VIDEO_STREAM_SERVICE_NAME = `${SETTINGS_HELPER_ID}/.streaming.VideoStreamService`;
+/** Host->device control channel command: make the video encoder emit a keyframe */
+export const STREAM_CONTROL_REQUEST_KEYFRAME = 1;
 export const VIDEO_STREAM_ACTION_START = `${SETTINGS_HELPER_ID}.streaming.video.ACTION_START`;
 export const VIDEO_STREAM_ACTION_STOP = `${SETTINGS_HELPER_ID}.streaming.video.ACTION_STOP`;
