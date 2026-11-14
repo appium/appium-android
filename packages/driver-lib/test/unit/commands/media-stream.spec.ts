@@ -324,6 +324,31 @@ describe('MediaStream', function () {
     assert.equal(driver.eventEmitter.listenerCount('bidiBackpressure'), 0);
   });
 
+  it('stops the device session if start fails after the stream was stopped', async function () {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const session = fakeSession<any>();
+    let stops = 0;
+    session.start = async () => {
+      await gate;
+      throw new Error('forwarding failed');
+    };
+    session.stop = async () => (stops++, true);
+    const stream = new MediaStream(
+      session as any,
+      {kind: 'jpeg', batchMs: 0, idleHeartbeatMs: 0},
+      {emit() {}, emitter: new EventEmitter(), hasSubscribers: () => true, log, onEnded() {}},
+    );
+    const starting = assert.rejects(stream.start(), /forwarding failed/);
+    await stream.stop();
+    // The device service comes up only after the shutdown, so an earlier stop does not count
+    stops = 0;
+    release();
+    await starting;
+    await stream.stop('failed to start');
+    assert.equal(stops, 1);
+  });
+
   it('stops the device session if the stream is stopped while it is starting', async function () {
     let release!: () => void;
     const gate = new Promise<void>((r) => (release = r));
@@ -339,9 +364,10 @@ describe('MediaStream', function () {
     );
     const starting = assert.rejects(stream.start(), /stopped while it was starting/);
     await stream.stop();
+    stops = 0;
     release();
     await starting;
-    assert.ok(stops >= 1);
+    assert.equal(stops, 1);
     assert.equal(emitter.listenerCount('bidiBackpressure'), 0);
   });
 

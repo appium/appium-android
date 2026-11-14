@@ -94,6 +94,10 @@ export class MediaStream {
       if (e instanceof TypeError || e instanceof RangeError) {
         this.owned = false;
       }
+      if (this.owned && this.stopped) {
+        // finish() already ran and skipped the device session, which may be half up
+        await this.session.stop().catch(() => {});
+      }
       throw e;
     }
     if (this.stopped) {
