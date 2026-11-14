@@ -120,6 +120,8 @@ public class VideoStreamService extends Service {
                 metrics.widthPixels, metrics.heightPixels, resolutionMode, metrics.densityDpi,
                 codecMime, fps, bitrate, audioEnabled);
         VideoStreamSession startedSession = session;
+        startedSession.setControlEnabled(
+                StreamingUtil.getBooleanExtra(intent, StreamingConstant.EXTRA_CONTROL, false));
         startedSession.setListener(() -> onSessionEnded(startedSession));
         startedSession.startSession();
         return START_STICKY;

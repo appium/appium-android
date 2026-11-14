@@ -6,6 +6,7 @@ import {waitForCondition} from 'asyncbox';
 import type {SettingsApp} from '../client.js';
 import {
   SETTINGS_HELPER_ID,
+  STREAM_CONTROL_REQUEST_KEYFRAME,
   STREAMING_ACTIVITY_NAME,
   VIDEO_STREAM_ACTION_START,
   VIDEO_STREAM_ACTION_STOP,
@@ -91,6 +92,10 @@ export class VideoStreamSession {
       '--es',
       'socket_name',
       socketName,
+      // Older apps ignore this and never acknowledge it, see requestKeyFrame()
+      '--es',
+      'control',
+      'true',
     ];
     if (codec) {
       args.push('--es', 'codec', codec);
@@ -149,6 +154,18 @@ export class VideoStreamSession {
         isConfig: frame.isConfig,
       };
     }
+  }
+
+  /**
+   * Asks the on-device encoder to emit a keyframe as soon as possible, e.g. for a
+   * consumer that joined late or lost frames. Keyframes are otherwise rare while the
+   * screen changes slowly.
+   *
+   * @returns True if the request was sent, false if the stream is not started or the
+   * installed settings app is too old to support it
+   */
+  async requestKeyFrame(): Promise<boolean> {
+    return (await this.transport?.sendControl(STREAM_CONTROL_REQUEST_KEYFRAME)) ?? false;
   }
 
   /**

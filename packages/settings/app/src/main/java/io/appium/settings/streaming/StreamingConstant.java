@@ -40,6 +40,7 @@ public class StreamingConstant {
     public static final String EXTRA_BITRATE = "bitrate";
     public static final String EXTRA_RESOLUTION = "resolution";
     public static final String EXTRA_AUDIO = "audio";
+    public static final String EXTRA_CONTROL = "control";
 
     public static final String CODEC_H264 = "h264";
     public static final String CODEC_HEVC = "hevc";
@@ -56,6 +57,9 @@ public class StreamingConstant {
     public static final int AUDIO_SAMPLE_RATE_HZ = 44100;
     public static final int AUDIO_CHANNEL_COUNT = 1;
     public static final int AUDIO_BITRATE_DEFAULT = 64000;
+
+    // Single-byte host->device commands, accepted only if EXTRA_CONTROL was set
+    public static final int CONTROL_REQUEST_KEYFRAME = 1;
 
     public static final int MAX_BUFFERED_FRAMES = 60;
     public static final long ACCEPT_TIMEOUT_MS = 10_000;

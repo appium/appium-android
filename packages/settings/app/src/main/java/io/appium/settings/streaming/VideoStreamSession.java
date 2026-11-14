@@ -25,6 +25,7 @@ import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.media.projection.MediaProjection;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.util.Log;
@@ -125,6 +126,16 @@ public class VideoStreamSession extends StreamingSession {
         clampedFps = Math.min(fps, capabilities.getSupportedFrameRates().getUpper());
         clampedBitrate = capabilities.getBitrateRange().clamp(bitrate);
 
+        // Some encoders (e.g. the emulator's software HEVC one, max 512x512) reject the
+        // requested size outright, which would fail configure() and end the session.
+        Size fitted = fitToEncoderSize(capabilities, currentWidth, currentHeight);
+        if (fitted.getWidth() != currentWidth || fitted.getHeight() != currentHeight) {
+            Log.w(TAG, "Encoder does not support " + currentWidth + "x" + currentHeight
+                    + ", using " + fitted.getWidth() + "x" + fitted.getHeight());
+            currentWidth = fitted.getWidth();
+            currentHeight = fitted.getHeight();
+        }
+
         videoEncoder = createVideoEncoder(currentWidth, currentHeight);
         Surface surface = videoEncoder.createInputSurface();
         videoEncoder.start();
@@ -190,6 +201,22 @@ public class VideoStreamSession extends StreamingSession {
             joinQuietly(videoDrainThread);
             joinQuietly(audioDrainThread);
         }
+    }
+
+    // Shrinks the size, keeping its aspect ratio, until the encoder accepts it in both
+    // orientations (a rotation swaps width and height). Returns the input if nothing fits.
+    static Size fitToEncoderSize(MediaCodecInfo.VideoCapabilities capabilities, int width, int height) {
+        int wAlign = Math.max(1, capabilities.getWidthAlignment());
+        int hAlign = Math.max(1, capabilities.getHeightAlignment());
+        double scale = 1.0;
+        for (int i = 0; i < 40; i++, scale *= 0.9) {
+            int w = Math.max(wAlign, (int) (width * scale) / wAlign * wAlign);
+            int h = Math.max(hAlign, (int) (height * scale) / hAlign * hAlign);
+            if (capabilities.isSizeSupported(w, h) && capabilities.isSizeSupported(h, w)) {
+                return new Size(w, h);
+            }
+        }
+        return new Size(width, height);
     }
 
     private static void joinQuietly(Thread thread) {
@@ -278,6 +305,25 @@ public class VideoStreamSession extends StreamingSession {
         Thread newDrainThread = new Thread(() -> drainVideo(startedEncoder), "video-stream-drain");
         videoDrainThread = newDrainThread;
         newDrainThread.start();
+    }
+
+    @Override
+    protected void onControlCommand(int command) {
+        if (command != StreamingConstant.CONTROL_REQUEST_KEYFRAME) {
+            return;
+        }
+        MediaCodec encoder = videoEncoder;
+        if (encoder == null) {
+            return;
+        }
+        try {
+            Bundle params = new Bundle();
+            params.putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0);
+            encoder.setParameters(params);
+        } catch (IllegalStateException e) {
+            // The encoder is being swapped by a rotation; the new one starts with a keyframe.
+            Log.w(TAG, "Cannot request a sync frame right now", e);
+        }
     }
 
     private static void releaseQuietly(MediaCodec codec) {
