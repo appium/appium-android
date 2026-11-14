@@ -16,12 +16,12 @@ repositories {
 
 dependencies {
     implementation("com.github.appium.appium-android:xpath2-processor:<version>")
-    // optional: pins xerces, icu4j and java-cup-runtime
+    // optional: pins xerces and java-cup-runtime
     implementation(platform("com.github.appium.appium-android:xpath2-bom:<version>"))
 }
 ```
 
-The build publishes two modules (`xpath2-processor` and `xpath2-bom`); JitPack only uses the `com.github.appium.appium-android:<artifact>` form when a build publishes more than one. The runtime dependencies (xerces, icu4j, java-cup-runtime) come transitively from the POM.
+The build publishes two modules (`xpath2-processor` and `xpath2-bom`); JitPack only uses the `com.github.appium.appium-android:<artifact>` form when a build publishes more than one. The runtime dependencies (xerces, java-cup-runtime) come transitively from the POM.
 
 ## Releases
 
@@ -39,6 +39,8 @@ The build publishes two modules (`xpath2-processor` and `xpath2-bom`); JitPack o
 Upstream: [Eclipse WTP Source Editing](https://eclipse.googlesource.com/sourceediting/webtools.sourceediting.git) (`xpath/bundles/org.eclipse.wst.xml.xpath2.processor/`).
 
 The pinned upstream commit is recorded in [`SOURCE_COMMIT`](./SOURCE_COMMIT).
+
+Local change to re-apply when re-vendoring: ICU4J (a 14 MB dependency) is replaced by the JDK, i.e. `Character` / `String` code point methods and `java.text.Normalizer` for `fn:normalize-unicode`.
 
 ### License and notice
 

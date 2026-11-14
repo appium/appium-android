@@ -209,7 +209,6 @@ sourceSets {
 
 dependencies {
     api(libs.xercesimpl)
-    api(libs.icu4j)
     api(libs.java.cup.runtime)
 
     testImplementation(sourceSets.main.get().output)
