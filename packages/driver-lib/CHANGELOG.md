@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [15.2.1](https://github.com/appium/appium-android/compare/appium-android-driver@15.2.0...appium-android-driver@15.2.1) (2026-11-15)
+
+**Note:** Version bump only for package appium-android-driver
+
+
+
+
+
 ## [15.2.0](https://github.com/appium/appium-android/compare/appium-android-driver@15.1.21...appium-android-driver@15.2.0) (2026-11-14)
 
 ### Features
