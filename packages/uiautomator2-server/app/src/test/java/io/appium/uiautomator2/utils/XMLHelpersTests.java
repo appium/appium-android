@@ -16,7 +16,6 @@
 
 package io.appium.uiautomator2.utils;
 
-import org.apache.xerces.jaxp.DocumentBuilderFactoryImpl;
 import org.eclipse.wst.xml.xpath2.api.Item;
 import org.eclipse.wst.xml.xpath2.api.ResultSequence;
 import org.eclipse.wst.xml.xpath2.api.XPath2Expression;
@@ -45,7 +44,6 @@ import java.util.List;
 import java.util.stream.IntStream;
 import java.util.stream.Collectors;
 
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
@@ -53,6 +51,7 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
 import io.appium.uiautomator2.common.exceptions.InvalidSelectorException;
+import io.appium.xpath2.DocumentLoader;
 
 @SuppressWarnings("SameParameterValue")
 public class XMLHelpersTests {
@@ -163,11 +162,8 @@ public class XMLHelpersTests {
 
 
     private static Document loadDocument(String str) {
-        DocumentBuilderFactory factory = new DocumentBuilderFactoryImpl();
-        factory.setNamespaceAware(true);
-        factory.setValidating(false);
         try (InputStream in = new ByteArrayInputStream(str.getBytes(StandardCharsets.UTF_8))) {
-            return factory.newDocumentBuilder().parse(in);
+            return DocumentLoader.parse(in);
         } catch (SAXException | ParserConfigurationException | IOException e) {
             throw new RuntimeException(e);
         }
