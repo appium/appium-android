@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [15.2.2](https://github.com/appium/appium-android/compare/appium-android-driver@15.2.1...appium-android-driver@15.2.2) (2026-11-15)
+
+### Bug Fixes
+
+* **driver-lib:** keep stopping an ended media stream a no-op ([#124](https://github.com/appium/appium-android/issues/124)) ([037f1c8](https://github.com/appium/appium-android/commit/037f1c8d76a58c78443b483aae7bcca85516239e))
+
+
 ## [15.2.1](https://github.com/appium/appium-android/compare/appium-android-driver@15.2.0...appium-android-driver@15.2.1) (2026-11-15)
 
 **Note:** Version bump only for package appium-android-driver
