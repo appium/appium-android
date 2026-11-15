@@ -28,7 +28,6 @@ import android.view.accessibility.AccessibilityNodeInfo;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import org.apache.xerces.jaxp.DocumentBuilderFactoryImpl;
 import org.eclipse.wst.xml.xpath2.api.Item;
 import org.eclipse.wst.xml.xpath2.api.ResultSequence;
 import org.eclipse.wst.xml.xpath2.api.XPath2Expression;
@@ -75,13 +74,13 @@ import io.appium.uiautomator2.utils.Attribute;
 import io.appium.uiautomator2.utils.Logger;
 import io.appium.uiautomator2.utils.NodeInfoList;
 import io.appium.uiautomator2.utils.StringHelpers;
+import io.appium.xpath2.DocumentLoader;
 
 import static io.appium.uiautomator2.utils.AXWindowHelpers.getCachedWindowRoots;
 import static io.appium.uiautomator2.utils.XMLHelpers.toNodeName;
 import static io.appium.uiautomator2.utils.XMLHelpers.toSafeString;
 import static net.gcardone.junidecode.Junidecode.unidecode;
 
-import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
@@ -344,11 +343,8 @@ public class AccessibilityNodeInfoDumper {
     }
 
     private static Document loadDocument(InputStream in) {
-        DocumentBuilderFactory factory = new DocumentBuilderFactoryImpl();
-        factory.setNamespaceAware(true);
-        factory.setValidating(false);
         try {
-            return factory.newDocumentBuilder().parse(in);
+            return DocumentLoader.parse(in);
         } catch (SAXException | ParserConfigurationException | IOException e) {
             throw new RuntimeException(e);
         }
