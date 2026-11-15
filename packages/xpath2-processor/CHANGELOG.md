@@ -3,6 +3,24 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.0.0](https://github.com/appium/appium-android/compare/@appium/xpath2-processor@1.0.2...@appium/xpath2-processor@2.0.0) (2026-11-15)
+
+### ⚠ BREAKING CHANGES
+
+* **xpath2-processor:** org.apache.xerces, java_cup and xml-apis are no longer
+available to the consumers of the processor. Use
+io.appium.xpath2.DocumentLoader.parse(InputStream) to parse the XML
+that expressions are evaluated against. The processor now needs Gradle 9, so
+builds that include it (-PxpathLocal in uiautomator2-server) have to use
+Gradle 9 or newer as well.
+* **xpath2-processor:** fn:doc no longer loads documents with the default
+DynamicContextBuilder; call withDocumentLoading(true) to restore it.
+
+### Features
+
+* **xpath2-processor:** bundle xerces and java-cup under a private package ([#121](https://github.com/appium/appium-android/issues/121)) ([7751f3c](https://github.com/appium/appium-android/commit/7751f3cbee072d909000cd15f09a894a1f38fe81))
+
+
 ## [1.0.2](https://github.com/appium/appium-android/compare/@appium/xpath2-processor@1.0.1...@appium/xpath2-processor@1.0.2) (2026-11-14)
 
 ### Bug Fixes
