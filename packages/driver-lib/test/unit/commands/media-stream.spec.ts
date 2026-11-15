@@ -324,6 +324,17 @@ describe('MediaStream', function () {
     assert.equal(driver.eventEmitter.listenerCount('bidiBackpressure'), 0);
   });
 
+  it('keeps stopping an ended stream a no-op after another stream is started', async function () {
+    const {driver, sessionLog} = fakeDriver();
+    const first = await mobileStartMediaStream.call(driver, 'jpeg');
+    await mobileStopMediaStream.call(driver, first.streamId);
+    const second = await mobileStartMediaStream.call(driver, 'jpeg');
+    await mobileStopMediaStream.call(driver, first.streamId);
+    assert.equal(sessionLog.stops, 1);
+    await mobileStopMediaStream.call(driver, second.streamId);
+    await assert.rejects(mobileStopMediaStream.call(driver, 'no-such-id'), /Unknown media stream id/);
+  });
+
   it('stops the device session if start fails after the stream was stopped', async function () {
     let release!: () => void;
     const gate = new Promise<void>((r) => (release = r));
