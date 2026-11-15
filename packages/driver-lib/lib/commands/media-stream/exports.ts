@@ -87,9 +87,11 @@ export async function mobileStartMediaStream(
     }
   }
   const streams = (this._mediaStreams ??= new Map());
+  const ended = (this._endedMediaStreamIds ??= new Set());
   for (const [id, s] of streams) {
     if (s.isStopped) {
       streams.delete(id);
+      ended.add(id);
     }
   }
   if ([...streams.values()].some((s) => s.kind === kind)) {
@@ -108,7 +110,7 @@ export async function mobileStartMediaStream(
     emitter: this.eventEmitter,
     hasSubscribers: () => hasSubscribers(this, MEDIA_UNITS_EVENT),
     log: this.log,
-    // Ended streams stay registered so that a later stop call is a no-op, see mobileStopMediaStream
+    // Ended streams are moved to the ended ids on the next start, see mobileStopMediaStream
     onEnded: () => {},
   });
   streams.set(stream.streamId, stream);
@@ -132,16 +134,17 @@ export async function mobileGetMediaStreamCapabilities(this: AndroidDriver): Pro
 
 /**
  * Stops a media stream started by `mobile: startMediaStream`.
- * Stopping a stream that has already ended is a no-op.
+ * Stopping a stream that has already ended is a no-op, also after other streams were started.
  *
  * @param streamId The id returned by `mobile: startMediaStream`.
  */
 export async function mobileStopMediaStream(this: AndroidDriver, streamId: string): Promise<void> {
   const stream = this._mediaStreams?.get(streamId);
-  if (!stream) {
+  if (stream) {
+    await stream.stop();
+  } else if (!this._endedMediaStreamIds?.has(streamId)) {
     throw new errors.InvalidArgumentError(`Unknown media stream id '${streamId}'`);
   }
-  await stream.stop();
 }
 
 /** Stops all streams of the session; used on session deletion. */
