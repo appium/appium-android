@@ -62,6 +62,8 @@ public class DefaultDynamicContext extends DefaultStaticContext implements
 	private Focus _focus;
 	private XSDuration _tz;
 	private Map _loaded_documents;
+	// Local change: fn:doc must not read arbitrary URIs on behalf of an expression unless asked to
+	private boolean _document_loading_allowed = false;
 	private GregorianCalendar _current_date_time;
 	private String _default_collation_name = CODEPOINT_COLLATION;
 	private CollationProvider _collation_provider;
@@ -205,6 +207,15 @@ public class DefaultDynamicContext extends DefaultStaticContext implements
 	}
 
 	/**
+	 * Allows fn:doc to load documents from URIs, which is off by default
+	 * (it reports the document as not found).
+	 */
+	public DefaultDynamicContext withDocumentLoading(boolean allowed) {
+		_document_loading_allowed = allowed;
+		return this;
+	}
+
+	/**
 	 * get document
 	 * 
 	 * @return a ResultSequence from ResultSequenceFactory.create_new()
@@ -215,6 +226,8 @@ public class DefaultDynamicContext extends DefaultStaticContext implements
 		if (_loaded_documents.containsKey(resolved)) {
 			 //tried before
 			doc = (Document)_loaded_documents.get(resolved);
+		} else if (!_document_loading_allowed) {
+			return null;
 		} else {
 			doc = retrieve_doc(resolved);
 			_loaded_documents.put(resolved, doc);

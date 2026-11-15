@@ -3,6 +3,7 @@ javaCupRuntime = "11b-20160615-3"
 junit = "4.13.2"
 junitVintage = "5.10.2"
 junitPlatformLauncher = "1.10.2"
+shadow = "9.6.1"
 xmlunit = "1.6"
 xercesimpl = "2.12.2"
 
@@ -13,3 +14,6 @@ junit-vintage-engine = { module = "org.junit.vintage:junit-vintage-engine", vers
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junitPlatformLauncher" }
 xmlunit = { module = "xmlunit:xmlunit", version.ref = "xmlunit" }
 xercesimpl = { module = "xerces:xercesImpl", version.ref = "xercesimpl" }
+
+[plugins]
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

@@ -22,10 +22,10 @@
   "type": "module",
   "scripts": {
     "bump-gradle-version": "node ./scripts/gradle-version-update.mjs --package-version=${npm_package_version} && git add gradle.properties",
-    "build": "./gradlew jar",
+    "build": "./gradlew shadowJar",
     "clean": "./gradlew clean",
     "package:local": "./gradlew clean publishToMavenLocal -x test",
-    "test:java": "./gradlew test",
+    "test:java": "./gradlew test shadedTest",
     "version": "npm run bump-gradle-version"
   },
   "devDependencies": {

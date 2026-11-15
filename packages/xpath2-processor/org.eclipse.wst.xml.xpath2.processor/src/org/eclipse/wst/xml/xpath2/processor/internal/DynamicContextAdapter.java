@@ -65,7 +65,7 @@ public class DynamicContextAdapter implements
 	public Duration getTimezoneOffset() {
 		XSDuration tz = dc.tz();
 		try {
-			return DatatypeFactory.newInstance().newDuration(! tz.negative(), 0, 0, 0, tz.hours(), tz.minutes(), 0);
+			return io.appium.xpath2.JaxpFactories.datatypeFactory().newDuration(! tz.negative(), 0, 0, 0, tz.hours(), tz.minutes(), 0);
 		} catch (DatatypeConfigurationException e) {
 			throw new RuntimeException(e);
 		}
