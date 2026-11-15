@@ -5,6 +5,10 @@
 
 Appium Android Driver is the collection of common primitives used by other Android drivers, like UIA2/Espresso. This driver cannot work as a separate entity.
 
+## Examples
+
+- [`examples/media-stream-client.mts`](examples/media-stream-client.mts): a Node.js client that decodes the `appium:mediaStream` BiDi events into a local MJPEG HTTP server or an `.mp4` file written by `ffmpeg`. See `mobile: startMediaStream` in the driver docs.
+
 ## Development
 
 ### Install and Compile

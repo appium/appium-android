@@ -5,6 +5,7 @@ export default defineConfig({
   ignorePatterns: [
     ...ignorePatterns,
     'packages/adb/keys/**',
+    'packages/*/examples/**',
     'packages/uiautomator2-server/{app,gradle}/**',
     'packages/xpath2-processor/{bom,gradle,org.*}/**',
   ],
