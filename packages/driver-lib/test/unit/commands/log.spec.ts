@@ -46,6 +46,42 @@ describe('commands - logging', function () {
       bugreportStub.restore();
     });
   });
+  describe('assignBiDiLogListener', function () {
+    let bidiDriver: AndroidDriver;
+    let emitted: any[];
+
+    beforeEach(function () {
+      bidiDriver = new AndroidDriver();
+      emitted = [];
+      bidiDriver.eventEmitter.on('bidiEvent', (e) => emitted.push(e));
+    });
+
+    const entry = {timestamp: 1, level: 'ALL', message: 'hello'} as LogEntry;
+
+    it('should not emit events while nobody is subscribed', function () {
+      const [logEmitter] = bidiDriver.assignBiDiLogListener(new EventEmitter(), {type: 'syslog'});
+      logEmitter.emit('output', entry);
+      assert.deepStrictEqual(emitted, []);
+    });
+
+    for (const sub of ['log.entryAdded', 'log']) {
+      it(`should emit events for a '${sub}' subscription`, function () {
+        bidiDriver.bidiEventSubs = {[sub]: ['']};
+        const [logEmitter] = bidiDriver.assignBiDiLogListener(new EventEmitter(), {type: 'syslog'});
+        logEmitter.emit('output', entry);
+        assert.strictEqual(emitted.length, 1);
+        assert.strictEqual(emitted[0].method, 'log.entryAdded');
+        assert.strictEqual(emitted[0].params.text, 'hello');
+      });
+    }
+
+    it('should not apply the transformer while nobody is subscribed', function () {
+      const entryTransformer = sinon.stub().returnsArg(0);
+      const [logEmitter] = bidiDriver.assignBiDiLogListener(new EventEmitter(), {type: 'syslog', entryTransformer});
+      logEmitter.emit('output', entry);
+      assert.strictEqual(entryTransformer.called, false);
+    });
+  });
   describe('mobileStartLogsBroadcast / mobileStopLogsBroadcast', function () {
     const sandbox = sinon.createSandbox();
     let broadcastDriver: AndroidDriver;

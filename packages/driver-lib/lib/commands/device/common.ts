@@ -8,6 +8,7 @@ import * as semver from 'semver';
 import type {AndroidDriverConstraints} from '../../constraints.js';
 import type {AndroidDriver} from '../../driver.js';
 import {GET_SERVER_LOGS_FEATURE, nativeLogEntryToSeleniumEntry} from '../../utils.js';
+import {makeLogcatLevelTransformer} from '../bidi/logcat-level.js';
 import {setMockLocationApp} from '../geolocation.js';
 import {hideKeyboardCompletely, initUnicodeKeyboard} from '../keyboard.js';
 import {adjustTimeZone} from '../time.js';
@@ -279,6 +280,7 @@ export async function initDevice(this: AndroidDriver): Promise<void> {
       if (this.adb.logcat) {
         this.assignBiDiLogListener(this.adb.logcat, {
           type: 'syslog',
+          entryTransformer: makeLogcatLevelTransformer(logcatFormat),
         });
       }
     };
