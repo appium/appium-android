@@ -5,8 +5,12 @@ import type {AndroidDriver} from '../../driver.js';
  *
  * @param driver - The driver instance
  * @param method - Fully qualified event name, e.g. `log.entryAdded`
+ * @param context - If set, only subscriptions that cover this context (or all contexts) count
  */
-export function hasSubscribers(driver: AndroidDriver, method: string): boolean {
+export function hasSubscribers(driver: AndroidDriver, method: string, context?: string): boolean {
   const moduleName = method.split('.')[0];
-  return [method, moduleName].some((e) => (driver.bidiEventSubs[e]?.length ?? 0) > 0);
+  return [method, moduleName].some((e) => {
+    const contexts = driver.bidiEventSubs[e];
+    return Boolean(contexts?.length) && (context === undefined || contexts.includes('') || contexts.includes(context));
+  });
 }

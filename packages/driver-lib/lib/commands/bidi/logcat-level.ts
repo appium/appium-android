@@ -8,7 +8,7 @@ const KNOWN_FORMATS = ['brief', 'process', 'tag', 'thread', 'raw', 'time', 'thre
 const TIME = String.raw`\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}`;
 // Capture group 1 is the priority letter. `raw` and `long` carry no per-line priority.
 const PRIORITY_PATTERNS: Readonly<Record<string, RegExp>> = {
-  brief: /^([VDIWEF])\/[^(]*\(\s*\d+\):/,
+  brief: /^([VDIWEF])\/.*?\(\s*\d+\):/,
   process: /^([VDIWEF])\(\s*\d+\)/,
   tag: /^([VDIWEF])\/[^:]*:/,
   thread: /^([VDIWEF])\(\s*\d+:\s*\d+\)/,

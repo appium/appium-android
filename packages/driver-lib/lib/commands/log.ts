@@ -158,7 +158,7 @@ export function assignBiDiLogListener<EE extends EventEmitter>(
 ): [EE, LogListener] {
   const {type, context = NATIVE_WIN, srcEventName = 'output', entryTransformer} = properties;
   const listener: LogListener = (logEntry: LogEntry) => {
-    if (!hasSubscribers(this, LOG_ENTRY_ADDED_EVENT)) {
+    if (!hasSubscribers(this, LOG_ENTRY_ADDED_EVENT, context)) {
       return;
     }
     const finalEntry = entryTransformer ? entryTransformer(logEntry) : logEntry;
