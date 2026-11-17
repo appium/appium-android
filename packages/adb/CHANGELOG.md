@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [17.0.4](https://github.com/appium/appium-android/compare/appium-adb@17.0.3...appium-adb@17.0.4) (2026-11-17)
+
+### Miscellaneous Chores
+
+* **adb:** update dependency ini to v7 ([#125](https://github.com/appium/appium-android/issues/125)) ([60df469](https://github.com/appium/appium-android/commit/60df469a5bebbd1110374ebfdacbfbe5207719d1))
+
+
 ## [17.0.3](https://github.com/appium/appium-android/compare/appium-adb@17.0.2...appium-adb@17.0.3) (2026-11-14)
 
 ### Miscellaneous Chores

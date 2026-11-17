@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [9.2.1](https://github.com/appium/appium-android/compare/io.appium.settings@9.2.0...io.appium.settings@9.2.1) (2026-11-17)
+
+### Miscellaneous Chores
+
+* **app:** update dependency org.apache.commons:commons-lang3 to v3.22.0 ([#126](https://github.com/appium/appium-android/issues/126)) ([6ecf82a](https://github.com/appium/appium-android/commit/6ecf82a58477a686b36ffafd9e657b61c8238662))
+
+
 ## [9.2.0](https://github.com/appium/appium-android/compare/io.appium.settings@9.1.4...io.appium.settings@9.2.0) (2026-11-14)
 
 ### Features

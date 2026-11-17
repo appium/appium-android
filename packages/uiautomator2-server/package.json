@@ -1,6 +1,6 @@
 {
   "name": "appium-uiautomator2-server",
-  "version": "11.0.7",
+  "version": "11.0.8",
   "description": "A netty server with uiautomator2 handlers",
   "keywords": [
     "android",
@@ -50,7 +50,7 @@
   },
   "devDependencies": {
     "@appium/support": "^8.0.0-beta.7",
-    "appium-adb": "^17.0.3",
+    "appium-adb": "^17.0.4",
     "semver": "^7.3.7"
   },
   "engines": {
