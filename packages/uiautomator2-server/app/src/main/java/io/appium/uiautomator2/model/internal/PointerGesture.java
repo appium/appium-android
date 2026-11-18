@@ -29,6 +29,8 @@ import static io.appium.uiautomator2.utils.ReflectionUtils.invoke;
 
 public class PointerGesture {
     private static final String POINTER_GESTURE_CLASS = "androidx.test.uiautomator.PointerGesture";
+    // Only used by uiautomator for injecting events into a specific window (XR devices)
+    static final int UNDEFINED_WINDOW_ID = -1;
 
     private static Class<?> pointerGestureClass;
     private static Constructor<?> pointerGestureConstructor;
@@ -43,7 +45,7 @@ public class PointerGesture {
 
     private static synchronized Constructor<?> getWrappedConstructor() {
         if (pointerGestureConstructor == null) {
-            pointerGestureConstructor = getConstructor(getWrappedClass(), Point.class, int.class);
+            pointerGestureConstructor = getConstructor(getWrappedClass(), Point.class, int.class, int.class);
         }
         return pointerGestureConstructor;
     }
@@ -51,7 +53,7 @@ public class PointerGesture {
     public PointerGesture(Object wrappedInstanceOrPoint, int displayId) {
         if (wrappedInstanceOrPoint instanceof Point) {
             try {
-                this.wrappedInstance = getWrappedConstructor().newInstance(wrappedInstanceOrPoint, displayId);
+                this.wrappedInstance = getWrappedConstructor().newInstance(wrappedInstanceOrPoint, displayId, UNDEFINED_WINDOW_ID);
             } catch (IllegalAccessException | InstantiationException | InvocationTargetException e) {
                 throw new IllegalStateException(String.format("Cannot perform gesture at %s", wrappedInstanceOrPoint), e);
             }

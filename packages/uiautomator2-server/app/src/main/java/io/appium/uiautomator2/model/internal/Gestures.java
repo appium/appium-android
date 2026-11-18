@@ -26,6 +26,7 @@ import androidx.test.uiautomator.UiObject2;
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 
+import static io.appium.uiautomator2.utils.ReflectionUtils.getConstructor;
 import static io.appium.uiautomator2.utils.ReflectionUtils.getField;
 import static io.appium.uiautomator2.utils.ReflectionUtils.getMethod;
 import static io.appium.uiautomator2.utils.ReflectionUtils.invoke;
@@ -34,12 +35,18 @@ import io.appium.uiautomator2.utils.ReflectionUtils;
 
 public class Gestures {
     private final Class<?> wrappedClass;
+    private final Object wrappedInstance;
     private final int displayId;
 
     Gestures(int displayId) {
         this.displayId = displayId;
-        // https://androidx.tech/artifacts/test.uiautomator/uiautomator/2.3.0-beta01-source/androidx/test/uiautomator/Gestures.java.html
         this.wrappedClass = ReflectionUtils.getClass("androidx.test.uiautomator.Gestures");
+        try {
+            this.wrappedInstance = getConstructor(wrappedClass, int.class, int.class)
+                    .newInstance(displayId, PointerGesture.UNDEFINED_WINDOW_ID);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Cannot instantiate " + wrappedClass.getCanonicalName(), e);
+        }
     }
 
     public int getDisplayId() {
@@ -49,10 +56,10 @@ public class Gestures {
     public PointerGesture drag(Point start, Point end, int speed) {
         Method dragMethod = getMethod(
                 wrappedClass, "drag",
-                Point.class, Point.class, int.class, int.class
+                Point.class, Point.class, int.class
         );
         return new PointerGesture(
-                invoke(dragMethod, wrappedClass, start, end, speed, displayId),
+                invoke(dragMethod, wrappedInstance, start, end, speed),
                 displayId
         );
     }
@@ -60,30 +67,30 @@ public class Gestures {
     public PointerGesture[] pinchClose(Rect area, float percent, int speed) {
         Method pinchCloseMethod = getMethod(
                 wrappedClass, "pinchClose",
-                Rect.class, float.class, int.class, int.class
+                Rect.class, float.class, int.class
         );
         return toGesturesArray(
-                invoke(pinchCloseMethod, wrappedClass, area, percent, speed, displayId)
+                invoke(pinchCloseMethod, wrappedInstance, area, percent, speed)
         );
     }
 
     public PointerGesture[] pinchOpen(Rect area, float percent, int speed) {
         Method pinchOpenMethod = getMethod(
                 wrappedClass, "pinchOpen",
-                Rect.class, float.class, int.class, int.class
+                Rect.class, float.class, int.class
         );
         return toGesturesArray(
-                invoke(pinchOpenMethod, wrappedClass, area, percent, speed, displayId)
+                invoke(pinchOpenMethod, wrappedInstance, area, percent, speed)
         );
     }
 
     public PointerGesture swipe(Rect area, Direction direction, float percent, int speed) {
         Method swipeRectMethod = getMethod(
                 wrappedClass, "swipeRect",
-                Rect.class, Direction.class, float.class, int.class, int.class
+                Rect.class, Direction.class, float.class, int.class
         );
         return new PointerGesture(
-                invoke(swipeRectMethod, wrappedClass, area, direction, percent, speed, displayId),
+                invoke(swipeRectMethod, wrappedInstance, area, direction, percent, speed),
                 displayId
         );
     }
