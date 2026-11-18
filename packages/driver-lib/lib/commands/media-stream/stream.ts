@@ -50,13 +50,19 @@ export class MediaStream {
   private dropped = 0;
   private heartbeat?: NodeJS.Timeout;
   private pump?: Promise<void>;
-  // Whether the device-side session is ours to stop (false if another client's stream was found running)
-  private owned = false;
+  /**
+   * Settles once the device session is up or failed to start, telling whether there is a device
+   * session of ours to stop. False if another client's stream of this kind was found running, or if
+   * the options were rejected (TypeError, RangeError) before the device was touched. Any other
+   * failure may have brought the on-device service up, so it counts as ours.
+   */
+  private deviceStart?: Promise<boolean>;
   private announced = false;
   private endReason = 'ended';
   private firstUnitSeen!: () => void;
   private readonly firstUnit = new Promise<void>((resolve) => (this.firstUnitSeen = resolve));
   private stopped = false;
+  private finished?: Promise<void>;
   private get videoChain(): string {
     return `${this.streamId}:video`;
   }
@@ -70,45 +76,39 @@ export class MediaStream {
     this.batcher = new UnitBatcher(opts.kind === 'jpeg' ? 0 : opts.batchMs, (units) => this.emitUnits(units));
   }
 
+  /**
+   * Starts the device session and republishes its units.
+   * Throws if another client's stream of this kind runs on the device, which is left alone.
+   * If the stream is stopped while the device session is starting, this throws and the teardown
+   * stops the device session once it is up.
+   */
   async start(): Promise<MediaStreamInfo> {
     const {opts} = this;
     if (this.stopped) {
       throw new Error('The stream was stopped before it started');
     }
-    // A start() that throws may still have brought the on-device service up, so it is ours
-    this.owned = true;
-    let started: boolean;
-    try {
-      started =
-        opts.kind === 'video'
-          ? await (this.session as VideoStreamSession).start({
-              codec: opts.codec,
-              fps: opts.fps,
-              bitrate: opts.bitrate,
-              resolution: opts.resolution,
-              audio: opts.audio,
-            })
-          : await (this.session as JpegStreamSession).start({fps: opts.fps, quality: opts.quality, scale: opts.scale});
-    } catch (e) {
-      // Option validation runs before the device is touched, so there is nothing of ours to stop
-      if (e instanceof TypeError || e instanceof RangeError) {
-        this.owned = false;
+    const starting =
+      opts.kind === 'video'
+        ? (this.session as VideoStreamSession).start({
+            codec: opts.codec,
+            fps: opts.fps,
+            bitrate: opts.bitrate,
+            resolution: opts.resolution,
+            audio: opts.audio,
+          })
+        : (this.session as JpegStreamSession).start({fps: opts.fps, quality: opts.quality, scale: opts.scale});
+    this.deviceStart = (async () => {
+      try {
+        return await starting;
+      } catch (e) {
+        return !(e instanceof TypeError || e instanceof RangeError);
       }
-      if (this.owned && this.stopped) {
-        // finish() already ran and skipped the device session, which may be half up
-        await this.session.stop().catch(() => {});
-      }
-      throw e;
+    })();
+    if (!(await starting)) {
+      throw new Error(`Another ${opts.kind} stream is already running on the device`);
     }
     if (this.stopped) {
-      // Stopped while the device session was starting: finish() may have run before it was up
-      await this.session.stop().catch(() => {});
       throw new Error('The stream was stopped while it was starting');
-    }
-    if (!started) {
-      // The device already runs a stream of this kind that is not ours: leave it alone
-      this.owned = false;
-      throw new Error(`Another ${opts.kind} stream is already running on the device`);
     }
 
     this.deps.emitter.on(BACKPRESSURE_EVENT_NAME, this.onBackpressure);
@@ -164,32 +164,51 @@ export class MediaStream {
     return this.stopped;
   }
 
-  /** Idempotent; resolves once the stream is torn down and its pump has finished. */
+  /**
+   * Idempotent: every call waits for the same teardown, and resolves once the device session of
+   * the stream is stopped (after its start settled, if it was still starting) and the pump has
+   * finished. Rejects if the teardown failed, e.g. a listener of the ended event threw; the stream
+   * is ended regardless.
+   */
   async stop(reason = 'stopped'): Promise<void> {
     await this.finish(reason);
     await this.pump?.catch(() => {});
   }
 
-  // Must not await the pump: it is also called from inside the pump itself
-  private async finish(reason: string): Promise<void> {
-    if (this.stopped) {
-      return;
-    }
+  /**
+   * Marks the stream stopped and returns its single teardown.
+   * Must not await the pump: it is also called from inside the pump itself.
+   */
+  private finish(reason: string): Promise<void> {
     this.stopped = true;
-    clearInterval(this.heartbeat);
-    this.batcher.close();
-    this.deps.emitter.off(BACKPRESSURE_EVENT_NAME, this.onBackpressure);
-    if (this.owned) {
-      try {
-        await this.session.stop();
-      } catch (e) {
-        this.deps.log.warn(`Cannot stop the ${this.kind} stream session: ${(e as Error).message}`);
+    return (this.finished ??= this.teardown(reason));
+  }
+
+  /**
+   * Waits for a device start that is still in flight (a starting device session can only be
+   * stopped once it is up), stops the device session if it is ours, emits `ended`, and calls
+   * `onEnded` even if a listener of `ended` threw.
+   * It awaits before running any callback, so finish() has stored it by the time a callback stops
+   * the stream again, and that call gets this same teardown.
+   */
+  private async teardown(reason: string): Promise<void> {
+    try {
+      clearInterval(this.heartbeat);
+      this.batcher.close();
+      this.deps.emitter.off(BACKPRESSURE_EVENT_NAME, this.onBackpressure);
+      if (await this.deviceStart) {
+        try {
+          await this.session.stop();
+        } catch (e) {
+          this.deps.log.warn(`Cannot stop the ${this.kind} stream session: ${(e as Error).message}`);
+        }
       }
+      if (this.announced) {
+        this.deps.emit({method: MEDIA_ENDED_EVENT, params: {streamId: this.streamId, reason}});
+      }
+    } finally {
+      this.deps.onEnded(this.streamId);
     }
-    if (this.announced) {
-      this.deps.emit({method: MEDIA_ENDED_EVENT, params: {streamId: this.streamId, reason}});
-    }
-    this.deps.onEnded(this.streamId);
   }
 
   private info(): MediaStreamInfo {
@@ -206,6 +225,10 @@ export class MediaStream {
     };
   }
 
+  /**
+   * Republishes the units until the device session ends, then tears the stream down.
+   * Nobody awaits the pump for a failed teardown, so it is logged here; stop() callers get it rethrown.
+   */
   private async runPump(): Promise<void> {
     let reason = 'ended';
     try {
@@ -222,7 +245,9 @@ export class MediaStream {
       reason = `error: ${(e as Error).message}`;
     }
     this.endReason = reason;
-    await this.finish(reason);
+    await this.finish(reason).catch((e) =>
+      this.deps.log.warn(`Cannot finish the ${this.kind} stream: ${(e as Error).message}`),
+    );
   }
 
   private onAccessUnit(au: AccessUnit): void {

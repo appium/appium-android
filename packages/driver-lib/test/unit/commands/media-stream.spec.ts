@@ -5,6 +5,7 @@ import {describe, it} from 'node:test';
 import type {BiDiEvent} from '@appium/types';
 import type {AccessUnit, JpegFrame} from 'io.appium.settings';
 
+import {BIDI_EVENT_NAME} from '../../../lib/commands/bidi/constants.js';
 import {UnitBatcher} from '../../../lib/commands/media-stream/batcher.js';
 import {getCapabilities, parseVideoEncoders} from '../../../lib/commands/media-stream/capabilities.js';
 import {
@@ -51,6 +52,10 @@ function fakeSession<T>() {
   return {
     push(item: T) {
       queue.push(item);
+      wake?.();
+    },
+    end() {
+      closed = true;
       wake?.();
     },
     async start() {
@@ -289,7 +294,7 @@ describe('MediaStream', function () {
       .map((m) => `Media type '${m}':\n  Encoder "enc.${m}" supports\n    attributes: 0x1: [ software-only: 0 ]\n`)
       .join('');
   function fakeDriver(gate: Promise<void> = Promise.resolve(), dump = '') {
-    const sessionLog = {starts: 0, stops: 0, sessions: 0};
+    const sessionLog = {starts: 0, stops: 0, sessions: 0, made: [] as ReturnType<typeof fakeSession<any>>[]};
     const driver = {
       adb: {getApiLevel: async () => 36, shell: async () => dump},
       settingsApp: {
@@ -300,6 +305,7 @@ describe('MediaStream', function () {
           const {start, stop} = session;
           session.start = async () => (sessionLog.starts++, await start());
           session.stop = async () => (sessionLog.stops++, await stop());
+          sessionLog.made.push(session);
           return session;
         },
         makeVideoStreamSession: () => fakeSession<any>(),
@@ -335,6 +341,62 @@ describe('MediaStream', function () {
     await assert.rejects(mobileStopMediaStream.call(driver, 'no-such-id'), /Unknown media stream id/);
   });
 
+  async function endOnDevice(driver: any, sessionLog: ReturnType<typeof fakeDriver>['sessionLog']) {
+    const first = await mobileStartMediaStream.call(driver, 'jpeg');
+    const [session] = sessionLog.made;
+    let release!: () => void;
+    const held = new Promise<void>((r) => (release = r));
+    const {stop} = session;
+    const order: string[] = [];
+    session.stop = async () => {
+      await held;
+      order.push('first stopped');
+      return await stop();
+    };
+    session.end();
+    await new Promise((r) => setImmediate(r));
+    return {first, release, order};
+  }
+
+  it('keeps stopping a stream that ended on the device a no-op after another stream is started', async function () {
+    const {driver, sessionLog} = fakeDriver();
+    const {first, release} = await endOnDevice(driver, sessionLog);
+    release();
+    await new Promise((r) => setImmediate(r));
+    assert.equal(driver._mediaStreams.size, 0);
+    await mobileStopMediaStream.call(driver, first.streamId);
+    const second = await mobileStartMediaStream.call(driver, 'jpeg');
+    await mobileStopMediaStream.call(driver, first.streamId);
+    assert.equal(sessionLog.stops, 1);
+    await mobileStopMediaStream.call(driver, second.streamId);
+  });
+
+  it('starts a new stream only after the device session of an ended one is stopped', async function () {
+    const {driver, sessionLog} = fakeDriver();
+    const {release, order} = await endOnDevice(driver, sessionLog);
+    const starting = mobileStartMediaStream.call(driver, 'jpeg').then((info) => (order.push('second started'), info));
+    await new Promise((r) => setImmediate(r));
+    assert.equal(sessionLog.sessions, 1);
+    release();
+    const second = await starting;
+    assert.deepEqual(order, ['first stopped', 'second started']);
+    assert.deepEqual([...driver._mediaStreams.keys()], [second.streamId]);
+    await mobileStopMediaStream.call(driver, second.streamId);
+  });
+
+  it('resolves stop and stopAll of a stream that is still stopping only once it is stopped', async function () {
+    const {driver, sessionLog} = fakeDriver();
+    const {first, release, order} = await endOnDevice(driver, sessionLog);
+    const stopping = mobileStopMediaStream.call(driver, first.streamId).then(() => order.push('stop resolved'));
+    const stoppingAll = stopAllMediaStreams.call(driver).then(() => order.push('stopAll resolved'));
+    await new Promise((r) => setImmediate(r));
+    assert.deepEqual(order, []);
+    release();
+    await Promise.all([stopping, stoppingAll]);
+    assert.deepEqual(order, ['first stopped', 'stop resolved', 'stopAll resolved']);
+    assert.equal(sessionLog.stops, 1);
+  });
+
   it('stops the device session if start fails after the stream was stopped', async function () {
     let release!: () => void;
     const gate = new Promise<void>((r) => (release = r));
@@ -351,11 +413,13 @@ describe('MediaStream', function () {
       {emit() {}, emitter: new EventEmitter(), hasSubscribers: () => true, log, onEnded() {}},
     );
     const starting = assert.rejects(stream.start(), /forwarding failed/);
-    await stream.stop();
-    // The device service comes up only after the shutdown, so an earlier stop does not count
-    stops = 0;
+    let stopped = false;
+    const stopping = stream.stop().then(() => (stopped = true));
+    await new Promise((r) => setImmediate(r));
+    assert.equal(stops, 0, 'the device session is stopped only once its start settled');
+    assert.equal(stopped, false);
     release();
-    await starting;
+    await Promise.all([starting, stopping]);
     await stream.stop('failed to start');
     assert.equal(stops, 1);
   });
@@ -374,12 +438,109 @@ describe('MediaStream', function () {
       {emit() {}, emitter, hasSubscribers: () => true, log, onEnded() {}},
     );
     const starting = assert.rejects(stream.start(), /stopped while it was starting/);
-    await stream.stop();
-    stops = 0;
+    let stopped = false;
+    const stopping = stream.stop().then(() => (stopped = true));
+    await new Promise((r) => setImmediate(r));
+    assert.equal(stops, 0, 'the device session is stopped only once it is up');
+    assert.equal(stopped, false);
     release();
-    await starting;
+    await Promise.all([starting, stopping]);
     assert.equal(stops, 1);
     assert.equal(emitter.listenerCount('bidiBackpressure'), 0);
+  });
+
+  it('does not stop the stream of another client if stopped while it was starting', async function () {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    let stops = 0;
+    const stream = new MediaStream(
+      {start: async () => (await gate, false), stop: async () => (stops++, true)} as any,
+      {kind: 'jpeg', batchMs: 0, idleHeartbeatMs: 0},
+      {emit() {}, emitter: new EventEmitter(), hasSubscribers: () => true, log, onEnded() {}},
+    );
+    const starting = assert.rejects(stream.start(), /already running on the device/);
+    const stopping = stream.stop();
+    release();
+    await Promise.all([starting, stopping]);
+    assert.equal(stops, 0);
+  });
+
+  it('waits on session deletion for a device session that is still starting', async function () {
+    const {driver, sessionLog} = fakeDriver();
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const makeSession = driver.settingsApp.makeJpegStreamSession;
+    driver.settingsApp.makeJpegStreamSession = () => {
+      const session = makeSession();
+      const {start} = session;
+      session.start = async () => (await gate, await start());
+      return session;
+    };
+    const starting = assert.rejects(mobileStartMediaStream.call(driver, 'jpeg'), /stopped while it was starting/);
+    await new Promise((r) => setImmediate(r));
+    let stoppedAll = false;
+    const stoppingAll = stopAllMediaStreams.call(driver).then(() => (stoppedAll = true));
+    await new Promise((r) => setImmediate(r));
+    assert.equal(stoppedAll, false);
+    release();
+    await Promise.all([starting, stoppingAll]);
+    assert.deepEqual([sessionLog.starts, sessionLog.stops], [1, 1]);
+  });
+
+  it('unregisters a stream whose ended listener threw, so its kind can start again', async function () {
+    const {driver} = fakeDriver();
+    driver.bidiEventSubs = {'appium:mediaStream': ['ctx']};
+    const first = await mobileStartMediaStream.call(driver, 'jpeg');
+    driver.eventEmitter.on(BIDI_EVENT_NAME, (e: BiDiEvent) => {
+      if (e.method === 'appium:mediaStream.ended') {
+        throw new Error('listener failed');
+      }
+    });
+    await assert.rejects(mobileStopMediaStream.call(driver, first.streamId), /listener failed/);
+    driver.eventEmitter.removeAllListeners(BIDI_EVENT_NAME);
+    await mobileStopMediaStream.call(driver, first.streamId);
+    const second = await mobileStartMediaStream.call(driver, 'jpeg');
+    await mobileStopMediaStream.call(driver, second.streamId);
+  });
+
+  it('runs the teardown once if a callback of it stops the stream again', async function () {
+    const events: BiDiEvent[] = [];
+    let ended = 0;
+    const stream: MediaStream = new MediaStream(
+      {start: async () => false, stop: async () => true} as any,
+      {kind: 'jpeg', batchMs: 0, idleHeartbeatMs: 0},
+      {
+        emit: (e) => events.push(e),
+        emitter: new EventEmitter(),
+        hasSubscribers: () => true,
+        log,
+        onEnded: () => {
+          ended++;
+          void stream.stop();
+        },
+      },
+    );
+    await assert.rejects(stream.start(), /already running on the device/);
+    await stream.stop();
+    await stream.stop();
+    assert.equal(ended, 1);
+  });
+
+  it('does not keep the id of a stream that failed to start', async function () {
+    const {driver} = fakeDriver();
+    const makeSession = driver.settingsApp.makeJpegStreamSession;
+    let id: string | undefined;
+    driver.settingsApp.makeJpegStreamSession = () => {
+      const session = makeSession();
+      session.start = async () => {
+        id = [...driver._mediaStreams.keys()][0];
+        throw new Error('forwarding failed');
+      };
+      return session;
+    };
+    await assert.rejects(mobileStartMediaStream.call(driver, 'jpeg'), /forwarding failed/);
+    assert.ok(id);
+    await assert.rejects(mobileStopMediaStream.call(driver, id), /Unknown media stream id/);
   });
 
   it('rejects a codec the device has no encoder for', async function () {
