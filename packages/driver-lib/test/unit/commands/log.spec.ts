@@ -7,6 +7,7 @@ import {ADB} from 'appium-adb';
 import type {LogEntry} from 'appium-adb';
 import sinon from 'sinon';
 
+import {BIDI_EVENT_NAME} from '../../../lib/commands/bidi/constants.js';
 import {AndroidDriver} from '../../../lib/driver.js';
 
 describe('commands - logging', function () {
@@ -44,6 +45,56 @@ describe('commands - logging', function () {
       assert.strictEqual(record2.message, 'line2');
       assert.strictEqual(bugreportStub.called, true);
       bugreportStub.restore();
+    });
+  });
+  describe('assignBiDiLogListener', function () {
+    let bidiDriver: AndroidDriver;
+    let emitted: any[];
+
+    beforeEach(function () {
+      bidiDriver = new AndroidDriver();
+      emitted = [];
+      bidiDriver.eventEmitter.on(BIDI_EVENT_NAME, (e) => emitted.push(e));
+    });
+
+    const entry = {timestamp: 1, level: 'ALL', message: 'hello'} as LogEntry;
+
+    it('should not emit events while nobody is subscribed', function () {
+      const [logEmitter] = bidiDriver.assignBiDiLogListener(new EventEmitter(), {type: 'syslog'});
+      logEmitter.emit('output', entry);
+      assert.deepStrictEqual(emitted, []);
+    });
+
+    for (const sub of ['log.entryAdded', 'log']) {
+      it(`should emit events for a '${sub}' subscription`, function () {
+        bidiDriver.bidiEventSubs = {[sub]: ['']};
+        const [logEmitter] = bidiDriver.assignBiDiLogListener(new EventEmitter(), {type: 'syslog'});
+        logEmitter.emit('output', entry);
+        assert.strictEqual(emitted.length, 1);
+        assert.strictEqual(emitted[0].method, 'log.entryAdded');
+        assert.strictEqual(emitted[0].params.text, 'hello');
+      });
+    }
+
+    it('should not emit events if the subscription is scoped to another context', function () {
+      bidiDriver.bidiEventSubs = {'log.entryAdded': ['WEBVIEW_1']};
+      const [logEmitter] = bidiDriver.assignBiDiLogListener(new EventEmitter(), {type: 'syslog'});
+      logEmitter.emit('output', entry);
+      assert.deepStrictEqual(emitted, []);
+    });
+
+    it('should emit events if the subscription is scoped to the event context', function () {
+      bidiDriver.bidiEventSubs = {log: ['NATIVE_APP']};
+      const [logEmitter] = bidiDriver.assignBiDiLogListener(new EventEmitter(), {type: 'syslog'});
+      logEmitter.emit('output', entry);
+      assert.strictEqual(emitted.length, 1);
+    });
+
+    it('should not apply the transformer while nobody is subscribed', function () {
+      const entryTransformer = sinon.stub().returnsArg(0);
+      const [logEmitter] = bidiDriver.assignBiDiLogListener(new EventEmitter(), {type: 'syslog', entryTransformer});
+      logEmitter.emit('output', entry);
+      assert.strictEqual(entryTransformer.called, false);
     });
   });
   describe('mobileStartLogsBroadcast / mobileStopLogsBroadcast', function () {

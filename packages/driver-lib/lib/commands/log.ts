@@ -10,7 +10,8 @@ import {WebSocket, WebSocketServer} from 'ws';
 import type {AndroidDriverConstraints} from '../constraints.js';
 import type {AndroidDriver} from '../driver.js';
 import {GET_SERVER_LOGS_FEATURE, toLogRecord, nativeLogEntryToSeleniumEntry, type LogEntry} from '../utils.js';
-import {BIDI_EVENT_NAME} from './bidi/constants.js';
+import {BIDI_EVENT_NAME, LOG_ENTRY_ADDED_EVENT} from './bidi/constants.js';
+import {hasSubscribers} from './bidi/helpers.js';
 import {makeLogEntryAddedEvent} from './bidi/models.js';
 import {NATIVE_WIN} from './context/helpers.js';
 
@@ -157,6 +158,9 @@ export function assignBiDiLogListener<EE extends EventEmitter>(
 ): [EE, LogListener] {
   const {type, context = NATIVE_WIN, srcEventName = 'output', entryTransformer} = properties;
   const listener: LogListener = (logEntry: LogEntry) => {
+    if (!hasSubscribers(this, LOG_ENTRY_ADDED_EVENT, context)) {
+      return;
+    }
     const finalEntry = entryTransformer ? entryTransformer(logEntry) : logEntry;
     this.eventEmitter.emit(BIDI_EVENT_NAME, makeLogEntryAddedEvent(finalEntry, context, type));
   };

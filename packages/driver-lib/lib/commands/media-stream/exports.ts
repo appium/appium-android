@@ -3,14 +3,9 @@ import {errors} from 'appium/driver.js';
 import type {AndroidDriverConstraints} from '../../constraints.js';
 import type {AndroidDriver} from '../../driver.js';
 import {BIDI_EVENT_NAME} from '../bidi/constants.js';
+import {hasSubscribers} from '../bidi/helpers.js';
 import {getCapabilities, queryVideoEncoders} from './capabilities.js';
-import {
-  DEFAULT_BATCH_MS,
-  DEFAULT_IDLE_HEARTBEAT_MS,
-  MEDIA_STREAM_MODULE,
-  MEDIA_UNITS_EVENT,
-  MIN_API_LEVEL,
-} from './constants.js';
+import {DEFAULT_BATCH_MS, DEFAULT_IDLE_HEARTBEAT_MS, MEDIA_UNITS_EVENT, MIN_API_LEVEL} from './constants.js';
 import {MediaStream} from './stream.js';
 import type {MediaKind, MediaStreamCapabilities, MediaStreamInfo, StartMediaStreamOpts} from './types.js';
 
@@ -150,10 +145,6 @@ export async function mobileStopMediaStream(this: AndroidDriver, streamId: strin
 /** Stops all streams of the session; used on session deletion. */
 export async function stopAllMediaStreams(this: AndroidDriver): Promise<void> {
   await Promise.all([...(this._mediaStreams?.values() ?? [])].map((s) => s.stop('session ended')));
-}
-
-function hasSubscribers(driver: AndroidDriver, method: string): boolean {
-  return [method, MEDIA_STREAM_MODULE].some((e) => (driver.bidiEventSubs[e]?.length ?? 0) > 0);
 }
 
 function validateOpts({
