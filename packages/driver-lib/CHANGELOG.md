@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [15.3.0](https://github.com/appium/appium-android/compare/appium-android-driver@15.2.4...appium-android-driver@15.3.0) (2026-11-18)
+
+### Features
+
+* **driver-lib:** derive BiDi syslog level and gate log events on subscribers ([#127](https://github.com/appium/appium-android/issues/127)) ([b4fa1f9](https://github.com/appium/appium-android/commit/b4fa1f9946292d9d82aec18cbbf8dfd84850ded7))
+
+
 ## [15.2.4](https://github.com/appium/appium-android/compare/appium-android-driver@15.2.3...appium-android-driver@15.2.4) (2026-11-18)
 
 **Note:** Version bump only for package appium-android-driver
