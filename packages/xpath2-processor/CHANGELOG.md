@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.0.1](https://github.com/appium/appium-android/compare/@appium/xpath2-processor@2.0.0...@appium/xpath2-processor@2.0.1) (2026-11-18)
+
+### Miscellaneous Chores
+
+* **org.eclipse.wst.xml.xpath2.processor:** update dependency org.apache.maven.plugins:maven-javadoc-plugin to v2.10.4 ([#131](https://github.com/appium/appium-android/issues/131)) ([d0cdefc](https://github.com/appium/appium-android/commit/d0cdefc546c904f9bc9933c6bb884e01bbf94c36))
+
+
 ## [2.0.0](https://github.com/appium/appium-android/compare/@appium/xpath2-processor@1.0.2...@appium/xpath2-processor@2.0.0) (2026-11-15)
 
 ### ⚠ BREAKING CHANGES
