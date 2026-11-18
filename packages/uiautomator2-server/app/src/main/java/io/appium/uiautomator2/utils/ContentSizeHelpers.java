@@ -1,22 +1,18 @@
 package io.appium.uiautomator2.utils;
 
+import static androidx.test.platform.app.InstrumentationRegistry.getInstrumentation;
 import static io.appium.uiautomator2.utils.Device.getUiDevice;
 
 import android.graphics.Rect;
+import android.view.ViewConfiguration;
 import android.view.accessibility.AccessibilityNodeInfo;
 
-import androidx.test.uiautomator.By;
-import androidx.test.uiautomator.UiObject;
-import androidx.test.uiautomator.UiObject2;
 import androidx.test.uiautomator.UiObjectNotFoundException;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.InvalidClassException;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.Objects;
 
 import io.appium.uiautomator2.common.exceptions.UiAutomator2Exception;
 import io.appium.uiautomator2.core.AxNodeInfoExtractor;
@@ -27,7 +23,6 @@ import io.appium.uiautomator2.model.AccessibilityScrollData;
 import io.appium.uiautomator2.model.AndroidElement;
 import io.appium.uiautomator2.model.AppiumUIA2Driver;
 import io.appium.uiautomator2.model.Session;
-import io.appium.uiautomator2.model.UiObject2Element;
 
 public class ContentSizeHelpers {
     // these constants are magic numbers experimentally determined to minimize flakiness in generating
@@ -41,11 +36,7 @@ public class ContentSizeHelpers {
     public static String getContentSize(AndroidElement element) throws UiObjectNotFoundException {
         Rect boundsRect = element.getBounds();
         ContentSize contentSize = new ContentSize(boundsRect);
-        try {
-            contentSize.touchPadding = getTouchPadding(element);
-        } catch (ReflectiveOperationException e) {
-            throw new UiAutomator2Exception(e);
-        }
+        contentSize.touchPadding = getTouchPadding();
         contentSize.scrollableOffset = getScrollableOffset(element);
         return contentSize.toString();
     }
@@ -187,27 +178,8 @@ public class ContentSizeHelpers {
         return 0;
     }
 
-    private static int getTouchPadding(
-            AndroidElement element
-    ) throws UiObjectNotFoundException, ReflectiveOperationException {
-        final UiObject2 uiObject2 = element instanceof UiObject2Element
-                ? getUiDevice().findObject(By.clazz(((UiObject2) element.getUiObject()).getClassName()))
-                : getUiDevice().findObject(By.clazz(((UiObject) element.getUiObject()).getClassName()));
-        Field gestureField = uiObject2.getClass().getDeclaredField("mGestures");
-        gestureField.setAccessible(true);
-        Object gestureObject = Objects.requireNonNull(gestureField.get(uiObject2));
-
-        Field viewConfigField = gestureObject.getClass().getDeclaredField("mViewConfig");
-        viewConfigField.setAccessible(true);
-        Object viewConfigObject = Objects.requireNonNull(viewConfigField.get(gestureObject));
-
-        Method getScaledPagingTouchSlopMethod = Objects.requireNonNull(
-                viewConfigObject.getClass().getDeclaredMethod("getScaledPagingTouchSlop")
-        );
-        getScaledPagingTouchSlopMethod.setAccessible(true);
-        int touchPadding = (int) getScaledPagingTouchSlopMethod.invoke(viewConfigObject);
-
-        return touchPadding / 2;
+    private static int getTouchPadding() {
+        return ViewConfiguration.get(getInstrumentation().getTargetContext()).getScaledPagingTouchSlop() / 2;
     }
 
     @SuppressWarnings("UnusedReturnValue")
