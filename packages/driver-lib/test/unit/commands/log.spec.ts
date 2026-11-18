@@ -9,6 +9,7 @@ import sinon from 'sinon';
 
 import {BIDI_EVENT_NAME} from '../../../lib/commands/bidi/constants.js';
 import {AndroidDriver} from '../../../lib/driver.js';
+import {executeMethodMap} from '../../../lib/execute-method-map.js';
 
 describe('commands - logging', function () {
   let driver: AndroidDriver;
@@ -195,18 +196,12 @@ describe('commands - logging', function () {
       assert.strictEqual(logcat.listenerCount('output'), 0);
     });
 
-    it('should warn that the broadcast commands are deprecated', async function () {
-      sandbox.stub(broadcastDriver.adb, 'setLogcatListener');
-      sandbox.stub(broadcastDriver.adb, 'removeLogcatListener');
-      const warnSpy = sandbox.spy(broadcastDriver.log, 'warn');
-
-      await broadcastDriver.mobileStartLogsBroadcast();
-      await broadcastDriver.mobileStopLogsBroadcast();
-
-      const messages = warnSpy.args.map(([m]) => String(m));
-      assert.ok(messages.some((m) => m.includes(`'mobile: startLogsBroadcast' has been deprecated`)));
-      assert.ok(messages.some((m) => m.includes(`'mobile: stopLogsBroadcast' has been deprecated`)));
-      assert.ok(messages.every((m) => m.includes('log.entryAdded')));
+    it('should mark the broadcast execute methods as deprecated', function () {
+      for (const method of ['mobile: startLogsBroadcast', 'mobile: stopLogsBroadcast'] as const) {
+        const def = executeMethodMap[method] as {deprecated?: boolean; info?: string};
+        assert.strictEqual(def.deprecated, true);
+        assert.ok(def.info?.includes('log.entryAdded'));
+      }
     });
 
     it('should log the close code of a disconnected socket', async function () {

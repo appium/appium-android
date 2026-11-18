@@ -66,7 +66,6 @@ export const supportedLogTypes = {
  * @returns Promise that resolves when the logcat broadcasting websocket is started.
  */
 export async function mobileStartLogsBroadcast(this: AndroidDriver): Promise<void> {
-  this.log.warn(DEPRECATION_MESSAGE('mobile: startLogsBroadcast'));
   const server = this.server as AppiumServer;
   const pathname = WEBSOCKET_ENDPOINT(this.sessionId as string);
   if (!util.isEmpty(await server.getWebSocketHandlers(pathname))) {
@@ -134,7 +133,6 @@ export async function mobileStartLogsBroadcast(this: AndroidDriver): Promise<voi
  * @returns Promise that resolves when the logcat broadcasting websocket is stopped.
  */
 export async function mobileStopLogsBroadcast(this: AndroidDriver): Promise<void> {
-  this.log.warn(DEPRECATION_MESSAGE('mobile: stopLogsBroadcast'));
   const pathname = WEBSOCKET_ENDPOINT(this.sessionId as string);
   const server = this.server as AppiumServer;
   if (util.isEmpty(await server.getWebSocketHandlers(pathname))) {
@@ -175,10 +173,6 @@ export function assignBiDiLogListener<EE extends EventEmitter>(
 }
 
 // #region Internal helpers
-
-const DEPRECATION_MESSAGE = (method: string): string =>
-  `'${method}' has been deprecated and will be removed in a future version. ` +
-  `Use the BiDi 'log.entryAdded' event (requires the 'webSocketUrl' capability) to receive logs instead.`;
 
 /**
  * Generates the websocket endpoint path for logcat broadcasting.

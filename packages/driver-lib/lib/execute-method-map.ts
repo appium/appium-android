@@ -14,6 +14,8 @@ const INTENT_PARAMS = [
   'flags',
 ] as const;
 
+const LOGS_BROADCAST_DEPRECATION_INFO = `Use the BiDi 'log.entryAdded' event (requires the 'webSocketUrl' capability) to receive logs instead.`;
+
 export const executeMethodMap = {
   'mobile: shell': {
     command: 'mobileShell',
@@ -33,9 +35,13 @@ export const executeMethodMap = {
 
   'mobile: startLogsBroadcast': {
     command: 'mobileStartLogsBroadcast',
+    deprecated: true,
+    info: LOGS_BROADCAST_DEPRECATION_INFO,
   },
   'mobile: stopLogsBroadcast': {
     command: 'mobileStopLogsBroadcast',
+    deprecated: true,
+    info: LOGS_BROADCAST_DEPRECATION_INFO,
   },
 
   'mobile: changePermissions': {
