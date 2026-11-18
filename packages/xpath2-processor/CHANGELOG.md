@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.0.3](https://github.com/appium/appium-android/compare/@appium/xpath2-processor@2.0.2...@appium/xpath2-processor@2.0.3) (2026-11-18)
+
+### Miscellaneous Chores
+
+* **uiautomator2-server:** bump server dependencies ([#138](https://github.com/appium/appium-android/issues/138)) ([2e66e88](https://github.com/appium/appium-android/commit/2e66e8826de34ca4f1c646340c27b41738cce080))
+
+
 ## [2.0.2](https://github.com/appium/appium-android/compare/@appium/xpath2-processor@2.0.1...@appium/xpath2-processor@2.0.2) (2026-11-18)
 
 ### Miscellaneous Chores

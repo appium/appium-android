@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.0.9](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.8...appium-uiautomator2-server@11.0.9) (2026-11-18)
+
+### Miscellaneous Chores
+
+* **uiautomator2-server:** bump server dependencies ([#138](https://github.com/appium/appium-android/issues/138)) ([2e66e88](https://github.com/appium/appium-android/commit/2e66e8826de34ca4f1c646340c27b41738cce080))
+
+
 ## [11.0.8](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.7...appium-uiautomator2-server@11.0.8) (2026-11-17)
 
 **Note:** Version bump only for package appium-uiautomator2-server
