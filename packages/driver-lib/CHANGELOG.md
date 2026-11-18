@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [15.4.3](https://github.com/appium/appium-android/compare/appium-android-driver@15.4.2...appium-android-driver@15.4.3) (2026-11-18)
+
+### Bug Fixes
+
+* **driver-lib:** stop media streams only once their device session is down ([#137](https://github.com/appium/appium-android/issues/137)) ([4e50e82](https://github.com/appium/appium-android/commit/4e50e82da87d133d1421841d4d0db7146c9f7dd9))
+
+
 ## [15.4.2](https://github.com/appium/appium-android/compare/appium-android-driver@15.4.1...appium-android-driver@15.4.2) (2026-11-18)
 
 ### Bug Fixes
