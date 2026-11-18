@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [15.4.1](https://github.com/appium/appium-android/compare/appium-android-driver@15.4.0...appium-android-driver@15.4.1) (2026-11-18)
+
+### Bug Fixes
+
+* **driver-lib:** match asyncbox condition-unmet errors by code ([#133](https://github.com/appium/appium-android/issues/133)) ([cb5f24f](https://github.com/appium/appium-android/commit/cb5f24fc35fb4ba4db086fd36dca7c301f4101d3))
+
+
 ## [15.4.0](https://github.com/appium/appium-android/compare/appium-android-driver@15.3.0...appium-android-driver@15.4.0) (2026-11-18)
 
 ### Features

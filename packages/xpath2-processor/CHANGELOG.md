@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.0.2](https://github.com/appium/appium-android/compare/@appium/xpath2-processor@2.0.1...@appium/xpath2-processor@2.0.2) (2026-11-18)
+
+### Miscellaneous Chores
+
+* **org.eclipse.wst.xml.xpath2.processor:** update dependency org.apache.maven.plugins:maven-pmd-plugin to v2.7.1 ([#132](https://github.com/appium/appium-android/issues/132)) ([8cb9ab8](https://github.com/appium/appium-android/commit/8cb9ab8e45af8fe96c2df642ab2eebc43815d994))
+
+
 ## [2.0.1](https://github.com/appium/appium-android/compare/@appium/xpath2-processor@2.0.0...@appium/xpath2-processor@2.0.1) (2026-11-18)
 
 ### Miscellaneous Chores
