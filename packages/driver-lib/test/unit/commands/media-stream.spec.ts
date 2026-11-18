@@ -398,6 +398,47 @@ describe('MediaStream', function () {
     assert.deepEqual([unknown.kinds, unknown.audio], [['video', 'jpeg'], true]);
   });
 
+  it('rejects a batch window that is not an integer in range', async function () {
+    const withBatch = (batchMs: unknown) => {
+      const {driver} = fakeDriver();
+      return (mobileStartMediaStream as any).call(driver, 'video', ...Array(7).fill(undefined), batchMs);
+    };
+    await assert.rejects(withBatch(-1), /'batchMs' must be an integer between 0 and 1000/);
+    await assert.rejects(withBatch(1.5), /'batchMs'/);
+    await assert.rejects(withBatch(1001), /'batchMs'/);
+    await assert.rejects(withBatch(2 ** 31), /'batchMs'/);
+  });
+
+  it('rejects an idle heartbeat that would flood the client', async function () {
+    const withHeartbeat = (ms: unknown) => {
+      const {driver} = fakeDriver();
+      return (mobileStartMediaStream as any).call(driver, 'jpeg', ...Array(8).fill(undefined), ms);
+    };
+    await assert.rejects(withHeartbeat(1), /'idleHeartbeatMs' must be 0 or/);
+    await assert.rejects(withHeartbeat(99), /'idleHeartbeatMs'/);
+    await assert.rejects(withHeartbeat(60_001), /'idleHeartbeatMs'/);
+    await assert.rejects(withHeartbeat(2 ** 31), /'idleHeartbeatMs'/);
+    await assert.rejects(withHeartbeat(-1), /'idleHeartbeatMs'/);
+  });
+
+  it('accepts the limits of the batch window and the idle heartbeat', async function () {
+    for (const [batchMs, idleHeartbeatMs] of [
+      [0, 0],
+      [1000, 100],
+      [40, 60_000],
+    ]) {
+      const {driver} = fakeDriver();
+      const info = await (mobileStartMediaStream as any).call(
+        driver,
+        'jpeg',
+        ...Array(7).fill(undefined),
+        batchMs,
+        idleHeartbeatMs,
+      );
+      await mobileStopMediaStream.call(driver, info.streamId);
+    }
+  });
+
   it('rejects a concurrent start of the same kind', async function () {
     let release!: () => void;
     const gate = new Promise<void>((r) => (release = r));

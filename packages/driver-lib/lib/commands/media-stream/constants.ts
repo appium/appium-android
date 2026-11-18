@@ -10,6 +10,10 @@ export const KEYFRAME_REQUEST_MIN_INTERVAL_MS = 1000;
 export const FIRST_UNIT_TIMEOUT_MS = 5000;
 export const DEFAULT_BATCH_MS = 40;
 export const DEFAULT_IDLE_HEARTBEAT_MS = 1000;
+export const MAX_BATCH_MS = 1000;
+// A smaller non-zero heartbeat would let a client flood itself with repeated frames
+export const MIN_IDLE_HEARTBEAT_MS = 100;
+export const MAX_IDLE_HEARTBEAT_MS = 60_000;
 // settings app defaults, reported in `started` (ADTS AAC-LC)
 export const AUDIO_SAMPLE_RATE = 44100;
 export const AUDIO_CHANNELS = 1;
