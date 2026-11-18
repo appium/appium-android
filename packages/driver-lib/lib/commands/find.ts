@@ -1,13 +1,13 @@
 import {util} from '@appium/support';
 import type {Element} from '@appium/types';
 import {errors, isErrorType} from 'appium/driver.js';
+import {ConditionUnmetError} from 'asyncbox';
 
 import type {AndroidDriverConstraints} from '../constraints.js';
 import type {AndroidDriver} from '../driver.js';
 import type {FindElementOpts} from './types.js';
 
-const CONDITION_UNMET_CODE = 'ERR_ASYNCBOX_CONDITION_UNMET';
-// `instanceof` fails across asyncbox copies; the message covers asyncbox < 6.6.0 (no `code`)
+// The message covers errors of asyncbox < 6.6.0 (no `code`)
 const LEGACY_CONDITION_UNMET_PATTERN = /Condition unmet/;
 
 declare module '../driver.js' {
@@ -89,10 +89,7 @@ export async function findElOrEls(
     await this.implicitWaitForCondition(doFind);
   } catch (e) {
     const err = e as Error;
-    if (
-      (err as {code?: unknown}).code === CONDITION_UNMET_CODE ||
-      LEGACY_CONDITION_UNMET_PATTERN.test(err.message ?? '')
-    ) {
+    if (ConditionUnmetError.is(err) || LEGACY_CONDITION_UNMET_PATTERN.test(err.message ?? '')) {
       // only get here if we are looking for multiple elements
       // condition was not met setting res to empty array
       element = [];
