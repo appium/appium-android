@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [15.4.2](https://github.com/appium/appium-android/compare/appium-android-driver@15.4.1...appium-android-driver@15.4.2) (2026-11-18)
+
+### Bug Fixes
+
+* **driver-lib:** bound batchMs and idleHeartbeatMs of the media stream ([#135](https://github.com/appium/appium-android/issues/135)) ([edc77b1](https://github.com/appium/appium-android/commit/edc77b17f7289eb12d2d3a5e155e30c66db6d27e))
+
+
 ## [15.4.1](https://github.com/appium/appium-android/compare/appium-android-driver@15.4.0...appium-android-driver@15.4.1) (2026-11-18)
 
 ### Bug Fixes
