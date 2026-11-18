@@ -1,8 +1,8 @@
 [versions]
 javaCupRuntime = "11b-20160615-3"
 junit = "4.13.2"
-junitVintage = "5.10.2"
-junitPlatformLauncher = "1.10.2"
+junitVintage = "5.14.4"
+junitPlatformLauncher = "1.14.4"
 shadow = "9.6.1"
 xmlunit = "1.6"
 xercesimpl = "2.12.2"
