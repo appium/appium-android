@@ -14,6 +14,8 @@ describe('makeLogcatLevelTransformer', function () {
     ['no-such-format', '11-17 10:00:00.123  1234  5678 I tag: hi', 'INFO'],
     ['brief', 'D/tag( 1234): hello', 'DEBUG'],
     ['brief', 'E/Foo(Bar)( 1234): msg', 'ERROR'],
+    ['brief', `E/${'t'.repeat(126)}`, 'ERROR'],
+    ['tag', `W/${'t'.repeat(126)}`, 'WARN'],
     ['process', 'V( 1234) hello (tag)', 'DEBUG'],
     ['tag', 'F/tag: fatal', 'ERROR'],
     ['thread', 'I( 1234: 5678) hello (tag)', 'INFO'],

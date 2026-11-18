@@ -7,10 +7,11 @@ const DEFAULT_FORMAT = 'threadtime';
 const KNOWN_FORMATS = ['brief', 'process', 'tag', 'thread', 'raw', 'time', 'threadtime', 'long'];
 const TIME = String.raw`\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}`;
 // Capture group 1 is the priority letter. `raw` and `long` carry no per-line priority.
+// `brief` and `tag` match only the leading `X/`, as logcat truncates long tags and drops the suffix.
 const PRIORITY_PATTERNS: Readonly<Record<string, RegExp>> = {
-  brief: /^([VDIWEF])\/.*?\(\s*\d+\):/,
+  brief: /^([VDIWEF])\//,
   process: /^([VDIWEF])\(\s*\d+\)/,
-  tag: /^([VDIWEF])\/[^:]*:/,
+  tag: /^([VDIWEF])\//,
   thread: /^([VDIWEF])\(\s*\d+:\s*\d+\)/,
   time: new RegExp(String.raw`^${TIME}\s+([VDIWEF])/`),
   threadtime: new RegExp(String.raw`^${TIME}\s+\d+\s+\d+\s+([VDIWEF])\s`),
