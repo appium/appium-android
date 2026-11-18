@@ -94,12 +94,16 @@ export async function mobileStartMediaStream(
   while ((stopping = [...streams.values()].find((s) => s.kind === kind && s.isStopped))) {
     await stopping.stop();
   }
+  let returned = false;
+  if (this._mediaStreamsClosed) {
+    throw new errors.NoSuchDriverError('The session was deleted while the media stream was starting');
+  }
   if ([...streams.values()].some((s) => s.kind === kind)) {
     throw new errors.InvalidArgumentError(`A ${kind} media stream is already running in this session`);
   }
 
-  // No await between the check above and the registration below, or concurrent starts could both pass
-  let returned = false;
+  // No await between the checks above and the registration below, or concurrent starts could both
+  // pass, or a start could register a stream that session deletion no longer stops
   const session =
     kind === 'video' ? this.settingsApp.makeVideoStreamSession() : this.settingsApp.makeJpegStreamSession();
   const stream = new MediaStream(session, opts, {
@@ -154,8 +158,12 @@ export async function mobileStopMediaStream(this: AndroidDriver, streamId: strin
   }
 }
 
-/** Stops all streams of the session, also waiting for those still stopping; used on session deletion. */
+/**
+ * Stops all streams of the session, also waiting for those still stopping, and rejects starts
+ * that have not registered their stream yet; used on session deletion.
+ */
 export async function stopAllMediaStreams(this: AndroidDriver): Promise<void> {
+  this._mediaStreamsClosed = true;
   await Promise.all([...(this._mediaStreams?.values() ?? [])].map((s) => s.stop('session ended')));
 }
 

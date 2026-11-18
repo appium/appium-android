@@ -487,19 +487,24 @@ describe('MediaStream', function () {
     assert.deepEqual([sessionLog.starts, sessionLog.stops], [1, 1]);
   });
 
-  it('unregisters a stream whose ended listener threw, so its kind can start again', async function () {
-    const {driver} = fakeDriver();
+  it('does not fail stop, a waiting start or stopAll if an ended listener throws', async function () {
+    const {driver, sessionLog} = fakeDriver();
     driver.bidiEventSubs = {'appium:mediaStream': ['ctx']};
-    const first = await mobileStartMediaStream.call(driver, 'jpeg');
+    let thrown = 0;
     driver.eventEmitter.on(BIDI_EVENT_NAME, (e: BiDiEvent) => {
       if (e.method === 'appium:mediaStream.ended') {
+        thrown++;
         throw new Error('listener failed');
       }
     });
-    await assert.rejects(mobileStopMediaStream.call(driver, first.streamId), /listener failed/);
-    driver.eventEmitter.removeAllListeners(BIDI_EVENT_NAME);
-    await mobileStopMediaStream.call(driver, first.streamId);
-    const second = await mobileStartMediaStream.call(driver, 'jpeg');
+    const {first, release} = await endOnDevice(driver, sessionLog);
+    const starting = mobileStartMediaStream.call(driver, 'jpeg');
+    const stopping = mobileStopMediaStream.call(driver, first.streamId);
+    release();
+    const [second] = await Promise.all([starting, stopping]);
+    await stopAllMediaStreams.call(driver);
+    assert.equal(thrown, 2);
+    assert.equal(driver._mediaStreams.size, 0);
     await mobileStopMediaStream.call(driver, second.streamId);
   });
 
@@ -507,10 +512,15 @@ describe('MediaStream', function () {
     const events: BiDiEvent[] = [];
     let ended = 0;
     const stream: MediaStream = new MediaStream(
-      {start: async () => false, stop: async () => true} as any,
+      fakeSession<any>() as any,
       {kind: 'jpeg', batchMs: 0, idleHeartbeatMs: 0},
       {
-        emit: (e) => events.push(e),
+        emit: (e) => {
+          events.push(e);
+          if (e.method === 'appium:mediaStream.ended') {
+            void stream.stop();
+          }
+        },
         emitter: new EventEmitter(),
         hasSubscribers: () => true,
         log,
@@ -520,10 +530,23 @@ describe('MediaStream', function () {
         },
       },
     );
-    await assert.rejects(stream.start(), /already running on the device/);
+    await stream.start();
     await stream.stop();
     await stream.stop();
+    assert.equal(events.filter((e) => e.method === 'appium:mediaStream.ended').length, 1);
     assert.equal(ended, 1);
+  });
+
+  it('does not register a stream after session deletion stopped all streams', async function () {
+    const {driver, sessionLog} = fakeDriver();
+    const {release} = await endOnDevice(driver, sessionLog);
+    const starting = assert.rejects(mobileStartMediaStream.call(driver, 'jpeg'), /session was deleted/);
+    await new Promise((r) => setImmediate(r));
+    const stoppingAll = stopAllMediaStreams.call(driver);
+    release();
+    await Promise.all([starting, stoppingAll]);
+    assert.equal(sessionLog.sessions, 1);
+    assert.equal(driver._mediaStreams.size, 0);
   });
 
   it('does not keep the id of a stream that failed to start', async function () {

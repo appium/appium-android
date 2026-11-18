@@ -167,8 +167,7 @@ export class MediaStream {
   /**
    * Idempotent: every call waits for the same teardown, and resolves once the device session of
    * the stream is stopped (after its start settled, if it was still starting) and the pump has
-   * finished. Rejects if the teardown failed, e.g. a listener of the ended event threw; the stream
-   * is ended regardless.
+   * finished. Never rejects.
    */
   async stop(reason = 'stopped'): Promise<void> {
     await this.finish(reason);
@@ -187,28 +186,30 @@ export class MediaStream {
   /**
    * Waits for a device start that is still in flight (a starting device session can only be
    * stopped once it is up), stops the device session if it is ours, emits `ended`, and calls
-   * `onEnded` even if a listener of `ended` threw.
+   * `onEnded`. Never rejects: the stream is ended whatever its device session or a listener of
+   * `ended` does, so failures of either are logged, not passed to the callers of stop().
    * It awaits before running any callback, so finish() has stored it by the time a callback stops
    * the stream again, and that call gets this same teardown.
    */
   private async teardown(reason: string): Promise<void> {
-    try {
-      clearInterval(this.heartbeat);
-      this.batcher.close();
-      this.deps.emitter.off(BACKPRESSURE_EVENT_NAME, this.onBackpressure);
-      if (await this.deviceStart) {
-        try {
-          await this.session.stop();
-        } catch (e) {
-          this.deps.log.warn(`Cannot stop the ${this.kind} stream session: ${(e as Error).message}`);
-        }
+    clearInterval(this.heartbeat);
+    this.batcher.close();
+    this.deps.emitter.off(BACKPRESSURE_EVENT_NAME, this.onBackpressure);
+    if (await this.deviceStart) {
+      try {
+        await this.session.stop();
+      } catch (e) {
+        this.deps.log.warn(`Cannot stop the ${this.kind} stream session: ${(e as Error).message}`);
       }
-      if (this.announced) {
-        this.deps.emit({method: MEDIA_ENDED_EVENT, params: {streamId: this.streamId, reason}});
-      }
-    } finally {
-      this.deps.onEnded(this.streamId);
     }
+    if (this.announced) {
+      try {
+        this.deps.emit({method: MEDIA_ENDED_EVENT, params: {streamId: this.streamId, reason}});
+      } catch (e) {
+        this.deps.log.warn(`Cannot emit the end of the ${this.kind} stream: ${(e as Error).message}`);
+      }
+    }
+    this.deps.onEnded(this.streamId);
   }
 
   private info(): MediaStreamInfo {
@@ -225,10 +226,6 @@ export class MediaStream {
     };
   }
 
-  /**
-   * Republishes the units until the device session ends, then tears the stream down.
-   * Nobody awaits the pump for a failed teardown, so it is logged here; stop() callers get it rethrown.
-   */
   private async runPump(): Promise<void> {
     let reason = 'ended';
     try {
@@ -245,9 +242,7 @@ export class MediaStream {
       reason = `error: ${(e as Error).message}`;
     }
     this.endReason = reason;
-    await this.finish(reason).catch((e) =>
-      this.deps.log.warn(`Cannot finish the ${this.kind} stream: ${(e as Error).message}`),
-    );
+    await this.finish(reason);
   }
 
   private onAccessUnit(au: AccessUnit): void {
