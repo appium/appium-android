@@ -33,6 +33,8 @@ declare module '../../driver.js' {
  * Starts streaming the screen as `appium:mediaStream.*` BiDi events.
  * Subscribe to `appium:mediaStream` before calling this. The result and the `started` event of a
  * video stream carry the frame size (after any scaling to the encoder's limits).
+ * Only one stream of each kind runs per session. If one of the same kind is still stopping, this
+ * waits until its device session is stopped, so the two device sessions never overlap.
  *
  * @param kind 'video' (H.264/HEVC, optionally with AAC audio) or 'jpeg'.
  * @param codec Video codec, 'h264' by default.
@@ -91,17 +93,20 @@ export async function mobileStartMediaStream(
   }
   const streams = (this._mediaStreams ??= new Map());
   const ended = (this._endedMediaStreamIds ??= new Set());
-  for (const [id, s] of streams) {
-    if (s.isStopped) {
-      streams.delete(id);
-      ended.add(id);
-    }
+  let stopping: MediaStream | undefined;
+  while ((stopping = [...streams.values()].find((s) => s.kind === kind && s.isStopped))) {
+    await stopping.stop();
+  }
+  let returned = false;
+  if (this._mediaStreamsClosed) {
+    throw new errors.NoSuchDriverError('The session was deleted while the media stream was starting');
   }
   if ([...streams.values()].some((s) => s.kind === kind)) {
     throw new errors.InvalidArgumentError(`A ${kind} media stream is already running in this session`);
   }
 
-  // No await between the check above and the registration below, or concurrent starts could both pass
+  // No await between the checks above and the registration below, or concurrent starts could both
+  // pass, or a start could register a stream that session deletion no longer stops
   const session =
     kind === 'video' ? this.settingsApp.makeVideoStreamSession() : this.settingsApp.makeJpegStreamSession();
   const stream = new MediaStream(session, opts, {
@@ -113,15 +118,20 @@ export async function mobileStartMediaStream(
     emitter: this.eventEmitter,
     hasSubscribers: () => hasSubscribers(this, MEDIA_UNITS_EVENT),
     log: this.log,
-    // Ended streams are moved to the ended ids on the next start, see mobileStopMediaStream
-    onEnded: () => {},
+    onEnded: (id) => {
+      streams.delete(id);
+      if (returned) {
+        ended.add(id);
+      }
+    },
   });
   streams.set(stream.streamId, stream);
   try {
     await this.settingsApp.adjustMediaProjectionServicePermissions();
-    return await stream.start();
+    const info = await stream.start();
+    returned = true;
+    return info;
   } catch (e) {
-    streams.delete(stream.streamId);
     await stream.stop('failed to start');
     throw e instanceof TypeError || e instanceof RangeError ? new errors.InvalidArgumentError(e.message) : e;
   }
@@ -136,7 +146,8 @@ export async function mobileGetMediaStreamCapabilities(this: AndroidDriver): Pro
 }
 
 /**
- * Stops a media stream started by `mobile: startMediaStream`.
+ * Stops a media stream started by `mobile: startMediaStream`, and resolves once its device session
+ * is stopped, also if it was already stopping.
  * Stopping a stream that has already ended is a no-op, also after other streams were started.
  *
  * @param streamId The id returned by `mobile: startMediaStream`.
@@ -150,8 +161,12 @@ export async function mobileStopMediaStream(this: AndroidDriver, streamId: strin
   }
 }
 
-/** Stops all streams of the session; used on session deletion. */
+/**
+ * Stops all streams of the session, also waiting for those still stopping, and rejects starts
+ * that have not registered their stream yet; used on session deletion.
+ */
 export async function stopAllMediaStreams(this: AndroidDriver): Promise<void> {
+  this._mediaStreamsClosed = true;
   await Promise.all([...(this._mediaStreams?.values() ?? [])].map((s) => s.stop('session ended')));
 }
 

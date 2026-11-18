@@ -267,6 +267,7 @@ class AndroidDriver<C extends AndroidDriverConstraints = AndroidDriverConstraint
   _screenStreamingProps?: ScreenStreamingProps;
   _mediaStreams?: Map<string, MediaStream>;
   _endedMediaStreamIds?: Set<string>;
+  _mediaStreamsClosed?: boolean;
   _screenRecordingProperties?: ScreenRecordingProperties;
   _logcatWebsocketListener?: LogcatListener;
   _bidiServerLogListener?: (...args: any[]) => void;
