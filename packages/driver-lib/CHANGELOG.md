@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [15.4.0](https://github.com/appium/appium-android/compare/appium-android-driver@15.3.0...appium-android-driver@15.4.0) (2026-11-18)
+
+### Features
+
+* **driver-lib:** deprecate mobile: startLogsBroadcast and mobile: stopLogsBroadcast ([#129](https://github.com/appium/appium-android/issues/129)) ([bada5c4](https://github.com/appium/appium-android/commit/bada5c405eaa517db1029d03c4fa15a82d46a3ae))
+
+
 ## [15.3.0](https://github.com/appium/appium-android/compare/appium-android-driver@15.2.4...appium-android-driver@15.3.0) (2026-11-18)
 
 ### Features
