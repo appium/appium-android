@@ -17,9 +17,11 @@ import {NATIVE_WIN} from './context/helpers.js';
 
 declare module '../driver.js' {
   interface AndroidDriver<C extends AndroidDriverConstraints> {
+    /** @deprecated Subscribe to the BiDi `log.entryAdded` event instead. */
     mobileStartLogsBroadcast(
       ...args: Parameters<typeof mobileStartLogsBroadcast>
     ): ReturnType<typeof mobileStartLogsBroadcast>;
+    /** @deprecated Unsubscribe from the BiDi `log.entryAdded` event instead. */
     mobileStopLogsBroadcast(
       ...args: Parameters<typeof mobileStopLogsBroadcast>
     ): ReturnType<typeof mobileStopLogsBroadcast>;
@@ -60,9 +62,11 @@ export const supportedLogTypes = {
  * Each connected websocket listener will receive logcat log lines
  * as soon as they are visible to Appium.
  *
+ * @deprecated Subscribe to the BiDi `log.entryAdded` event instead.
  * @returns Promise that resolves when the logcat broadcasting websocket is started.
  */
 export async function mobileStartLogsBroadcast(this: AndroidDriver): Promise<void> {
+  this.log.warn(DEPRECATION_MESSAGE('mobile: startLogsBroadcast'));
   const server = this.server as AppiumServer;
   const pathname = WEBSOCKET_ENDPOINT(this.sessionId as string);
   if (!util.isEmpty(await server.getWebSocketHandlers(pathname))) {
@@ -126,9 +130,11 @@ export async function mobileStartLogsBroadcast(this: AndroidDriver): Promise<voi
  * Stops the previously started logcat broadcasting wesocket server.
  * This method will return immediately if no server is running.
  *
+ * @deprecated Unsubscribe from the BiDi `log.entryAdded` event instead.
  * @returns Promise that resolves when the logcat broadcasting websocket is stopped.
  */
 export async function mobileStopLogsBroadcast(this: AndroidDriver): Promise<void> {
+  this.log.warn(DEPRECATION_MESSAGE('mobile: stopLogsBroadcast'));
   const pathname = WEBSOCKET_ENDPOINT(this.sessionId as string);
   const server = this.server as AppiumServer;
   if (util.isEmpty(await server.getWebSocketHandlers(pathname))) {
@@ -169,6 +175,10 @@ export function assignBiDiLogListener<EE extends EventEmitter>(
 }
 
 // #region Internal helpers
+
+const DEPRECATION_MESSAGE = (method: string): string =>
+  `'${method}' has been deprecated and will be removed in a future version. ` +
+  `Use the BiDi 'log.entryAdded' event (requires the 'webSocketUrl' capability) to receive logs instead.`;
 
 /**
  * Generates the websocket endpoint path for logcat broadcasting.
