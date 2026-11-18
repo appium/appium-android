@@ -5,7 +5,15 @@ import type {AndroidDriver} from '../../driver.js';
 import {BIDI_EVENT_NAME} from '../bidi/constants.js';
 import {hasSubscribers} from '../bidi/helpers.js';
 import {getCapabilities, queryVideoEncoders} from './capabilities.js';
-import {DEFAULT_BATCH_MS, DEFAULT_IDLE_HEARTBEAT_MS, MEDIA_UNITS_EVENT, MIN_API_LEVEL} from './constants.js';
+import {
+  DEFAULT_BATCH_MS,
+  DEFAULT_IDLE_HEARTBEAT_MS,
+  MAX_BATCH_MS,
+  MAX_IDLE_HEARTBEAT_MS,
+  MEDIA_UNITS_EVENT,
+  MIN_API_LEVEL,
+  MIN_IDLE_HEARTBEAT_MS,
+} from './constants.js';
 import {MediaStream} from './stream.js';
 import type {MediaKind, MediaStreamCapabilities, MediaStreamInfo, StartMediaStreamOpts} from './types.js';
 
@@ -34,8 +42,8 @@ declare module '../../driver.js' {
  * @param scale JPEG scale in percent, 1-100.
  * @param resolution Video resolution as 'WxH'.
  * @param audio Whether to add an AAC audio track (video only).
- * @param batchMs Units batching window for video/audio. 40 by default.
- * @param idleHeartbeatMs Re-send the last JPEG after this idle time. 1000 by default, 0 disables.
+ * @param batchMs Units batching window for video/audio, 0-1000. 40 by default, 0 disables batching.
+ * @param idleHeartbeatMs Re-send the last JPEG after this idle time. 1000 by default, 0 disables, otherwise 100-60000.
  */
 export async function mobileStartMediaStream(
   this: AndroidDriver,
@@ -167,7 +175,18 @@ function validateOpts({
       `${offending.map(([k]) => `'${k}'`).join(', ')} not supported for kind '${kind}'`,
     );
   }
-  if (!Number.isInteger(batchMs) || batchMs < 0 || !Number.isInteger(idleHeartbeatMs) || idleHeartbeatMs < 0) {
-    throw new errors.InvalidArgumentError(`'batchMs' and 'idleHeartbeatMs' must be non-negative integers`);
+  if (!Number.isInteger(batchMs) || batchMs < 0 || batchMs > MAX_BATCH_MS) {
+    throw new errors.InvalidArgumentError(
+      `'batchMs' must be an integer between 0 and ${MAX_BATCH_MS}, got '${String(batchMs)}'`,
+    );
+  }
+  if (
+    !Number.isInteger(idleHeartbeatMs) ||
+    (idleHeartbeatMs !== 0 && (idleHeartbeatMs < MIN_IDLE_HEARTBEAT_MS || idleHeartbeatMs > MAX_IDLE_HEARTBEAT_MS))
+  ) {
+    throw new errors.InvalidArgumentError(
+      `'idleHeartbeatMs' must be 0 or an integer between ${MIN_IDLE_HEARTBEAT_MS} and ${MAX_IDLE_HEARTBEAT_MS}, ` +
+        `got '${String(idleHeartbeatMs)}'`,
+    );
   }
 }
