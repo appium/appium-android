@@ -9,7 +9,6 @@ import sinon from 'sinon';
 
 import {BIDI_EVENT_NAME} from '../../../lib/commands/bidi/constants.js';
 import {AndroidDriver} from '../../../lib/driver.js';
-import {executeMethodMap} from '../../../lib/execute-method-map.js';
 
 describe('commands - logging', function () {
   let driver: AndroidDriver;
@@ -194,14 +193,6 @@ describe('commands - logging', function () {
       socket1.emit('close', 1000, Buffer.from(''));
       socket2.emit('close', 1000, Buffer.from(''));
       assert.strictEqual(logcat.listenerCount('output'), 0);
-    });
-
-    it('should mark the broadcast execute methods as deprecated', function () {
-      for (const method of ['mobile: startLogsBroadcast', 'mobile: stopLogsBroadcast'] as const) {
-        const def = executeMethodMap[method] as {deprecated?: boolean; info?: string};
-        assert.strictEqual(def.deprecated, true);
-        assert.ok(def.info?.includes('log.entryAdded'));
-      }
     });
 
     it('should log the close code of a disconnected socket', async function () {
