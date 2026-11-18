@@ -17,9 +17,11 @@ import {NATIVE_WIN} from './context/helpers.js';
 
 declare module '../driver.js' {
   interface AndroidDriver<C extends AndroidDriverConstraints> {
+    /** @deprecated Subscribe to the BiDi `log.entryAdded` event instead. */
     mobileStartLogsBroadcast(
       ...args: Parameters<typeof mobileStartLogsBroadcast>
     ): ReturnType<typeof mobileStartLogsBroadcast>;
+    /** @deprecated Unsubscribe from the BiDi `log.entryAdded` event instead. */
     mobileStopLogsBroadcast(
       ...args: Parameters<typeof mobileStopLogsBroadcast>
     ): ReturnType<typeof mobileStopLogsBroadcast>;
@@ -60,6 +62,7 @@ export const supportedLogTypes = {
  * Each connected websocket listener will receive logcat log lines
  * as soon as they are visible to Appium.
  *
+ * @deprecated Subscribe to the BiDi `log.entryAdded` event instead.
  * @returns Promise that resolves when the logcat broadcasting websocket is started.
  */
 export async function mobileStartLogsBroadcast(this: AndroidDriver): Promise<void> {
@@ -126,6 +129,7 @@ export async function mobileStartLogsBroadcast(this: AndroidDriver): Promise<voi
  * Stops the previously started logcat broadcasting wesocket server.
  * This method will return immediately if no server is running.
  *
+ * @deprecated Unsubscribe from the BiDi `log.entryAdded` event instead.
  * @returns Promise that resolves when the logcat broadcasting websocket is stopped.
  */
 export async function mobileStopLogsBroadcast(this: AndroidDriver): Promise<void> {
