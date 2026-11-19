@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.0.11](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.10...appium-uiautomator2-server@11.0.11) (2026-11-19)
+
+### Miscellaneous Chores
+
+* **uiautomator2-server:** bump AGP to 9.5.1 and Gradle to 9.9.1 ([#146](https://github.com/appium/appium-android/issues/146)) ([bdc987d](https://github.com/appium/appium-android/commit/bdc987d186235023787f5791b9c757c6df0c525e)), closes [#144](https://github.com/appium/appium-android/issues/144) [#145](https://github.com/appium/appium-android/issues/145)
+
+
 ## [11.0.10](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.9...appium-uiautomator2-server@11.0.10) (2026-11-19)
 
 ### Miscellaneous Chores
