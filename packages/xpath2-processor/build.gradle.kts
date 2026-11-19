@@ -1,3 +1,4 @@
+import org.gradle.api.attributes.java.TargetJvmVersion
 import org.gradle.api.tasks.testing.Test
 import java.io.File
 
@@ -310,6 +311,12 @@ dependencies {
     "shadedTestRuntimeOnly"(libs.junit.vintage.engine)
     "shadedTestRuntimeOnly"(libs.junit.platform.launcher)
 }
+
+// JUnit 6 needs Java 17+ at test runtime; the main code still targets Java 8
+configurations.matching { it.name in setOf("testRuntimeClasspath", "shadedTestRuntimeClasspath") }
+    .configureEach {
+        attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 17)
+    }
 
 val shadedTestTask = tasks.register<Test>("shadedTest") {
     group = "verification"
