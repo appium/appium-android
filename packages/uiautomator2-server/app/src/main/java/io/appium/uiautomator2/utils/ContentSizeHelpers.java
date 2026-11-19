@@ -1,12 +1,16 @@
 package io.appium.uiautomator2.utils;
 
 import static androidx.test.platform.app.InstrumentationRegistry.getInstrumentation;
-import static io.appium.uiautomator2.utils.Device.getUiDevice;
 
+import android.content.Context;
 import android.graphics.Rect;
+import android.os.Build;
+import android.view.Display;
 import android.view.ViewConfiguration;
+import android.view.WindowManager;
 import android.view.accessibility.AccessibilityNodeInfo;
 
+import androidx.test.uiautomator.Direction;
 import androidx.test.uiautomator.UiObjectNotFoundException;
 
 import org.json.JSONException;
@@ -16,6 +20,7 @@ import java.io.InvalidClassException;
 
 import io.appium.uiautomator2.common.exceptions.UiAutomator2Exception;
 import io.appium.uiautomator2.core.AxNodeInfoExtractor;
+import io.appium.uiautomator2.core.AxNodeInfoHelper;
 import io.appium.uiautomator2.core.EventRegister;
 import io.appium.uiautomator2.core.ReturningRunnable;
 import io.appium.uiautomator2.core.UiObjectChildGenerator;
@@ -23,20 +28,18 @@ import io.appium.uiautomator2.model.AccessibilityScrollData;
 import io.appium.uiautomator2.model.AndroidElement;
 import io.appium.uiautomator2.model.AppiumUIA2Driver;
 import io.appium.uiautomator2.model.Session;
+import io.appium.uiautomator2.model.internal.CustomUiDevice;
 
 public class ContentSizeHelpers {
     // these constants are magic numbers experimentally determined to minimize flakiness in generating
     // last scroll data used in getting the 'contentSize' attribute.
     // TODO see whether anchoring these to time and screen size is more reliable across devices
-    private static final int MINI_SWIPE_STEPS = 10;
-    private static final int MINI_SWIPE_PIXELS = 200;
-    // https://android.googlesource.com/platform/frameworks/testing/+/master/uiautomator/library/core-src/com/android/uiautomator/core/UiScrollable.java#635
-    private static final double SWIPE_DEAD_ZONE_PCT = 0.1;
+    private static final float MINI_SWIPE_PERCENT = 0.5f;
 
     public static String getContentSize(AndroidElement element) throws UiObjectNotFoundException {
         Rect boundsRect = element.getBounds();
         ContentSize contentSize = new ContentSize(boundsRect);
-        contentSize.touchPadding = getTouchPadding();
+        contentSize.touchPadding = getTouchPadding(element);
         contentSize.scrollableOffset = getScrollableOffset(element);
         return contentSize.toString();
     }
@@ -56,40 +59,23 @@ public class ContentSizeHelpers {
     }
 
     private static int getScrollableOffset(AndroidElement uiScrollable) {
-        // get the bounds of the scrollable view
-        Rect bounds = getElementBoundsInScreen(uiScrollable);
-
-        // now scroll a bit back and forth in the view to populate the lastScrollData we need
-        int x1 = bounds.centerX();
-        int y1 = bounds.centerY() + MINI_SWIPE_PIXELS;
-        //noinspection UnnecessaryLocalVariable
-        int x2 = x1;
-        int y2 = y1 - (MINI_SWIPE_PIXELS * 2);
-        int yMargin = (int) Math.floor(bounds.height() * SWIPE_DEAD_ZONE_PCT);
-
-        // ensure that our xs and ys are within the bounds of the element
-        if (y1 > bounds.height()) {
-            y1 = bounds.height() - yMargin;
-        }
-        if (y2 < 0) {
-            y2 = yMargin;
-        }
-
+        // now scroll a bit back and forth in the view (on the element's display) to populate the
+        // lastScrollData we need
+        AccessibilityNodeInfo node = AxNodeInfoExtractor.toAxNodeInfo(uiScrollable.getUiObject());
         Session session = AppiumUIA2Driver.getInstance().getSessionOrThrow();
         AccessibilityScrollData lastScrollData;
         Logger.debug("Doing a mini swipe-and-back in the scrollable view to generate scroll data");
-        swipe(x1, y1, x2, y2);
+        swipe(node, Direction.UP);
         lastScrollData = session.getLastScrollData();
         if (lastScrollData == null) {
             // if we didn't get scroll data from the down swipe, try to get it from the up swipe
-            swipe(x2, y2, x1, y1);
+            swipe(node, Direction.DOWN);
             lastScrollData = session.getLastScrollData();
         } else {
             // otherwise just do a reset swipe without worrying about scroll data, to avoid it
             // failing because of flakiness
-            getUiDevice().swipe(x2, y2, x1, y1, MINI_SWIPE_STEPS);
+            AxNodeInfoHelper.swipe(node, Direction.DOWN, MINI_SWIPE_PERCENT);
         }
-
 
         if (lastScrollData == null) {
             throw new UiAutomator2Exception("Could not retrieve accessibility scroll data; unable to determine scrollable offset");
@@ -178,17 +164,30 @@ public class ContentSizeHelpers {
         return 0;
     }
 
-    private static int getTouchPadding() {
-        return ViewConfiguration.get(getInstrumentation().getTargetContext()).getScaledPagingTouchSlop() / 2;
+    private static int getTouchPadding(AndroidElement element) {
+        Context context = getInstrumentation().getTargetContext();
+        Display display = CustomUiDevice.getInstance().getDisplayById(element.getDisplayId());
+        if (display != null) {
+            // Density-dependent values must come from the element's display
+            context = context.createDisplayContext(display);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                try {
+                    context = context.createWindowContext(WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, null);
+                } catch (Exception e) {
+                    Logger.debug("Cannot create a window context, using the display context", e);
+                }
+            }
+        }
+        return ViewConfiguration.get(context).getScaledPagingTouchSlop() / 2;
     }
 
-    @SuppressWarnings("UnusedReturnValue")
-    private static boolean swipe(final int startX, final int startY, final int endX, final int endY) {
-        Logger.debug(String.format("Swiping from [%s, %s] to [%s, %s]", startX, startY, endX, endY));
-        return EventRegister.runAndRegisterScrollEvents(new ReturningRunnable<Boolean>() {
+    private static void swipe(AccessibilityNodeInfo node, Direction direction) {
+        Logger.debug(String.format("Swiping %s within the scrollable view", direction));
+        EventRegister.runAndRegisterScrollEvents(new ReturningRunnable<Boolean>() {
             @Override
             public void run() {
-                setResult(getUiDevice().swipe(startX, startY, endX, endY, MINI_SWIPE_STEPS));
+                AxNodeInfoHelper.swipe(node, direction, MINI_SWIPE_PERCENT);
+                setResult(true);
             }
         });
     }
