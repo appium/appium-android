@@ -1,5 +1,5 @@
 [versions]
-androidGradlePlugin = "8.13.2"
+androidGradlePlugin = "9.5.1"
 gson = "2.15.0"
 javassist = "3.33.0-GA"
 json = "20250517"
