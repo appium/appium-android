@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.0.5](https://github.com/appium/appium-android/compare/@appium/xpath2-processor@2.0.4...@appium/xpath2-processor@2.0.5) (2026-11-19)
+
+### Miscellaneous Chores
+
+* **xpath2-processor:** bump JUnit to 6.1.3 ([#152](https://github.com/appium/appium-android/issues/152)) ([023ebf7](https://github.com/appium/appium-android/commit/023ebf7fa95dc1a883b8875f12f9c51cc0115703))
+
+
 ## [2.0.4](https://github.com/appium/appium-android/compare/@appium/xpath2-processor@2.0.3...@appium/xpath2-processor@2.0.4) (2026-11-19)
 
 ### Miscellaneous Chores
