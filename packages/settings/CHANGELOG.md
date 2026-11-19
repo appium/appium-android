@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [9.2.2](https://github.com/appium/appium-android/compare/io.appium.settings@9.2.1...io.appium.settings@9.2.2) (2026-11-19)
+
+### Miscellaneous Chores
+
+* **settings:** update dependency com.android.tools.build:gradle to v9.5.1 ([#139](https://github.com/appium/appium-android/issues/139)) ([a65bae7](https://github.com/appium/appium-android/commit/a65bae7546cb4563ca745f64899d5698a5a1793f))
+
+
 ## [9.2.1](https://github.com/appium/appium-android/compare/io.appium.settings@9.2.0...io.appium.settings@9.2.1) (2026-11-17)
 
 ### Miscellaneous Chores

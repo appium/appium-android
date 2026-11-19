@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [6.1.5](https://github.com/appium/appium-android/compare/android-apidemos@6.1.4...android-apidemos@6.1.5) (2026-11-19)
+
+### Miscellaneous Chores
+
+* **settings:** update dependency com.android.tools.build:gradle to v9.5.1 ([#139](https://github.com/appium/appium-android/issues/139)) ([a65bae7](https://github.com/appium/appium-android/commit/a65bae7546cb4563ca745f64899d5698a5a1793f))
+
+
 ## [6.1.4](https://github.com/appium/appium-android/compare/android-apidemos@6.1.3...android-apidemos@6.1.4) (2026-11-13)
 
 ### Miscellaneous Chores
