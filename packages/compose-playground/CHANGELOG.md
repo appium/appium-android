@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.2.5](https://github.com/appium/appium-android/compare/compose-playground@1.2.4...compose-playground@1.2.5) (2026-11-19)
+
+### Miscellaneous Chores
+
+* **wrapper:** update gradle to v9.9.1 ([#147](https://github.com/appium/appium-android/issues/147)) ([ac49a3c](https://github.com/appium/appium-android/commit/ac49a3c6e46928b1874733b62826d38d9b41e653))
+
+
 ## [1.2.4](https://github.com/appium/appium-android/compare/compose-playground@1.2.3...compose-playground@1.2.4) (2026-11-18)
 
 ### Miscellaneous Chores

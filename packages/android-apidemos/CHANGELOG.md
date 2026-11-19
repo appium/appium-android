@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [6.1.6](https://github.com/appium/appium-android/compare/android-apidemos@6.1.5...android-apidemos@6.1.6) (2026-11-19)
+
+### Miscellaneous Chores
+
+* **wrapper:** update gradle to v9.9.1 ([#147](https://github.com/appium/appium-android/issues/147)) ([ac49a3c](https://github.com/appium/appium-android/commit/ac49a3c6e46928b1874733b62826d38d9b41e653))
+
+
 ## [6.1.5](https://github.com/appium/appium-android/compare/android-apidemos@6.1.4...android-apidemos@6.1.5) (2026-11-19)
 
 ### Miscellaneous Chores
