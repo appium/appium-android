@@ -66,6 +66,8 @@ import static io.appium.uiautomator2.utils.ReflectionUtils.invoke;
 
 public class CustomUiDevice {
     private static final int CHANGE_ROTATION_TIMEOUT_MS = 2000;
+    private static final int GET_UI_AUTOMATION_ATTEMPTS = 3;
+    private static final long GET_UI_AUTOMATION_RETRY_DELAY_MS = 500;
 
     private static CustomUiDevice INSTANCE = null;
     private final Method METHOD_FIND_MATCH;
@@ -106,7 +108,19 @@ public class CustomUiDevice {
 
     public UiAutomation getUiAutomation() {
         int flags = Configurator.getInstance().getUiAutomationFlags();
-        return getInstrumentation().getUiAutomation(flags);
+        UiAutomation uiAutomation = null;
+        // Mirrors the retry in UiDevice#getUiAutomation: instrumentation may transiently return null
+        for (int attempt = 0; attempt < GET_UI_AUTOMATION_ATTEMPTS; attempt++) {
+            uiAutomation = getInstrumentation().getUiAutomation(flags);
+            if (uiAutomation != null) {
+                break;
+            }
+            if (attempt < GET_UI_AUTOMATION_ATTEMPTS - 1) {
+                Logger.warn("Got null UiAutomation from instrumentation. Retrying...");
+                SystemClock.sleep(GET_UI_AUTOMATION_RETRY_DELAY_MS);
+            }
+        }
+        return uiAutomation;
     }
 
     public boolean injectInputEvent(InputEvent event) {
