@@ -25,6 +25,7 @@ import androidx.test.uiautomator.UiObject2;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Method;
+import java.util.Locale;
 
 import static io.appium.uiautomator2.utils.ReflectionUtils.getConstructor;
 import static io.appium.uiautomator2.utils.ReflectionUtils.getField;
@@ -106,7 +107,7 @@ public class Gestures {
     }
 
     private static int getSpeedValue(String gestureName) {
-        String fieldName = String.format("DEFAULT_%s_SPEED", gestureName.toUpperCase());
+        String fieldName = String.format("DEFAULT_%s_SPEED", gestureName.toUpperCase(Locale.ROOT));
         return (int) getField(UiObject2.class, fieldName, null);
     }
 
