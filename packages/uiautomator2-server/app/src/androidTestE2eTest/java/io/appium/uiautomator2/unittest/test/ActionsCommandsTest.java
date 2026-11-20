@@ -346,8 +346,13 @@ public class ActionsCommandsTest extends BaseTest {
         assertTrue(scrollResponse.isSuccessful());
         scrollResponse = scroll(null, new Rect(200, 200, 300, 300), 0.5f, "left",1000);
         assertTrue(scrollResponse.isSuccessful());
+        // more than one page is allowed
+        scrollResponse = scroll(dot1Response.getElementId(), null, 2.5f, "left", null);
+        assertTrue(scrollResponse.isSuccessful());
         // negative
         scrollResponse = scroll(null, new Rect(200, 200, 300, 300), -1f, "up", null);
+        assertFalse(scrollResponse.isSuccessful());
+        scrollResponse = scroll(null, new Rect(200, 200, 300, 300), 0f, "up", null);
         assertFalse(scrollResponse.isSuccessful());
         scrollResponse = scroll(null, null, 0.5f, "up",null);
         assertFalse(scrollResponse.isSuccessful());
