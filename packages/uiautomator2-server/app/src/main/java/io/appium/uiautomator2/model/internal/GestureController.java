@@ -149,7 +149,8 @@ public class GestureController {
     }
 
     public boolean scroll(Rect area, Direction direction, float percent, @Nullable Integer speed) {
-        if (percent < 0.0f) {
+        // Values above 1.0 scroll that many pages, stopping early at the end of the content
+        if (percent <= 0.0f) {
             throw new IllegalArgumentException("Percent must be greater than 0.0f");
         }
 
