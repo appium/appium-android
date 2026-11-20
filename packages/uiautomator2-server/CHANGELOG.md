@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.2.0](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.1.1...appium-uiautomator2-server@11.2.0) (2026-11-20)
+
+### Features
+
+* **uiautomator2-server:** scroll to an element without UiScrollable ([#162](https://github.com/appium/appium-android/issues/162)) ([17f9083](https://github.com/appium/appium-android/commit/17f90839e2dd3fcc90b50ab4398a1e9403b4557c))
+
+
 ## [11.1.1](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.1.0...appium-uiautomator2-server@11.1.1) (2026-11-20)
 
 ### Bug Fixes
