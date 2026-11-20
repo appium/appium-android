@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.0.15](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.14...appium-uiautomator2-server@11.0.15) (2026-11-20)
+
+### Bug Fixes
+
+* **uiautomator2-server:** reject zero percent in scroll gesture ([#159](https://github.com/appium/appium-android/issues/159)) ([8fb8cf1](https://github.com/appium/appium-android/commit/8fb8cf1537eccd4ebb8efc03c6128f534f7b2b0c))
+
+
 ## [11.0.14](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.13...appium-uiautomator2-server@11.0.14) (2026-11-20)
 
 ### Bug Fixes
