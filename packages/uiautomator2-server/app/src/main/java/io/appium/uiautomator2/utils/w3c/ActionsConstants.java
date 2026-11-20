@@ -25,6 +25,7 @@ public class ActionsConstants {
     public static final String ACTION_TYPE_POINTER = "pointer";
     public static final String ACTION_TYPE_KEY = "key";
     public static final String ACTION_TYPE_NONE = "none";
+    public static final String ACTION_TYPE_WHEEL = "wheel";
     public static final List<String> ACTION_TYPES = Arrays.asList(ACTION_TYPE_POINTER,
             ACTION_TYPE_KEY, ACTION_TYPE_NONE);
 

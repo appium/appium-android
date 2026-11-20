@@ -75,7 +75,10 @@ public class ScrollTo extends SafeRequestHandler {
             ElementsCache ke = AppiumUIA2Driver.getInstance().getSessionOrThrow().getElementsCache();
             AndroidElement element = ke.get(model.origin.getUnifiedId());
             if (!(element.getUiObject() instanceof UiObject)) {
-                throw new IllegalArgumentException("The given origin element must be a valid scrollable UiObject");
+                throw new IllegalArgumentException("The given origin element must be located using the " +
+                        "'-android uiautomator' strategy, because only UiObject-based elements " +
+                        "can be used as the scroll origin of this command. Find the scrollable " +
+                        "container that way, or scroll it with 'mobile: scrollGesture' instead");
             }
             origin = new UiScrollable(((UiObject) element.getUiObject()).getSelector());
         }

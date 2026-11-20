@@ -166,13 +166,14 @@ public class GestureController {
     }
 
     public boolean scroll(Rect area, Direction direction, float percent, @Nullable Integer speed) {
-        if (percent < 0.0f) {
+        // Values above 1.0 scroll that many pages, stopping early at the end of the content
+        if (percent < Float.MIN_NORMAL) {
             throw new IllegalArgumentException("Percent must be greater than 0.0f");
         }
 
         Direction swipeDirection = Direction.reverse(direction);
         int scrollSpeed = speed == null ? Gestures.getDefaultScrollSpeed() : checkSpeed(speed);
-        for (float swipePercent = percent; swipePercent > 0.0f; swipePercent -= 1.0f) {
+        for (float swipePercent = percent; swipePercent > Float.MIN_NORMAL; swipePercent -= 1.0f) {
             float segment = Math.min(swipePercent, 1.0f);
             PointerGesture swipe = gestures.swipe(clampToDisplay(area), swipeDirection, segment, scrollSpeed).pause(250);
 

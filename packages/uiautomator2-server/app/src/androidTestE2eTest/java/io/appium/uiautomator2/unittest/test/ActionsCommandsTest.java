@@ -348,8 +348,13 @@ public class ActionsCommandsTest extends BaseTest {
         assertTrue(scrollResponse.isSuccessful());
         scrollResponse = scroll(null, new Rect(200, 200, 300, 300), 0.5f, "left",1000);
         assertTrue(scrollResponse.isSuccessful());
+        // more than one page is allowed
+        scrollResponse = scroll(dot1Response.getElementId(), null, 2.5f, "left", null);
+        assertTrue(scrollResponse.isSuccessful());
         // negative
         scrollResponse = scroll(null, new Rect(200, 200, 300, 300), -1f, "up", null);
+        assertFalse(scrollResponse.isSuccessful());
+        scrollResponse = scroll(null, new Rect(200, 200, 300, 300), 0f, "up", null);
         assertFalse(scrollResponse.isSuccessful());
         scrollResponse = scroll(null, null, 0.5f, "up",null);
         assertFalse(scrollResponse.isSuccessful());
@@ -357,6 +362,23 @@ public class ActionsCommandsTest extends BaseTest {
         assertFalse(scrollResponse.isSuccessful());
         scrollResponse = scroll(dot1Response.getElementId(), null, 0.5f, "foo", null);
         assertFalse(scrollResponse.isSuccessful());
+    }
+
+    @Test
+    public void verifyScrollGestureWithoutElementAndArea() throws JSONException {
+        startActivity(".view.List1");
+        waitForElement(By.id("android:id/list"));
+        By firstItem = By.xpath("//*[@text='Abbaye de Belloc']");
+        assertTrue(findElement(firstItem).isSuccessful());
+
+        // The first scrollable element is used
+        Response scrollResponse = scroll(null, null, 0.5f, "down", null);
+        assertTrue(scrollResponse.isSuccessful());
+        assertFalse("The list should have been scrolled", findElement(firstItem).isSuccessful());
+
+        // There is nothing to scroll
+        setupDragDropView();
+        assertFalse(scroll(null, null, 0.5f, "down", null).isSuccessful());
     }
 
     @Test
