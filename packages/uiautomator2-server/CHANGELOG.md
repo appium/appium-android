@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.0.14](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.13...appium-uiautomator2-server@11.0.14) (2026-11-20)
+
+### Bug Fixes
+
+* **uiautomator2-server:** clarify scroll and wheel action error messages ([#158](https://github.com/appium/appium-android/issues/158)) ([3d09610](https://github.com/appium/appium-android/commit/3d096107e4555824e22f7cfd00b4829d7bd175b7))
+
+
 ## [11.0.13](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.12...appium-uiautomator2-server@11.0.13) (2026-11-20)
 
 ### Code Refactoring
