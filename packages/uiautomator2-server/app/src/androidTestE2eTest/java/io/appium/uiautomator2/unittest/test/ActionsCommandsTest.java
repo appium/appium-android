@@ -363,6 +363,23 @@ public class ActionsCommandsTest extends BaseTest {
     }
 
     @Test
+    public void verifyScrollGestureWithoutElementAndArea() throws JSONException {
+        startActivity(".view.List1");
+        waitForElement(By.id("android:id/list"));
+        By firstItem = By.xpath("//*[@text='Abbaye de Belloc']");
+        assertTrue(findElement(firstItem).isSuccessful());
+
+        // The first scrollable element is used
+        Response scrollResponse = scroll(null, null, 0.5f, "down", null);
+        assertTrue(scrollResponse.isSuccessful());
+        assertFalse("The list should have been scrolled", findElement(firstItem).isSuccessful());
+
+        // There is nothing to scroll
+        setupDragDropView();
+        assertFalse(scroll(null, null, 0.5f, "down", null).isSuccessful());
+    }
+
+    @Test
     public void verifySwipeGesture() throws JSONException {
         setupDragDropView();
 
