@@ -16,10 +16,9 @@
 
 package io.appium.uiautomator2.utils.w3c;
 
+import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
-import org.json.JSONArray;
-import org.json.JSONException;
 import org.junit.Test;
 
 import java.util.Arrays;
@@ -27,7 +26,6 @@ import java.util.List;
 
 import io.appium.uiautomator2.model.api.actions.W3CItemModel;
 
-import static io.appium.uiautomator2.utils.ModelUtils.toObject;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -36,13 +34,13 @@ import static org.junit.Assert.fail;
 public class W3CActionsPreprocessingTests {
     private static final ActionsPreprocessor actionsPreprocessor = new ActionsPreprocessor();
 
-    private static List<W3CItemModel> toActionItems(JSONArray json) {
+    private static List<W3CItemModel> toActionItems(String json) {
         //noinspection unchecked
-        return (List<W3CItemModel>) toObject(json, new TypeToken<List<W3CItemModel>>() { }.getType());
+        return (List<W3CItemModel>) new Gson().fromJson(json, new TypeToken<List<W3CItemModel>>() { }.getType());
     }
 
     @Test
-    public void verifyInvalidActionChainsPreprocessing() throws JSONException {
+    public void verifyInvalidActionChainsPreprocessing() {
         final List<String> invalidActions = Arrays.asList(
                 // missing action id
                 "[ {" +
@@ -138,9 +136,8 @@ public class W3CActionsPreprocessingTests {
                         "} ]"
         );
         for (final String invalidAction : invalidActions) {
-            final JSONArray invalidActionJson = new JSONArray(invalidAction);
             try {
-                actionsPreprocessor.preprocess(toActionItems(invalidActionJson));
+                actionsPreprocessor.preprocess(toActionItems(invalidAction));
                 fail(String.format("'%s' should throw an exception", invalidAction));
             } catch (ActionsParseException e) {
                 // expected
@@ -149,8 +146,8 @@ public class W3CActionsPreprocessingTests {
     }
 
     @Test
-    public void verifyValidActionChainPreprocessingWithoutChange() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyValidActionChainPreprocessingWithoutChange() {
+        final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +
                 "\"id\": \"finger1\"," +
                 "\"parameters\": {\"pointerType\": \"touch\"}," +
@@ -160,13 +157,13 @@ public class W3CActionsPreprocessingTests {
                 "{\"type\": \"pause\", \"duration\": 500}," +
                 "{\"type\": \"pointerMove\", \"duration\": 1000, \"origin\": \"pointer\", \"x\": -50, \"y\": 0}," +
                 "{\"type\": \"pointerUp\", \"button\": 0}]" +
-                "} ]");
+                "} ]";
         assertThat(actionsPreprocessor.preprocess(toActionItems(actionJson)).get(0).actions.size(), is(equalTo(5)));
     }
 
     @Test
-    public void verifyValidActionChainPreprocessingWithCancelChange() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyValidActionChainPreprocessingWithCancelChange() {
+        final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +
                 "\"id\": \"finger1\"," +
                 "\"parameters\": {\"pointerType\": \"touch\"}," +
@@ -176,13 +173,13 @@ public class W3CActionsPreprocessingTests {
                 "{\"type\": \"pause\", \"duration\": 500}," +
                 "{\"type\": \"pointerMove\", \"duration\": 1000, \"origin\": \"pointer\", \"x\": -50, \"y\": 0}," +
                 "{\"type\": \"pointerUp\", \"button\": 0}]" +
-                "} ]");
+                "} ]";
         assertThat(actionsPreprocessor.preprocess(toActionItems(actionJson)).get(0).actions.size(), is(equalTo(3)));
     }
 
     @Test(expected = ActionsParseException.class)
-    public void verifyChainPreprocessingFailsIfMultiplePointerTypesArePresent() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyChainPreprocessingFailsIfMultiplePointerTypesArePresent() {
+        final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +
                 "\"id\": \"finger1\"," +
                 "\"parameters\": {\"pointerType\": \"touch\"}," +
@@ -198,7 +195,7 @@ public class W3CActionsPreprocessingTests {
                 "{\"type\": \"pause\", \"duration\": 500}," +
                 "{\"type\": \"pointerMove\", \"duration\": 1000, \"origin\": \"pointer\", \"x\": -50, \"y\": 0}," +
                 "{\"type\": \"pointerUp\", \"button\": 0}]" +
-                "} ]");
+                "} ]";
         actionsPreprocessor.preprocess(toActionItems(actionJson));
     }
 

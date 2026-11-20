@@ -19,17 +19,15 @@ package io.appium.uiautomator2.utils.w3c;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 
+import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
-import org.json.JSONArray;
-import org.json.JSONException;
 import org.junit.Test;
 
 import java.util.List;
 
 import io.appium.uiautomator2.model.api.actions.W3CItemModel;
 
-import static io.appium.uiautomator2.utils.ModelUtils.toObject;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
@@ -40,20 +38,20 @@ public class W3CActionsTokenizationTests {
     private static final ActionsPreprocessor actionsPreprocessor = new ActionsPreprocessor();
     private static final ActionsTokenizer actionsTokenizer = new ActionsTokenizer();
 
-    private static List<W3CItemModel> toActionItems(JSONArray json) {
+    private static List<W3CItemModel> toActionItems(String json) {
         //noinspection unchecked
-        return (List<W3CItemModel>) toObject(json, new TypeToken<List<W3CItemModel>>() { }.getType());
+        return (List<W3CItemModel>) new Gson().fromJson(json, new TypeToken<List<W3CItemModel>>() { }.getType());
     }
 
     @Test
-    public void verifyValidInputEventsChainIsCompiledForNoneAction() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyValidInputEventsChainIsCompiledForNoneAction() {
+        final String actionJson = "[ {" +
                 "\"type\": \"none\"," +
                 "\"id\": \"none1\"," +
                 "\"actions\": [" +
                 "{\"type\": \"pause\", \"duration\": 200}," +
                 "{\"type\": \"pause\", \"duration\": 20}]" +
-                "} ]");
+                "} ]";
         final ActionTokens eventsChain = actionsTokenizer.tokenize(
                 actionsPreprocessor.preprocess(toActionItems(actionJson))
         );
@@ -67,10 +65,10 @@ public class W3CActionsTokenizationTests {
     }
 
     @Test
-    public void verifyValidInputEventsChainIsCompiledForSingleKeysGesture() throws JSONException {
+    public void verifyValidInputEventsChainIsCompiledForSingleKeysGesture() {
         final int keyCode = 0xE019;
         final int metaCode = 0xE009;
-        final JSONArray actionJson = new JSONArray("[ {" +
+        final String actionJson = "[ {" +
                 "\"type\": \"key\"," +
                 "\"id\": \"keyboard\"," +
                 "\"actions\": [" +
@@ -78,7 +76,7 @@ public class W3CActionsTokenizationTests {
                 "{\"type\": \"keyDown\", \"value\": \"\uE019\"}," +
                 "{\"type\": \"keyUp\", \"value\": \"\uE019\"}," +
                 "{\"type\": \"keyUp\", \"value\": \"\uE009\"}]" +
-                "} ]");
+                "} ]";
         final ActionTokens eventsChain = actionsTokenizer.tokenize(
                 actionsPreprocessor.preprocess(toActionItems(actionJson))
         );
@@ -109,15 +107,15 @@ public class W3CActionsTokenizationTests {
     }
 
     @Test
-    public void verifyValidInputEventsChainIsCompiledForSingleKeysGestureWithPause() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyValidInputEventsChainIsCompiledForSingleKeysGestureWithPause() {
+        final String actionJson = "[ {" +
                 "\"type\": \"key\"," +
                 "\"id\": \"keyboard\"," +
                 "\"actions\": [" +
                 "{\"type\": \"keyDown\", \"value\": \"A\"}," +
                 "{\"type\": \"pause\", \"duration\": 500}," +
                 "{\"type\": \"keyUp\", \"value\": \"A\"}]" +
-                "} ]");
+                "} ]";
         final ActionTokens eventsChain = actionsTokenizer.tokenize(
                 actionsPreprocessor.preprocess(toActionItems(actionJson))
         );
@@ -141,8 +139,8 @@ public class W3CActionsTokenizationTests {
     }
 
     @Test
-    public void verifyValidInputEventsChainIsCompiledForSingleFingerGestureWithKeys() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyValidInputEventsChainIsCompiledForSingleFingerGestureWithKeys() {
+        final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +
                 "\"id\": \"finger1\"," +
                 "\"parameters\": {\"pointerType\": \"touch\"}," +
@@ -160,7 +158,7 @@ public class W3CActionsTokenizationTests {
                 "{\"type\": \"keyDown\", \"value\": \"\u2000\"}," +
                 "{\"type\": \"pause\", \"duration\": 20}," +
                 "{\"type\": \"keyUp\", \"value\": \"\u2000\"}]" +
-                "} ]");
+                "} ]";
         final ActionTokens eventsChain = actionsTokenizer.tokenize(
                 actionsPreprocessor.preprocess(toActionItems(actionJson))
         );
@@ -217,8 +215,8 @@ public class W3CActionsTokenizationTests {
     }
 
     @Test
-    public void verifyValidInputEventsChainIsCompiledForSingleFingerGesture() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyValidInputEventsChainIsCompiledForSingleFingerGesture() {
+        final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +
                 "\"id\": \"finger1\"," +
                 "\"parameters\": {\"pointerType\": \"touch\"}," +
@@ -228,7 +226,7 @@ public class W3CActionsTokenizationTests {
                 "{\"type\": \"pause\", \"duration\": 7}," +
                 "{\"type\": \"pointerMove\", \"duration\": 10, \"origin\": \"pointer\", \"x\": -50, \"y\": 0}," +
                 "{\"type\": \"pointerUp\"}]" +
-                "} ]");
+                "} ]";
         final ActionTokens eventsChain = actionsTokenizer.tokenize(
                 actionsPreprocessor.preprocess(toActionItems(actionJson))
         );
@@ -275,8 +273,8 @@ public class W3CActionsTokenizationTests {
     }
 
     @Test
-    public void verifyValidInputEventsChainIsCompiledForSingleFingerTapGesture() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyValidInputEventsChainIsCompiledForSingleFingerTapGesture() {
+        final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +
                 "\"id\": \"finger1\"," +
                 "\"parameters\": {\"pointerType\": \"touch\"}," +
@@ -284,7 +282,7 @@ public class W3CActionsTokenizationTests {
                 "{\"type\": \"pointerMove\", \"duration\": 0, \"x\": 100, \"y\": 100}," +
                 "{\"type\": \"pointerDown\"}," +
                 "{\"type\": \"pointerUp\"}]" +
-                "} ]");
+                "} ]";
         final ActionTokens eventsChain = actionsTokenizer.tokenize(
                 actionsPreprocessor.preprocess(toActionItems(actionJson))
         );
@@ -314,8 +312,8 @@ public class W3CActionsTokenizationTests {
     }
 
     @Test
-    public void verifyValidInputEventsChainIsCompiledForDoubleTapGesture() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyValidInputEventsChainIsCompiledForDoubleTapGesture() {
+        final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +
                 "\"id\": \"finger1\"," +
                 "\"parameters\": {\"pointerType\": \"touch\"}," +
@@ -328,7 +326,7 @@ public class W3CActionsTokenizationTests {
                 "{\"type\": \"pointerDown\"}," +
                 "{\"type\": \"pause\", \"duration\": 100}," +
                 "{\"type\": \"pointerUp\"}]" +
-                "} ]");
+                "} ]";
         final ActionTokens eventsChain = actionsTokenizer.tokenize(
                 actionsPreprocessor.preprocess(toActionItems(actionJson))
         );
@@ -389,8 +387,8 @@ public class W3CActionsTokenizationTests {
 
     @Test
     public void verifyValidInputEventsChainIsCompiledForMouseGestureWithMultipleMoves()
-            throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+            {
+        final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +
                 "\"id\": \"mouse1\"," +
                 "\"actions\": [" +
@@ -400,7 +398,7 @@ public class W3CActionsTokenizationTests {
                 "{\"type\": \"pointerMove\", \"duration\": 10, \"origin\": \"pointer\", \"x\": 100, \"y\": 0}," +
                 "{\"type\": \"pointerMove\", \"duration\": 10, \"x\": 0, \"y\": 0}," +
                 "{\"type\": \"pointerUp\", \"button\": 2}]" +
-                "} ]");
+                "} ]";
         final ActionTokens eventsChain = actionsTokenizer.tokenize(
                 actionsPreprocessor.preprocess(toActionItems(actionJson))
         );
@@ -460,15 +458,15 @@ public class W3CActionsTokenizationTests {
 
     @Test
     public void verifyValidInputEventsChainIsCompiledForMouseGestureWithHoverGesture()
-            throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+            {
+        final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +
                 "\"parameters\": {\"pointerType\": \"mouse\"}," +
                 "\"id\": \"mouse1\"," +
                 "\"actions\": [" +
                 "{\"type\": \"pointerMove\", \"duration\": 0, \"x\": 100, \"y\": 100}," +
                 "{\"type\": \"pointerMove\", \"duration\": 30, \"x\": 0, \"y\": 0}]" +
-                "} ]");
+                "} ]";
         final ActionTokens eventsChain = actionsTokenizer.tokenize(
                 actionsPreprocessor.preprocess(toActionItems(actionJson))
         );
@@ -515,8 +513,8 @@ public class W3CActionsTokenizationTests {
     }
 
     @Test
-    public void verifyValidInputEventsChainIsCompiledForMultipleFingersGesture() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyValidInputEventsChainIsCompiledForMultipleFingersGesture() {
+        final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +
                 "\"id\": \"finger1\"," +
                 "\"parameters\": {\"pointerType\": \"touch\"}," +
@@ -536,7 +534,7 @@ public class W3CActionsTokenizationTests {
                 "{\"type\": \"pause\", \"duration\": 10}," +
                 "{\"type\": \"pointerMove\", \"duration\": 10, \"origin\": \"pointer\", \"x\": -50, \"y\": -50}," +
                 "{\"type\": \"pointerUp\"}]" +
-                "} ]");
+                "} ]";
         final ActionTokens eventsChain = actionsTokenizer.tokenize(
                 actionsPreprocessor.preprocess(toActionItems(actionJson))
         );
@@ -610,8 +608,8 @@ public class W3CActionsTokenizationTests {
     }
 
     @Test(expected = ActionsParseException.class)
-    public void verifyChainCompilationFailsIfDurationIsNegative() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyChainCompilationFailsIfDurationIsNegative() {
+        final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +
                 "\"id\": \"mouse1\"," +
                 "\"actions\": [" +
@@ -619,27 +617,27 @@ public class W3CActionsTokenizationTests {
                 "{\"type\": \"pointerDown\", \"button\": 1}," +
                 "{\"type\": \"pointerMove\", \"duration\": -1, \"origin\": \"pointer\", \"x\": -50, \"y\": 0}," +
                 "{\"type\": \"pointerUp\", \"button\": 1}]" +
-                "} ]");
+                "} ]";
         actionsTokenizer.tokenize(actionsPreprocessor.preprocess(toActionItems(actionJson)));
     }
 
     @Test(expected = ActionsParseException.class)
-    public void verifyChainCompilationFailsIfNoStaringCoordinatesAreProvided() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyChainCompilationFailsIfNoStaringCoordinatesAreProvided() {
+        final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +
                 "\"id\": \"mouse1\"," +
                 "\"actions\": [" +
                 "{\"type\": \"pointerDown\", \"button\": 1}," +
                 "{\"type\": \"pointerMove\", \"duration\": 10, \"x\": -50, \"y\": 0}," +
                 "{\"type\": \"pointerUp\", \"button\": 1}]" +
-                "} ]");
+                "} ]";
         actionsTokenizer.tokenize(actionsPreprocessor.preprocess(toActionItems(actionJson)));
     }
 
     @Test(expected = ActionsParseException.class)
     public void verifyChainCompilationFailsIfInvalidPointerActionTypeIsProvided()
-            throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+            {
+        final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +
                 "\"id\": \"mouse1\"," +
                 "\"actions\": [" +
@@ -647,14 +645,14 @@ public class W3CActionsTokenizationTests {
                 "{\"type\": \"pointerBla\", \"button\": 1}," +
                 "{\"type\": \"pointerMove\", \"duration\": 10, \"x\": -50, \"y\": 0}," +
                 "{\"type\": \"pointerUp\", \"button\": 1}]" +
-                "} ]");
+                "} ]";
         actionsTokenizer.tokenize(actionsPreprocessor.preprocess(toActionItems(actionJson)));
     }
 
     @Test(expected = ActionsParseException.class)
     public void verifyChainCompilationFailsIfInvalidKeyActionTypeIsProvided()
-            throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+            {
+        final String actionJson = "[ {" +
                 "\"type\": \"key\"," +
                 "\"id\": \"keyboard\"," +
                 "\"actions\": [" +
@@ -662,13 +660,13 @@ public class W3CActionsTokenizationTests {
                 "{\"type\": \"keyBla\", \"value\": \"A\"}," +
                 "{\"type\": \"keyUp\", \"value\": \"A\"}," +
                 "{\"type\": \"keyUp\", \"value\": \"\u2000\"}]" +
-                "} ]");
+                "} ]";
         actionsTokenizer.tokenize(actionsPreprocessor.preprocess(toActionItems(actionJson)));
     }
 
     @Test(expected = ActionsParseException.class)
-    public void verifyChainCompilationFailsIfKeyValueIsMissing() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyChainCompilationFailsIfKeyValueIsMissing() {
+        final String actionJson = "[ {" +
                 "\"type\": \"key\"," +
                 "\"id\": \"keyboard\"," +
                 "\"actions\": [" +
@@ -676,13 +674,13 @@ public class W3CActionsTokenizationTests {
                 "{\"type\": \"keyUp\"}," +
                 "{\"type\": \"keyUp\", \"value\": \"A\"}," +
                 "{\"type\": \"keyUp\", \"value\": \"\u2000\"}]" +
-                "} ]");
+                "} ]";
         actionsTokenizer.tokenize(actionsPreprocessor.preprocess(toActionItems(actionJson)));
     }
 
     @Test(expected = ActionsParseException.class)
-    public void verifyChainCompilationFailsIfKeyValueIsEmpty() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyChainCompilationFailsIfKeyValueIsEmpty() {
+        final String actionJson = "[ {" +
                 "\"type\": \"key\"," +
                 "\"id\": \"keyboard\"," +
                 "\"actions\": [" +
@@ -690,26 +688,26 @@ public class W3CActionsTokenizationTests {
                 "{\"type\": \"keyUp\", \"value\": \"\"}," +
                 "{\"type\": \"keyUp\", \"value\": \"A\"}," +
                 "{\"type\": \"keyUp\", \"value\": \"\u2000\"}]" +
-                "} ]");
+                "} ]";
         actionsTokenizer.tokenize(actionsPreprocessor.preprocess(toActionItems(actionJson)));
     }
 
     @Test(expected = ActionsParseException.class)
     public void verifyChainCompilationFailsIfInvalidNoneActionTypeIsProvided()
-            throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+            {
+        final String actionJson = "[ {" +
                 "\"type\": \"none\"," +
                 "\"id\": \"none1\"," +
                 "\"actions\": [" +
                 "{\"type\": \"pause\", \"duration\": 200}," +
                 "{\"type\": \"bla\", \"duration\": 20}]" +
-                "} ]");
+                "} ]";
         actionsTokenizer.tokenize(actionsPreprocessor.preprocess(toActionItems(actionJson)));
     }
 
     @Test(expected = ActionsParseException.class)
-    public void verifyChainCompilationFailsIfNoDurationIsProvided() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyChainCompilationFailsIfNoDurationIsProvided() {
+        final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +
                 "\"id\": \"mouse1\"," +
                 "\"actions\": [" +
@@ -717,13 +715,13 @@ public class W3CActionsTokenizationTests {
                 "{\"type\": \"pointerDown\", \"button\": 1}," +
                 "{\"type\": \"pointerMove\", \"duration\": 10, \"origin\": \"pointer\", \"x\": -50, \"y\": 0}," +
                 "{\"type\": \"pointerUp\", \"button\": 1}]" +
-                "} ]");
+                "} ]";
         actionsTokenizer.tokenize(actionsPreprocessor.preprocess(toActionItems(actionJson)));
     }
 
     @Test(expected = ActionsParseException.class)
-    public void verifyChainCompilationFailsIfCoordinateIsMissing() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyChainCompilationFailsIfCoordinateIsMissing() {
+        final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +
                 "\"id\": \"mouse1\"," +
                 "\"actions\": [" +
@@ -731,13 +729,13 @@ public class W3CActionsTokenizationTests {
                 "{\"type\": \"pointerDown\", \"button\": 1}," +
                 "{\"type\": \"pointerMove\", \"duration\": 10, \"origin\": \"pointer\", \"x\": -50, \"y\": 0}," +
                 "{\"type\": \"pointerUp\", \"button\": 1}]" +
-                "} ]");
+                "} ]";
         actionsTokenizer.tokenize(actionsPreprocessor.preprocess(toActionItems(actionJson)));
     }
 
     @Test(expected = ActionsParseException.class)
-    public void verifyChainCompilationFailsIfTwoOrMoreDownActionsExistAtTheSameTime() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyChainCompilationFailsIfTwoOrMoreDownActionsExistAtTheSameTime() {
+        final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +
                 "\"id\": \"mouse1\"," +
                 "\"actions\": [" +
@@ -745,33 +743,33 @@ public class W3CActionsTokenizationTests {
                 "{\"type\": \"pointerDown\", \"button\": 1}," +
                 "{\"type\": \"pointerDown\", \"button\": 1}," +
                 "{\"type\": \"pointerUp\", \"button\": 1}]" +
-                "} ]");
+                "} ]";
         actionsTokenizer.tokenize(actionsPreprocessor.preprocess(toActionItems(actionJson)));
     }
 
     @Test(expected = ActionsParseException.class)
-    public void verifyChainCompilationFailsIfTwoOrMoreUpActionsExistAtTheSameTime() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyChainCompilationFailsIfTwoOrMoreUpActionsExistAtTheSameTime() {
+        final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +
                 "\"id\": \"mouse1\"," +
                 "\"actions\": [" +
                 "{\"type\": \"pointerMove\", \"duration\": 0, \"y\": 100}," +
                 "{\"type\": \"pointerUp\", \"button\": 1}," +
                 "{\"type\": \"pointerUp\", \"button\": 1}]" +
-                "} ]");
+                "} ]";
         actionsTokenizer.tokenize(actionsPreprocessor.preprocess(toActionItems(actionJson)));
     }
 
     @Test(expected = ActionsParseException.class)
-    public void verifyChainCompilationFailsIfUpActionPreceedsDownAtTheSameTime() throws JSONException {
-        final JSONArray actionJson = new JSONArray("[ {" +
+    public void verifyChainCompilationFailsIfUpActionPreceedsDownAtTheSameTime() {
+        final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +
                 "\"id\": \"mouse1\"," +
                 "\"actions\": [" +
                 "{\"type\": \"pointerMove\", \"duration\": 0, \"y\": 100}," +
                 "{\"type\": \"pointerUp\", \"button\": 1}," +
                 "{\"type\": \"pointerDown\", \"button\": 1}]" +
-                "} ]");
+                "} ]";
         actionsTokenizer.tokenize(actionsPreprocessor.preprocess(toActionItems(actionJson)));
     }
 }

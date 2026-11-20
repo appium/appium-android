@@ -19,9 +19,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.Configurator;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -59,12 +59,12 @@ public abstract class BaseTest {
      * start io.appium.uiautomator2.server and launch the application main activity
      */
     @BeforeClass
-    public static void startServer() throws JSONException, IOException {
+    public static void startServer() throws IOException {
         assertNotNull(getUiDevice());
         ServerInstrumentation.getInstance().start();
         Client.waitForNettyStatus(NettyStatus.ONLINE);
-        JSONObject responseValue = createSession().getValue();
-        WebDriverSession.getInstance().setId(responseValue.getString("sessionId"));
+        JsonObject responseValue = createSession().getValue(JsonObject.class);
+        WebDriverSession.getInstance().setId(responseValue.get("sessionId").getAsString());
         Configurator.getInstance().setWaitForSelectorTimeout(0);
         Configurator.getInstance().setWaitForIdleTimeout(50000);
         TestUtils.grantPermission(getApplicationContext(), READ_EXTERNAL_STORAGE);
@@ -79,7 +79,7 @@ public abstract class BaseTest {
     }
 
     @Before
-    public void launchAUT() throws JSONException {
+    public void launchAUT() {
         dismissSystemAlert();
         startActivity(Config.APP_NAME);
         waitForElement(By.accessibilityId("Accessibility"));
@@ -91,12 +91,12 @@ public abstract class BaseTest {
             try {
                 Logger.info("Checking for alert using id '" + id + "'");
                 Response response = findElements(By.id(id));
-                JSONArray elements = response.getValue();
-                if (elements.length() == 0) {
+                JsonArray elements = response.getValue(JsonArray.class);
+                if (elements.size() == 0) {
                     continue;
                 }
 
-                String elementId = TestUtils.extractElementId(elements.getJSONObject(0));
+                String elementId = TestUtils.extractElementId(elements.get(0).getAsJsonObject());
                 clickAndWaitForStaleness(elementId);
             } catch (Exception e) {
                 Logger.error("Error getting alert: ", e);
@@ -104,13 +104,13 @@ public abstract class BaseTest {
         }
     }
 
-    protected void startActivity(String activity) throws JSONException {
+    protected void startActivity(String activity) {
         TestUtils.startActivity(
                 InstrumentationRegistry.getInstrumentation().getTargetContext(), activity
         );
     }
 
-    protected void clickAndWaitForStaleness(String elementId) throws JSONException {
+    protected void clickAndWaitForStaleness(String elementId) {
         if (elementId == null) {
             return;
         }

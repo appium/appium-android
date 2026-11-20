@@ -17,8 +17,12 @@ package io.appium.uiautomator2.unittest.test.internal;
 
 import androidx.annotation.Nullable;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
+
 
 import java.io.IOException;
 
@@ -27,6 +31,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 public class Response {
 
     private static final String ERR_MSG = "Unable to extract '%s' from body '%s'.";
+    private static final Gson GSON = new Gson();
 
     private final String body;
     private final int code;
@@ -43,8 +48,8 @@ public class Response {
     @Nullable
     public String getElementId() {
         try {
-            return TestUtils.extractElementId(new JSONObject(body).getJSONObject("value"));
-        } catch (JSONException e) {
+            return TestUtils.extractElementId(parseValue().getAsJsonObject());
+        } catch (JsonParseException | IllegalStateException e) {
             throw new IllegalArgumentException(String.format(ERR_MSG, "element", body), e);
         }
     }
@@ -53,13 +58,20 @@ public class Response {
         return code;
     }
 
-    @SuppressWarnings("unchecked")
-    public <T> T getValue() {
+    public <T> T getValue(Class<T> type) {
         try {
-            return (T) new JSONObject(body).get("value");
-        } catch (JSONException e) {
+            return GSON.fromJson(parseValue(), type);
+        } catch (JsonParseException | IllegalStateException e) {
             throw new IllegalArgumentException(String.format(ERR_MSG, "value", body), e);
         }
+    }
+
+    private JsonElement parseValue() {
+        final JsonObject root = JsonParser.parseString(body).getAsJsonObject();
+        if (!root.has("value")) {
+            throw new IllegalStateException("No 'value' key");
+        }
+        return root.get("value");
     }
 
     @SuppressWarnings("NullableProblems")

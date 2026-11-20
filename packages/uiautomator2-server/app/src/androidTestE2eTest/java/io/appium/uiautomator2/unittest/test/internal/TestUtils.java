@@ -23,12 +23,13 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.Until;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+
 
 import java.io.IOException;
-import java.util.Iterator;
+import java.util.Map;
 
 import io.appium.uiautomator2.model.By;
 import io.appium.uiautomator2.unittest.test.Config;
@@ -61,7 +62,7 @@ public class TestUtils {
         sleep(millis);
     }
 
-    private static void waitForAppToLaunch(String appPackage) throws JSONException {
+    private static void waitForAppToLaunch(String appPackage) {
         long start = elapsedRealtime();
         boolean waitStatus;
         do {
@@ -73,7 +74,7 @@ public class TestUtils {
                 return;
             }
             Logger.error("Unable to find AUT. Is it System UI or AUT ARN on arm emu?");
-            Logger.debug("Page sources:" + source().getValue());
+            Logger.debug("Page sources:" + source().getValue(String.class));
             Response response = findElement(By.xpath("//*[@text='Close app' or @text='Wait' or " +
                     "@text='OK' or @text='Open app again']"));
             if (response.isSuccessful()) {
@@ -126,7 +127,7 @@ public class TestUtils {
         throw new TimeoutException("invisibility of element " + elementId);
     }
 
-    protected static void startActivity(Context ctx, String activity) throws JSONException {
+    protected static void startActivity(Context ctx, String activity) {
         final String fullActivityName = Config.APP_PKG + activity;
         int retriesCount = 0;
         while (retriesCount < APP_LAUNCH_RETRIES_COUNT) {
@@ -161,58 +162,53 @@ public class TestUtils {
      * @param contextId Search context id
      * @return {@link By} converted to JSON object
      */
-    public static JSONObject convertByToJson(By by, String contextId) {
-        JSONObject jsonObject = new JSONObject();
-        try {
-            jsonObject.put("context", contextId);
-            final String strategy;
-            if (by instanceof By.ByAccessibilityId) {
-                strategy = "accessibility id";
-            } else if (by instanceof By.ByClass) {
-                strategy = "class name";
-            } else if (by instanceof By.ById) {
-                strategy = "id";
-            } else if (by instanceof By.ByXPath) {
-                strategy = "xpath";
-            } else if (by instanceof By.ByAndroidUiAutomator || by instanceof By.ByText) {
-                strategy = "-android uiautomator";
-            } else {
-                strategy = "unsupported";
-            }
-            jsonObject.put("strategy", strategy);
-            jsonObject.put("selector", by.getElementLocator());
-        } catch (JSONException e) {
-            throw new IllegalArgumentException("Unable to form JSON Object", e);
+    public static JsonObject convertByToJson(By by, String contextId) {
+        final String strategy;
+        if (by instanceof By.ByAccessibilityId) {
+            strategy = "accessibility id";
+        } else if (by instanceof By.ByClass) {
+            strategy = "class name";
+        } else if (by instanceof By.ById) {
+            strategy = "id";
+        } else if (by instanceof By.ByXPath) {
+            strategy = "xpath";
+        } else if (by instanceof By.ByAndroidUiAutomator || by instanceof By.ByText) {
+            strategy = "-android uiautomator";
+        } else {
+            strategy = "unsupported";
         }
+        JsonObject jsonObject = new JsonObject();
+        jsonObject.addProperty("context", contextId);
+        jsonObject.addProperty("strategy", strategy);
+        jsonObject.addProperty("selector", by.getElementLocator());
         return jsonObject;
     }
 
     /**
-     * return JSONObjects count in a JSONArray
+     * return JSON objects count in a JSON array
      *
      * @param jsonArray
-     * @return count of JSONObjects
+     * @return count of JSON objects
      */
-    public static int getJsonObjectCountInJsonArray(JSONArray jsonArray) {
+    public static int getJsonObjectCountInJsonArray(JsonArray jsonArray) {
         int count = 0;
-        for (int i = 0; i < jsonArray.length(); i++, count++) {
-            try {
-                jsonArray.getJSONObject(i);
-            } catch (JSONException ignore) {
+        for (JsonElement element : jsonArray) {
+            if (element.isJsonObject()) {
+                count++;
             }
         }
         return count;
     }
 
     @Nullable
-    public static String extractElementId(JSONObject obj) {
-        Iterator<String> keysIterator = obj.keys();
-        while (keysIterator.hasNext()) {
-            String key = keysIterator.next();
+    public static String extractElementId(JsonObject obj) {
+        for (Map.Entry<String, JsonElement> entry : obj.entrySet()) {
+            final String key = entry.getKey();
+            final JsonElement value = entry.getValue();
             if ((key.equalsIgnoreCase(JWP_ELEMENT_ID_KEY_NAME) ||
                     key.equalsIgnoreCase(W3C_ELEMENT_ID_KEY_NAME))
-                    && (obj.opt(key) instanceof String)) {
-                return (String) obj.opt(key);
+                    && value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()) {
+                return value.getAsString();
             }
         }
         return null;

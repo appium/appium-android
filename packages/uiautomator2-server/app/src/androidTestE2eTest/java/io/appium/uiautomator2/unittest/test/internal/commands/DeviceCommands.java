@@ -17,9 +17,10 @@ package io.appium.uiautomator2.unittest.test.internal.commands;
 
 import androidx.annotation.Nullable;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+
 
 import io.appium.uiautomator2.model.By;
 import io.appium.uiautomator2.unittest.test.Config;
@@ -52,7 +53,7 @@ public class DeviceCommands {
      */
     public static Response findElement(By by, String contextId) {
         final long start = elapsedRealtime();
-        JSONObject json = TestUtils.convertByToJson(by, contextId);
+        JsonObject json = TestUtils.convertByToJson(by, contextId);
         Response response;
         do {
             response = Client.post("/element", json);
@@ -72,7 +73,7 @@ public class DeviceCommands {
      * @return Response from UiAutomator2 server
      */
     public static Response findElements(By by) {
-        JSONObject json = TestUtils.convertByToJson(by, "");
+        JsonObject json = TestUtils.convertByToJson(by, "");
         return Client.post("/elements", json);
     }
 
@@ -91,10 +92,10 @@ public class DeviceCommands {
      * performs screen rotation
      *
      * @return Response from UiAutomator2 server
-     * @throws JSONException
      */
-    public static Response rotateScreen(String orientation) throws JSONException {
-        JSONObject postBody = new JSONObject().put("orientation", orientation);
+    public static Response rotateScreen(String orientation) {
+        JsonObject postBody = new JsonObject();
+        postBody.addProperty("orientation", orientation);
         return Client.post("/orientation", postBody);
     }
 
@@ -105,7 +106,7 @@ public class DeviceCommands {
      */
     public static String getScreenOrientation() {
         Response response = Client.get("/orientation");
-        return response.getValue();
+        return response.getValue(String.class);
     }
 
     /**
@@ -113,9 +114,9 @@ public class DeviceCommands {
      *
      * @return Response from UiAutomator2 server
      */
-    public static JSONObject getRotation() {
+    public static JsonObject getRotation() {
         Response response = Client.get("/rotation");
-        return response.getValue();
+        return response.getValue(JsonObject.class);
     }
 
     /**
@@ -123,7 +124,7 @@ public class DeviceCommands {
      *
      * @return Response from UiAutomator2 server
      */
-    public static Response setRotation(JSONObject rotateMap) {
+    public static Response setRotation(JsonObject rotateMap) {
         return Client.post("/rotation", rotateMap);
     }
 
@@ -131,9 +132,9 @@ public class DeviceCommands {
         return Client.get("/source");
     }
 
-    public static Response createSession() throws JSONException {
-        JSONObject caps = new JSONObject();
-        caps.put("capabilities", new JSONObject());
+    public static Response createSession() {
+        JsonObject caps = new JsonObject();
+        caps.add("capabilities", new JsonObject());
         return Client.post(Config.HOST, "/session", caps);
     }
 
@@ -145,10 +146,9 @@ public class DeviceCommands {
      * return the appStrings
      *
      * @return Response from UiAutomator2 server
-     * @throws JSONException
      */
     public static Response appStrings() {
-        JSONObject jsonObject = new JSONObject();
+        JsonObject jsonObject = new JsonObject();
         return Client.post("/appium/app/strings", jsonObject);
     }
 
@@ -156,12 +156,12 @@ public class DeviceCommands {
      * update setting
      *
      * @return Response from UiAutomator2 server
-     * @throws JSONException
      */
-    public static Response updateSetting(String settingName, Object settingValue) throws
-            JSONException {
-        JSONObject postBody = new JSONObject();
-        postBody.put("settings", new JSONObject().put(settingName, settingValue));
+    public static Response updateSetting(String settingName, Object settingValue) {
+        JsonObject postBody = new JsonObject();
+        JsonObject settings = new JsonObject();
+        settings.add(settingName, new Gson().toJsonTree(settingValue));
+        postBody.add("settings", settings);
         return Client.post("/appium/settings", postBody);
     }
 
@@ -169,18 +169,17 @@ public class DeviceCommands {
      * update settings
      *
      * @return Response from UiAutomator2 server
-     * @throws JSONException
      */
-    public static Response updateSettings(JSONObject settings) throws
-            JSONException {
-        return Client.post("/appium/settings", new JSONObject().put("settings",settings));
+    public static Response updateSettings(JsonObject settings) {
+        JsonObject postBody = new JsonObject();
+        postBody.add("settings", settings);
+        return Client.post("/appium/settings", postBody);
     }
 
     /**
      * return settings
      *
      * @return Response from UiAutomator2 server
-     * @throws JSONException
      */
     public static Response getSettings() {
         return Client.get("/appium/settings");
@@ -190,7 +189,6 @@ public class DeviceCommands {
      * retrieve device information
      *
      * @return Response from UiAutomator2 server
-     * @throws JSONException
      */
     public static Response getInfo() {
         return Client.get("/appium/device/info");
@@ -211,9 +209,8 @@ public class DeviceCommands {
      *
      * @param text
      * @return Response from UiAutomator2 server
-     * @throws JSONException
      */
-    public static Response scrollToText(String text) throws JSONException {
+    public static Response scrollToText(String text) {
         return scrollToText(text, 0);
     }
 
@@ -224,9 +221,8 @@ public class DeviceCommands {
      * @param text
      * @param maxSwipes
      * @return Response from UiAutomator2 server
-     * @throws JSONException
      */
-    public static Response scrollToText(String text, int maxSwipes) throws JSONException {
+    public static Response scrollToText(String text, int maxSwipes) {
         String textEscaped = text.replace("\"", "\\\"");
         String uiSelectorSpec = String.format("new UiSelector().text(\"%s\")", textEscaped);
 
@@ -238,20 +234,19 @@ public class DeviceCommands {
      *
      * @param scrollToId
      * @return Response from UiAutomator2 server
-     * @throws JSONException
      */
-    public static Response scrollToAccessibilityId(String scrollToId) throws JSONException {
-        JSONObject postBody = new JSONObject();
-        postBody.put("cmd", "action");
-        postBody.put("action", "find");
+    public static Response scrollToAccessibilityId(String scrollToId) {
+        JsonObject postBody = new JsonObject();
+        postBody.addProperty("cmd", "action");
+        postBody.addProperty("action", "find");
 
-        JSONObject params = new JSONObject();
-        params.put("strategy", "accessibility id");
-        params.put("selector", scrollToId);
-        params.put("context",  "");
-        params.put("multiple", false);
+        JsonObject params = new JsonObject();
+        params.addProperty("strategy", "accessibility id");
+        params.addProperty("selector", scrollToId);
+        params.addProperty("context",  "");
+        params.addProperty("multiple", false);
 
-        postBody.put("params", params);
+        postBody.add("params", params);
         return Client.post("/gestures/scroll_to", postBody);
     }
 
@@ -261,20 +256,19 @@ public class DeviceCommands {
      *
      * @param className
      * @return Response from UiAutomator2 server
-     * @throws JSONException
      */
-    public static Response scrollToClassName(String className) throws JSONException {
-        JSONObject postBody = new JSONObject();
-        postBody.put("cmd", "action");
-        postBody.put("action", "find");
+    public static Response scrollToClassName(String className) {
+        JsonObject postBody = new JsonObject();
+        postBody.addProperty("cmd", "action");
+        postBody.addProperty("action", "find");
 
-        JSONObject params = new JSONObject();
-        params.put("strategy", "class name");
-        params.put("selector", className);
-        params.put("context",  "");
-        params.put("multiple", false);
+        JsonObject params = new JsonObject();
+        params.addProperty("strategy", "class name");
+        params.addProperty("selector", className);
+        params.addProperty("context",  "");
+        params.addProperty("multiple", false);
 
-        postBody.put("params", params);
+        postBody.add("params", params);
         return Client.post("/gestures/scroll_to", postBody);
     }
 
@@ -284,9 +278,8 @@ public class DeviceCommands {
      *
      * @param uiSelectorSpec
      * @return Response from UiAutomator2 server
-     * @throws JSONException
      */
-    public static Response scrollToElement(String uiSelectorSpec) throws JSONException {
+    public static Response scrollToElement(String uiSelectorSpec) {
         return scrollToElement(uiSelectorSpec, 0);
     }
 
@@ -296,24 +289,23 @@ public class DeviceCommands {
      * @param uiSelectorSpec
      * @param maxSwipes
      * @return Response from UiAutomator2 server
-     * @throws JSONException
      */
-    public static Response scrollToElement(String uiSelectorSpec, int maxSwipes) throws JSONException {
-        JSONObject postBody = new JSONObject();
-        postBody.put("cmd", "action");
-        postBody.put("action", "find");
+    public static Response scrollToElement(String uiSelectorSpec, int maxSwipes) {
+        JsonObject postBody = new JsonObject();
+        postBody.addProperty("cmd", "action");
+        postBody.addProperty("action", "find");
 
-        JSONObject params = new JSONObject();
-        params.put("strategy", "-android uiautomator");
-        params.put("selector",  uiSelectorSpec);
-        params.put("context",  "");
-        params.put("multiple", false);
+        JsonObject params = new JsonObject();
+        params.addProperty("strategy", "-android uiautomator");
+        params.addProperty("selector",  uiSelectorSpec);
+        params.addProperty("context",  "");
+        params.addProperty("multiple", false);
 
         if(maxSwipes > 0) {
-            params.put("maxSwipes", maxSwipes);
+            params.addProperty("maxSwipes", maxSwipes);
         }
 
-        postBody.put("params", params);
+        postBody.add("params", params);
         return Client.post("/gestures/scroll_to", postBody);
     }
 
@@ -331,12 +323,11 @@ public class DeviceCommands {
      *
      * @param buttonLabel optional button label to click on
      * @return Response from UiAutomator2 server
-     * @throws JSONException
      */
-    public static Response acceptAlert(@Nullable String buttonLabel) throws JSONException {
-        final JSONObject payload = new JSONObject();
+    public static Response acceptAlert(@Nullable String buttonLabel) {
+        final JsonObject payload = new JsonObject();
         if (buttonLabel != null) {
-            payload.put("buttonLabel", buttonLabel);
+            payload.addProperty("buttonLabel", buttonLabel);
         }
         return Client.post("/alert/accept", payload);
     }
@@ -346,12 +337,11 @@ public class DeviceCommands {
      *
      * @param buttonLabel optional button label to click on
      * @return Response from UiAutomator2 server
-     * @throws JSONException
      */
-    public static Response dismissAlert(@Nullable String buttonLabel) throws JSONException {
-        final JSONObject payload = new JSONObject();
+    public static Response dismissAlert(@Nullable String buttonLabel) {
+        final JsonObject payload = new JsonObject();
         if (buttonLabel != null) {
-            payload.put("buttonLabel", buttonLabel);
+            payload.addProperty("buttonLabel", buttonLabel);
         }
         return Client.post("/alert/dismiss", payload);
     }
@@ -370,11 +360,10 @@ public class DeviceCommands {
      *
      * @param actions valid W3C actions list
      * @return Response from UiAutomator2 server
-     * @throws JSONException
      */
-    public static Response performActions(JSONArray actions) throws JSONException {
-        JSONObject payload = new JSONObject();
-        payload.put("actions", actions);
+    public static Response performActions(JsonArray actions) {
+        JsonObject payload = new JsonObject();
+        payload.add("actions", actions);
         return Client.post("/actions", payload);
     }
 

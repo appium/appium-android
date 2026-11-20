@@ -20,19 +20,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.test.uiautomator.UiObjectNotFoundException;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import io.appium.uiautomator2.http.AppiumResponse;
 import io.appium.uiautomator2.http.IHttpRequest;
 import io.appium.uiautomator2.server.AppiumServlet;
-import io.appium.uiautomator2.utils.Logger;
 
 public abstract class BaseRequestHandler {
 
@@ -73,31 +66,6 @@ public abstract class BaseRequestHandler {
     @Nullable
     protected static String getNameAttribute(IHttpRequest request) {
         return extractRequestValue(request, AppiumServlet.NAME_ID_KEY, String.class);
-    }
-
-    public static JSONObject toJSON(IHttpRequest request) throws JSONException {
-        String json = request.body();
-        Logger.debug("payload: " + json);
-        if (json != null && !json.isEmpty()) {
-            return new JSONObject(json);
-        }
-        return new JSONObject();
-    }
-
-    public static Map<String, Object> getPayload(IHttpRequest request, String jsonKey) throws JSONException {
-        JSONObject payload = toJSON(request);
-        if (jsonKey != null) {
-            payload = payload.getJSONObject(jsonKey);
-        }
-
-        Map<String, Object> map = new LinkedHashMap<>();
-        Iterator<String> keysItr = payload.keys();
-        while (keysItr.hasNext()) {
-            String key = keysItr.next();
-            Object value = payload.get(key);
-            map.put(key, value);
-        }
-        return map;
     }
 
     @Nullable
