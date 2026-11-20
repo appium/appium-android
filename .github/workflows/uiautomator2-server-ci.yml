@@ -38,11 +38,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '22'
-          cache: gradle
+      - uses: gradle/actions/setup-gradle@v6
       - name: Setup, install and build
         uses: ./.github/actions/setup-build
         with:
           node-version: lts/*
+          run-build: 'false'
       - name: Android lint
         run: npm run lint:java --workspace appium-uiautomator2-server
       - name: Server unit tests
