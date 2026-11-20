@@ -234,6 +234,37 @@ public class DeviceCommands {
     }
 
     /**
+     * Scrolls until the element identified by the given locator is visible,
+     * without the use of UiScrollable.
+     *
+     * @return Response from UiAutomator2 server
+     */
+    public static Response scrollTo(String strategy, String selector, String originId,
+                                    String direction, Boolean fromStart, Integer maxSwipes) throws JSONException {
+        JSONObject postBody = new JSONObject();
+        if (originId != null) {
+            postBody.put("origin", new JSONObject().put("ELEMENT", originId));
+        }
+        JSONObject params = new JSONObject().put("strategy", strategy).put("selector", selector);
+        if (direction != null) {
+            params.put("direction", direction);
+        }
+        if (fromStart != null) {
+            params.put("fromStart", fromStart);
+        }
+        if (maxSwipes != null) {
+            params.put("maxSwipes", maxSwipes);
+        }
+        postBody.put("params", params);
+        return Client.post("/gestures/scroll_to", postBody);
+    }
+
+    public static Response scrollBackTo(String elementId, String toElementId) throws JSONException {
+        return Client.post(String.format("/appium/element/%s/scroll_to/%s", elementId, toElementId),
+                new JSONObject());
+    }
+
+    /**
      * performs scroll to an element with the given accessibility id
      *
      * @param scrollToId

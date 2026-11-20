@@ -20,7 +20,6 @@ import androidx.test.uiautomator.UiObject;
 import androidx.test.uiautomator.UiObjectNotFoundException;
 import androidx.test.uiautomator.UiSelector;
 
-import io.appium.uiautomator2.common.exceptions.InvalidArgumentException;
 import io.appium.uiautomator2.handler.request.SafeRequestHandler;
 import io.appium.uiautomator2.http.AppiumResponse;
 import io.appium.uiautomator2.http.IHttpRequest;
@@ -28,6 +27,9 @@ import io.appium.uiautomator2.model.AndroidElement;
 import io.appium.uiautomator2.model.AppiumUIA2Driver;
 import io.appium.uiautomator2.model.ElementsCache;
 
+import static io.appium.uiautomator2.utils.ScrollHelpers.DEFAULT_MAX_SWIPES;
+import static io.appium.uiautomator2.utils.ScrollHelpers.defaultDirection;
+import static io.appium.uiautomator2.utils.ScrollHelpers.scrollUntilVisible;
 import static java.util.Objects.requireNonNull;
 
 public class ScrollToElement extends SafeRequestHandler {
@@ -43,38 +45,33 @@ public class ScrollToElement extends SafeRequestHandler {
         AndroidElement element = ke.get(elementIds[0]);
         AndroidElement scrollToElement = ke.get(elementIds[1]);
 
-        // attempt to get UiObjects from the container and scroll to element
-        // if we can't, we have to error out, since scrollIntoView only works with UiObjects
-        // (and not for example UiObject2)
-        // TODO make an equivalent implementation of this method for UiObject2 if possible
-        StringBuilder errorMsg = new StringBuilder();
-        UiObject elementUiObject = null;
-        UiObject scrollElementUiObject = null;
-        try {
-            elementUiObject = (UiObject) element.getUiObject();
-            try {
-                scrollElementUiObject = (UiObject) scrollToElement.getUiObject();
-            } catch (ClassCastException e) {
-                errorMsg.append("Scroll to Element");
+        // UiScrollable only works with UiObject instances, which are the result of
+        // the '-android uiautomator' locator strategy. Everything else is scrolled by gestures.
+        if (!(element.getUiObject() instanceof UiObject) || !(scrollToElement.getUiObject() instanceof UiObject)) {
+            final boolean isVisible = scrollUntilVisible(element, () -> isDisplayed(scrollToElement),
+                    defaultDirection(element), true, DEFAULT_MAX_SWIPES);
+            if (!isVisible) {
+                throw new UiObjectNotFoundException("Cannot scroll to the given element");
             }
-        } catch (ClassCastException e) {
-            errorMsg.append("Element");
+            return new AppiumResponse(getSessionId(request));
         }
 
-        if (errorMsg.length() > 0) {
-            errorMsg.append(" was not located using the '-android uiautomator' strategy, " +
-                    "which is the only one that produces elements usable by this command. " +
-                    "Find both the scrollable container and the target element that way, " +
-                    "or scroll the container with 'mobile: scrollGesture' instead");
-            throw new InvalidArgumentException(errorMsg.toString());
-        }
-
+        UiObject elementUiObject = (UiObject) element.getUiObject();
+        UiObject scrollElementUiObject = (UiObject) scrollToElement.getUiObject();
         UiScrollable uiScrollable = new UiScrollable(requireNonNull(elementUiObject).getSelector());
         if (!uiScrollable.scrollIntoView(requireNonNull(scrollElementUiObject))) {
             throw new UiObjectNotFoundException(String.format("Cannot scroll to %s element",
                     requireNonNull(scrollElementUiObject).getSelector()));
         }
         return new AppiumResponse(getSessionId(request));
+    }
+
+    private static boolean isDisplayed(AndroidElement element) {
+        try {
+            return Boolean.parseBoolean(element.getAttribute("displayed"));
+        } catch (UiObjectNotFoundException e) {
+            return false;
+        }
     }
 
     private static class UiScrollable extends androidx.test.uiautomator.UiScrollable {
