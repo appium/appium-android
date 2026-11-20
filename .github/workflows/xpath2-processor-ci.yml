@@ -40,7 +40,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
+      - uses: gradle/actions/setup-gradle@v6
       - name: Publish to the local Maven repository
         run: ./gradlew clean publishToMavenLocal -x test
       - name: Check the published modules
@@ -60,6 +60,6 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
+      - uses: gradle/actions/setup-gradle@v6
       - name: Run the PsychoPath test suite and the shaded jar smoke tests
         run: ./gradlew test shadedTest

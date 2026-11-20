@@ -32,7 +32,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
+      - uses: gradle/actions/setup-gradle@v6
       - name: Build debug and release APKs
         run: ./gradlew assembleDebug assembleRelease
       - name: Upload debug APK
@@ -58,7 +58,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
+      - uses: gradle/actions/setup-gradle@v6
       - uses: android-actions/setup-android@v4
       - name: Enable KVM group perms
         run: |
