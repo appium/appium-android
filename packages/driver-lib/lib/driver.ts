@@ -340,6 +340,14 @@ class AndroidDriver<C extends AndroidDriverConstraints = AndroidDriverConstraint
       }
     }
 
+    if (androidCaps.remoteAdbHost != null) {
+      this.log.warn("The 'remoteAdbHost' capability is deprecated. Use 'adbHost' instead.");
+      androidCaps.adbHost = androidCaps.remoteAdbHost;
+    } else if (androidCaps.adbHost != null) {
+      // ADB and downstream drivers read this option after BaseDriver copies the validated caps.
+      androidCaps.remoteAdbHost = androidCaps.adbHost;
+    }
+
     return true;
   }
 

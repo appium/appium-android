@@ -39,6 +39,9 @@ export const ANDROID_DRIVER_CONSTRAINTS = {
   adbPort: {
     isNumber: true,
   },
+  adbHost: {
+    isString: true,
+  },
   remoteAdbHost: {
     isString: true,
   },
