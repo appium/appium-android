@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.2.2](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.2.1...appium-uiautomator2-server@11.2.2) (2026-11-20)
+
+### Code Refactoring
+
+* **uiautomator2-server:** use gson instead of org.json everywhere ([#164](https://github.com/appium/appium-android/issues/164)) ([22bcc57](https://github.com/appium/appium-android/commit/22bcc57c111c96bc29ae667e4f5a6401af2cbd8f))
+
+
 ## [11.2.1](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.2.0...appium-uiautomator2-server@11.2.1) (2026-11-20)
 
 ### Bug Fixes
