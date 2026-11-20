@@ -382,6 +382,18 @@ public class ActionsCommandsTest extends BaseTest {
     }
 
     @Test
+    public void verifyScrollGestureWithoutElementAndAreaAfterScreenChange() throws JSONException {
+        startActivity(".view.List1");
+        waitForElement(By.id("android:id/list"));
+        // The previous screen must not be used to look up the scrollable element
+        startActivity(".view.Tabs5");
+        SystemClock.sleep(1500);
+        assertTrue(scroll(null, null, 0.5f, "right", null).isSuccessful());
+        assertFalse("The tab strip should have been scrolled",
+                findElement(By.xpath("//*[@text='TAB 1']")).isSuccessful());
+    }
+
+    @Test
     public void verifyScrollGestureWithDisplaySizedArea() throws JSONException {
         startActivity(".view.List1");
         waitForElement(By.id("android:id/list"));
