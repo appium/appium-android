@@ -17,8 +17,10 @@
 package io.appium.uiautomator2.unittest.test;
 
 import android.graphics.Rect;
+import android.hardware.display.DisplayManager;
 import android.os.Build;
 import android.os.SystemClock;
+import android.view.Display;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -355,6 +357,25 @@ public class ActionsCommandsTest extends BaseTest {
         assertFalse(scrollResponse.isSuccessful());
         scrollResponse = scroll(dot1Response.getElementId(), null, 0.5f, "foo", null);
         assertFalse(scrollResponse.isSuccessful());
+    }
+
+    @Test
+    public void verifyScrollGestureWithDisplaySizedArea() throws JSONException {
+        startActivity(".view.List1");
+        waitForElement(By.id("android:id/list"));
+        By firstItem = By.xpath("//*[@text='Abbaye de Belloc']");
+        assertTrue(findElement(firstItem).isSuccessful());
+
+        // A swipe starts at the edge of its area, which is one pixel outside of the display
+        // for a rectangle that covers it entirely
+        android.graphics.Point size = new android.graphics.Point();
+        InstrumentationRegistry.getInstrumentation().getTargetContext()
+                .getSystemService(DisplayManager.class)
+                .getDisplay(Display.DEFAULT_DISPLAY)
+                .getRealSize(size);
+        Response scrollResponse = scroll(null, new Rect(0, 0, size.x, size.y), 0.5f, "down", null);
+        assertTrue(scrollResponse.isSuccessful());
+        assertFalse("The list should have been scrolled", findElement(firstItem).isSuccessful());
     }
 
     @Test

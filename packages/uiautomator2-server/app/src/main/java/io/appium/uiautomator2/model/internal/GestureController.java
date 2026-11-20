@@ -114,6 +114,23 @@ public class GestureController {
         performGesture(new PointerGesture(point, gestures.getDisplayId()).pause(duration));
     }
 
+    /**
+     * A swipe starts at the edge of its area. The right and bottom edges of a rectangle that covers
+     * the whole display lie one pixel outside of it, so the touch is dropped silently.
+     */
+    static Rect clampToDisplay(Rect area, Point displaySize) {
+        return new Rect(
+                Math.max(area.left, 0),
+                Math.max(area.top, 0),
+                Math.min(area.right, displaySize.x - 1),
+                Math.min(area.bottom, displaySize.y - 1)
+        );
+    }
+
+    private Rect clampToDisplay(Rect area) {
+        return clampToDisplay(area, CustomUiDevice.getInstance().getDisplaySize(gestures.getDisplayId()));
+    }
+
     private static int checkSpeed(int speed) {
         if (speed < 0) {
             throw new IllegalArgumentException("Speed cannot be negative");
@@ -145,7 +162,7 @@ public class GestureController {
 
     public void swipe(Rect area, Direction direction, float percent, @Nullable Integer speed) {
         int swipeSpeed = speed == null ? Gestures.getDefaultSwipeSpeed() : checkSpeed(speed);
-        performGesture(gestures.swipe(area, direction, checkPercent(percent), swipeSpeed));
+        performGesture(gestures.swipe(clampToDisplay(area), direction, checkPercent(percent), swipeSpeed));
     }
 
     public boolean scroll(Rect area, Direction direction, float percent, @Nullable Integer speed) {
@@ -157,7 +174,7 @@ public class GestureController {
         int scrollSpeed = speed == null ? Gestures.getDefaultScrollSpeed() : checkSpeed(speed);
         for (float swipePercent = percent; swipePercent > 0.0f; swipePercent -= 1.0f) {
             float segment = Math.min(swipePercent, 1.0f);
-            PointerGesture swipe = gestures.swipe(area, swipeDirection, segment, scrollSpeed).pause(250);
+            PointerGesture swipe = gestures.swipe(clampToDisplay(area), swipeDirection, segment, scrollSpeed).pause(250);
 
             // Perform the gesture and return early if we reached the end
             Boolean scrollFinishedResult = performGestureAndWait(
@@ -183,7 +200,7 @@ public class GestureController {
 
         // To fling, we swipe in the opposite direction
         Direction swipeDirection = Direction.reverse(direction);
-        PointerGesture swipe = gestures.swipe(area, swipeDirection, 1.0f, flingSpeed);
+        PointerGesture swipe = gestures.swipe(clampToDisplay(area), swipeDirection, 1.0f, flingSpeed);
 
         // Perform the gesture and return true if we did not reach the end
         Boolean scrollFinishedResult = performGestureAndWait(
