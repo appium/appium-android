@@ -39,8 +39,7 @@ import io.appium.uiautomator2.common.exceptions.InvalidArgumentException;
 import io.appium.uiautomator2.common.exceptions.InvalidElementStateException;
 import io.appium.uiautomator2.common.exceptions.StaleElementReferenceException;
 import io.appium.uiautomator2.common.exceptions.UiAutomator2Exception;
-import io.appium.uiautomator2.core.InteractionController;
-import io.appium.uiautomator2.core.UiAutomatorBridge;
+import io.appium.uiautomator2.model.internal.CustomUiDevice;
 import io.appium.uiautomator2.model.settings.CurrentDisplayId;
 import io.appium.uiautomator2.model.settings.Settings;
 import io.appium.uiautomator2.utils.Logger;
@@ -71,12 +70,10 @@ public class ActionsExecutor {
     );
     private static final long NANOSECONDS_IN_MILLISECOND = 1000000;
     private final ActionTokens actionTokens;
-    private final InteractionController interactionController;
 
     public ActionsExecutor(ActionTokens actionTokens) {
         this.actionTokens = actionTokens;
         this.keyCharacterMap = KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD);
-        this.interactionController = UiAutomatorBridge.getInstance().getInteractionController();
     }
 
     private static boolean shouldIncludeEvent(MotionInputEventParams eventParams, boolean shouldHovering) {
@@ -352,7 +349,7 @@ public class ActionsExecutor {
                             eventTime, keyAction, event.getKeyCode(), 0,
                             event.getMetaState() | metaKeysToState(depressedMetaKeys),
                             KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0);
-                    result &= interactionController.injectEventSync(keyEvent);
+                    result &= CustomUiDevice.getInstance().injectInputEvent(keyEvent);
                     logEvent(keyEvent, eventTime, result);
                     hasUnsettledKeyEvents = true;
                 }
@@ -375,7 +372,7 @@ public class ActionsExecutor {
         final KeyEvent keyEvent = new KeyEvent(startTimestamp + eventParam.startDelta,
                 eventTime, keyAction, w3CKeyCode.getAndroidCodePoint(), 0,
                 metaKeysToState(depressedMetaKeys), KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0);
-        result = interactionController.injectEventSync(keyEvent);
+        result = CustomUiDevice.getInstance().injectInputEvent(keyEvent);
         logEvent(keyEvent, eventTime, result);
         hasUnsettledKeyEvents = true;
         return result;
@@ -492,7 +489,7 @@ public class ActionsExecutor {
                     }
                 }
 
-                result &= interactionController.injectEventSync(synthesizedEvent);
+                result &= CustomUiDevice.getInstance().injectInputEvent(synthesizedEvent);
                 logEvent(synthesizedEvent, eventTime, result);
                 synthesizedEvent.recycle();
             }

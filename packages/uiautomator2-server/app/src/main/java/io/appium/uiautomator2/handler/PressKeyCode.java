@@ -22,12 +22,11 @@ import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 
 import io.appium.uiautomator2.common.exceptions.InvalidElementStateException;
-import io.appium.uiautomator2.core.InteractionController;
-import io.appium.uiautomator2.core.UiAutomatorBridge;
 import io.appium.uiautomator2.handler.request.SafeRequestHandler;
 import io.appium.uiautomator2.http.AppiumResponse;
 import io.appium.uiautomator2.http.IHttpRequest;
 import io.appium.uiautomator2.model.api.KeyCodeModel;
+import io.appium.uiautomator2.model.internal.CustomUiDevice;
 
 import static io.appium.uiautomator2.utils.Device.getUiDevice;
 import static io.appium.uiautomator2.utils.ModelUtils.toModel;
@@ -48,8 +47,6 @@ public class PressKeyCode extends SafeRequestHandler {
                 ? getUiDevice().pressKeyCode(keyCode)
                 : getUiDevice().pressKeyCode(keyCode, model.metastate);
         } else {
-            final InteractionController interactionController = UiAutomatorBridge.getInstance()
-                .getInteractionController();
             final int metaState = model.metastate == null ? 0 : model.metastate;
             final int source = model.source == null ? InputDevice.SOURCE_KEYBOARD : model.source;
             final int flags = model.flags == null ? 0 : model.flags;
@@ -59,12 +56,12 @@ public class PressKeyCode extends SafeRequestHandler {
                     now, now, KeyEvent.ACTION_DOWN, keyCode, 0, metaState,
                     KeyCharacterMap.VIRTUAL_KEYBOARD, 0, flags, source
             );
-            isSuccessful = interactionController.injectEventSync(downEvent);
+            isSuccessful = CustomUiDevice.getInstance().injectInputEvent(downEvent);
             KeyEvent upEvent = new KeyEvent(
                     now, now, KeyEvent.ACTION_UP, keyCode, 0, metaState,
                     KeyCharacterMap.VIRTUAL_KEYBOARD, 0, flags, source
             );
-            isSuccessful &= interactionController.injectEventSync(upEvent);
+            isSuccessful &= CustomUiDevice.getInstance().injectInputEvent(upEvent);
         }
         if (!isSuccessful) {
             throw new InvalidElementStateException(String.format(

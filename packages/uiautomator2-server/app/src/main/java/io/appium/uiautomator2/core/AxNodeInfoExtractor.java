@@ -57,8 +57,7 @@ public abstract class AxNodeInfoExtractor {
         if (object instanceof AccessibilityNodeInfo) {
             return (AccessibilityNodeInfo) object;
         } else if (object instanceof UiObject2) {
-            return (AccessibilityNodeInfo) invoke(getMethod(UiObject2.class,
-                    "getAccessibilityNodeInfo"), object);
+            return ((UiObject2) object).getAccessibilityNodeInfo();
         } else if (object instanceof UiObject) {
             return (AccessibilityNodeInfo) invoke(getMethod(UiObject.class,
                     "findAccessibilityNodeInfo", long.class), object, 0L);

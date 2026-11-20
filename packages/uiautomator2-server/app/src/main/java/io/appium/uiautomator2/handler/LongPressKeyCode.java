@@ -22,12 +22,11 @@ import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
 
 import io.appium.uiautomator2.common.exceptions.InvalidElementStateException;
-import io.appium.uiautomator2.core.InteractionController;
-import io.appium.uiautomator2.core.UiAutomatorBridge;
 import io.appium.uiautomator2.handler.request.SafeRequestHandler;
 import io.appium.uiautomator2.http.AppiumResponse;
 import io.appium.uiautomator2.http.IHttpRequest;
 import io.appium.uiautomator2.model.api.KeyCodeModel;
+import io.appium.uiautomator2.model.internal.CustomUiDevice;
 
 import static io.appium.uiautomator2.utils.ModelUtils.toModel;
 
@@ -45,16 +44,15 @@ public class LongPressKeyCode extends SafeRequestHandler {
         final int flags = model.flags == null ? 0 : model.flags;
         final int source = model.source == null ? InputDevice.SOURCE_KEYBOARD : model.source;
 
-        final InteractionController interactionController = UiAutomatorBridge.getInstance().getInteractionController();
         final long now = SystemClock.uptimeMillis();
         // https://android.googlesource.com/platform/frameworks/base.git/+/9d83b4783c33f1fafc43f367503e129e5a5047fa/cmds/input/src/com/android/commands/input/Input.java
-        boolean isSuccessful = interactionController.injectEventSync(new KeyEvent(
+        boolean isSuccessful = CustomUiDevice.getInstance().injectInputEvent(new KeyEvent(
                 now, now, KeyEvent.ACTION_DOWN, keyCode,
                 0, metastate, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, flags, source));
-        isSuccessful &= interactionController.injectEventSync(new KeyEvent(
+        isSuccessful &= CustomUiDevice.getInstance().injectInputEvent(new KeyEvent(
                 now, now, KeyEvent.ACTION_DOWN, keyCode,
                 1, metastate, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, flags | KeyEvent.FLAG_LONG_PRESS, source));
-        isSuccessful &= interactionController.injectEventSync(new KeyEvent(
+        isSuccessful &= CustomUiDevice.getInstance().injectInputEvent(new KeyEvent(
                 now, now, KeyEvent.ACTION_UP, keyCode,
                 0, metastate, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, flags, source));
         if (!isSuccessful) {

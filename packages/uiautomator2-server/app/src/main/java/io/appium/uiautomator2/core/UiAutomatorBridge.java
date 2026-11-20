@@ -47,11 +47,6 @@ public class UiAutomatorBridge {
         return Settings.get(CurrentDisplayId.class).getValue();
     }
 
-    public InteractionController getInteractionController() {
-        return new InteractionController(invoke(getMethod(UiDevice.class, "getInteractionController"),
-                Device.getUiDevice()));
-    }
-
     public UiAutomation getUiAutomation() {
         return (UiAutomation) invoke(getMethod(UiDevice.class, "getUiAutomation"), Device.getUiDevice());
     }

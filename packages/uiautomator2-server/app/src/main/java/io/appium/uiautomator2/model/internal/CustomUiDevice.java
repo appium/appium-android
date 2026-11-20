@@ -17,16 +17,20 @@
 package io.appium.uiautomator2.model.internal;
 
 import android.app.Instrumentation;
+import android.app.Service;
 import android.app.UiAutomation;
 import android.graphics.Point;
+import android.hardware.display.DisplayManager;
 import android.os.SystemClock;
 import android.util.SparseArray;
 import android.view.Display;
+import android.view.InputEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityWindowInfo;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.BySelector;
 import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObject2;
@@ -57,13 +61,13 @@ import static io.appium.uiautomator2.model.BySelectorHelper.toBySelector;
 import static io.appium.uiautomator2.utils.AXWindowHelpers.getCachedWindowRoots;
 import static io.appium.uiautomator2.utils.Device.getUiDevice;
 import static io.appium.uiautomator2.utils.ReflectionUtils.getConstructor;
-import static io.appium.uiautomator2.utils.ReflectionUtils.getField;
 import static io.appium.uiautomator2.utils.ReflectionUtils.getMethod;
 import static io.appium.uiautomator2.utils.ReflectionUtils.invoke;
 
 public class CustomUiDevice {
     private static final int CHANGE_ROTATION_TIMEOUT_MS = 2000;
-    private static final String FIELD_M_INSTRUMENTATION = "mInstrumentation";
+    private static final int GET_UI_AUTOMATION_ATTEMPTS = 3;
+    private static final long GET_UI_AUTOMATION_RETRY_DELAY_MS = 500;
 
     private static CustomUiDevice INSTANCE = null;
     private final Method METHOD_FIND_MATCH;
@@ -72,11 +76,9 @@ public class CustomUiDevice {
     private final Constructor<?> uiObject2Constructor;
     private final Instrumentation mInstrumentation;
     private final Object nativeGestureController;
-    private volatile Method getDisplayByIdMethod;
-    private volatile Method getDisplaySizeMethod;
 
     private CustomUiDevice() {
-        this.mInstrumentation = (Instrumentation) getField(UiDevice.class, FIELD_M_INSTRUMENTATION, Device.getUiDevice());
+        this.mInstrumentation = InstrumentationRegistry.getInstrumentation();
         this.ByMatcherClass = ReflectionUtils.getClass("androidx.test.uiautomator.ByMatcher");
         this.METHOD_FIND_MATCH = getMethod(
                 ByMatcherClass, "findMatch",
@@ -106,7 +108,23 @@ public class CustomUiDevice {
 
     public UiAutomation getUiAutomation() {
         int flags = Configurator.getInstance().getUiAutomationFlags();
-        return getInstrumentation().getUiAutomation(flags);
+        UiAutomation uiAutomation = null;
+        // Mirrors the retry in UiDevice#getUiAutomation: instrumentation may transiently return null
+        for (int attempt = 0; attempt < GET_UI_AUTOMATION_ATTEMPTS; attempt++) {
+            uiAutomation = getInstrumentation().getUiAutomation(flags);
+            if (uiAutomation != null) {
+                break;
+            }
+            if (attempt < GET_UI_AUTOMATION_ATTEMPTS - 1) {
+                Logger.warn("Got null UiAutomation from instrumentation. Retrying...");
+                SystemClock.sleep(GET_UI_AUTOMATION_RETRY_DELAY_MS);
+            }
+        }
+        return uiAutomation;
+    }
+
+    public boolean injectInputEvent(InputEvent event) {
+        return getUiAutomation().injectInputEvent(event, true);
     }
 
     private UiObject2 toUiObject2(@NonNull BySelector selector, @Nullable AccessibilityNodeInfo node) {
@@ -231,31 +249,19 @@ public class CustomUiDevice {
 
     @Nullable
     public Display getDisplayById(int displayId) {
-        // These lookups happen for every node of the page source, so the reflective
-        // method resolution is only done once.
-        Method method = getDisplayByIdMethod;
-        if (method == null) {
-            method = ReflectionUtils.getMethod(UiDevice.class, "getDisplayById", int.class);
-            getDisplayByIdMethod = method;
-        }
-        try {
-            return (Display) method.invoke(getUiDevice(), displayId);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new UiAutomator2Exception(e);
-        }
+        DisplayManager displayManager = (DisplayManager) getInstrumentation().getTargetContext()
+                .getSystemService(Service.DISPLAY_SERVICE);
+        return displayManager.getDisplay(displayId);
     }
 
     public Point getDisplaySize(int displayId) {
-        Method method = getDisplaySizeMethod;
-        if (method == null) {
-            method = ReflectionUtils.getMethod(UiDevice.class, "getDisplaySize", int.class);
-            getDisplaySizeMethod = method;
+        Display display = getDisplayById(displayId);
+        if (display == null) {
+            throw new IllegalArgumentException(String.format("Display %d not found or not accessible", displayId));
         }
-        try {
-            return (Point) method.invoke(getUiDevice(), displayId);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw new UiAutomator2Exception(e);
-        }
+        Point size = new Point();
+        display.getRealSize(size);
+        return size;
     }
 
     public int getTopmostWindowDisplayId() {
