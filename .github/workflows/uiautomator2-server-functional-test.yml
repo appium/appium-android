@@ -23,7 +23,7 @@ jobs:
       matrix:
         emu: ${{ fromJSON(needs.prepare_matrix.outputs.matrix) }}
         # Keep each shard under ~10 min; see scripts/e2e.sh for how tests are split
-        shard: [0, 1, 2, 3]
+        shard: [1, 2, 3, 4]
       fail-fast: false
     env:
       CI: true
