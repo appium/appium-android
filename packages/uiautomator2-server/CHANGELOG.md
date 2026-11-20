@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.0.12](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.11...appium-uiautomator2-server@11.0.12) (2026-11-20)
+
+### Miscellaneous Chores
+
+* **gradle:** update dependency com.github.appium.appium-android:xpath2-processor to v2.0.6 ([#156](https://github.com/appium/appium-android/issues/156)) ([acbdc92](https://github.com/appium/appium-android/commit/acbdc92edf2c7217c3f1f847cd218b190eb96594))
+
+
 ## [11.0.11](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.10...appium-uiautomator2-server@11.0.11) (2026-11-19)
 
 ### Miscellaneous Chores
