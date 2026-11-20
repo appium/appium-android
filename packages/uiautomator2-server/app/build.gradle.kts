@@ -167,7 +167,6 @@ dependencies {
     testImplementation(libs.javassist)
     // Android test dependencies
     androidTestImplementation(libs.junit)
-    androidTestImplementation(libs.okhttp)
 }
 
 val apiDemosApkFile = project.file("${project.layout.buildDirectory.get()}/downloads/ApiDemos-debug.apk")

@@ -23,9 +23,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 
-
-import java.io.IOException;
-
 import io.netty.handler.codec.http.HttpResponseStatus;
 
 public class Response {
@@ -36,9 +33,9 @@ public class Response {
     private final String body;
     private final int code;
 
-    public Response(final com.squareup.okhttp.Response response) throws IOException {
-        body = response.body().string();
-        code = response.code();
+    public Response(final int code, final String body) {
+        this.code = code;
+        this.body = body;
     }
 
     public boolean isSuccessful() {

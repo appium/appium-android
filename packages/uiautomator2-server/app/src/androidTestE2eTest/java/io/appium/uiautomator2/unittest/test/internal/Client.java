@@ -18,39 +18,31 @@ package io.appium.uiautomator2.unittest.test.internal;
 import android.os.SystemClock;
 
 import com.google.gson.JsonObject;
-import com.squareup.okhttp.MediaType;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.RequestBody;
 
-
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 import io.appium.uiautomator2.common.exceptions.UiAutomator2Exception;
 import io.appium.uiautomator2.unittest.test.Config;
 
 import static android.os.SystemClock.elapsedRealtime;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 public abstract class Client {
 
-    private static final MediaType JSON = MediaType.parse("application/json; " + "charset=utf-8");
-    private static final OkHttpClient HTTP_CLIENT = new OkHttpClient();
-
-    static {
-        final int timeout = 15 * 1000;
-        HTTP_CLIENT.setConnectTimeout(timeout, SECONDS);
-        HTTP_CLIENT.setReadTimeout(timeout, SECONDS);
-        HTTP_CLIENT.setWriteTimeout(timeout, SECONDS);
-    }
+    private static final String JSON = "application/json; charset=utf-8";
+    private static final int CONNECT_TIMEOUT_MS = 15 * 1000;
+    private static final int READ_TIMEOUT_MS = 2 * 60 * 1000;
 
     public static Response get(final String path) {
         return get(WebDriverSession.getInstance().getBaseUrl(), path);
     }
 
     private static Response get(final String baseUrl, final String path) {
-        Request request = new Request.Builder().url(baseUrl + path).build();
-        return execute(request);
+        return execute("GET", baseUrl + path, null);
     }
 
     public static Response post(final String path, final JsonObject body) {
@@ -58,15 +50,12 @@ public abstract class Client {
     }
 
     public static Response post(final String baseUrl, final String path, final JsonObject body) {
-        Request request = new Request.Builder().url(baseUrl + path)
-                .post(RequestBody.create(JSON, body.toString())).build();
-        return execute(request);
+        return execute("POST", baseUrl + path, body.toString());
     }
 
     public static Response delete() {
-        Request request = new Request.Builder().url(WebDriverSession.getInstance().getBaseUrl())
-                .delete(RequestBody.create(JSON, new JsonObject().toString())).build();
-        return execute(request);
+        return execute("DELETE", WebDriverSession.getInstance().getBaseUrl(),
+                new JsonObject().toString());
     }
 
     public static void waitForNettyStatus(final NettyStatus status) {
@@ -90,12 +79,43 @@ public abstract class Client {
                 status, actualStatus));
     }
 
-    private static Response execute(final Request request) {
+    private static Response execute(final String method, final String url, final String body) {
+        HttpURLConnection connection = null;
         try {
-            return new Response(HTTP_CLIENT.newCall(request).execute());
+            connection = (HttpURLConnection) new URL(url).openConnection();
+            connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            connection.setReadTimeout(READ_TIMEOUT_MS);
+            connection.setRequestMethod(method);
+            if (body != null) {
+                connection.setDoOutput(true);
+                connection.setRequestProperty("Content-Type", JSON);
+                connection.getOutputStream().write(body.getBytes(StandardCharsets.UTF_8));
+            }
+            final int code = connection.getResponseCode();
+            final InputStream stream = code >= HttpURLConnection.HTTP_BAD_REQUEST
+                    ? connection.getErrorStream() : connection.getInputStream();
+            return new Response(code, readFully(stream));
         } catch (IOException e) {
-            throw new UiAutomator2Exception(request.method() + " \"" + request.urlString() + "\" " +
-                    "failed. ", e);
+            throw new UiAutomator2Exception(method + " \"" + url + "\" failed. ", e);
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    private static String readFully(final InputStream stream) throws IOException {
+        if (stream == null) {
+            return "";
+        }
+        try (InputStream in = stream) {
+            final ByteArrayOutputStream out = new ByteArrayOutputStream();
+            final byte[] buffer = new byte[4096];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+            return out.toString(StandardCharsets.UTF_8.name());
         }
     }
 
