@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.1.1](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.1.0...appium-uiautomator2-server@11.1.1) (2026-11-20)
+
+### Bug Fixes
+
+* **uiautomator2-server:** clamp rectangle gestures to the display ([#160](https://github.com/appium/appium-android/issues/160)) ([aa3537b](https://github.com/appium/appium-android/commit/aa3537ba220a0e54e5a629165ef4321a29c597fe))
+
+
 ## [11.1.0](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.15...appium-uiautomator2-server@11.1.0) (2026-11-20)
 
 ### Features
