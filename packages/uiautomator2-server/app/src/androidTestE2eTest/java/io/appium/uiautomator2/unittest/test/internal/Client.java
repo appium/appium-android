@@ -34,7 +34,8 @@ import static android.os.SystemClock.elapsedRealtime;
 public abstract class Client {
 
     private static final String JSON = "application/json; charset=utf-8";
-    private static final int TIMEOUT_MS = 15 * 1000;
+    private static final int CONNECT_TIMEOUT_MS = 15 * 1000;
+    private static final int READ_TIMEOUT_MS = 2 * 60 * 1000;
 
     public static Response get(final String path) {
         return get(WebDriverSession.getInstance().getBaseUrl(), path);
@@ -82,8 +83,8 @@ public abstract class Client {
         HttpURLConnection connection = null;
         try {
             connection = (HttpURLConnection) new URL(url).openConnection();
-            connection.setConnectTimeout(TIMEOUT_MS);
-            connection.setReadTimeout(TIMEOUT_MS);
+            connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            connection.setReadTimeout(READ_TIMEOUT_MS);
             connection.setRequestMethod(method);
             if (body != null) {
                 connection.setDoOutput(true);
