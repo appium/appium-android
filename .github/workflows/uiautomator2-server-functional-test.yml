@@ -17,19 +17,24 @@ jobs:
     uses: ./.github/workflows/emulator-matrix.yml
 
   test:
+    name: test (API ${{ matrix.emu.apiLevel }}, shard ${{ matrix.shard }})
     needs: prepare_matrix
     strategy:
       matrix:
-        include: ${{ fromJSON(needs.prepare_matrix.outputs.matrix) }}
+        emu: ${{ fromJSON(needs.prepare_matrix.outputs.matrix) }}
+        # Keep each shard under ~10 min; see scripts/e2e.sh for how tests are split
+        shard: [0, 1, 2, 3]
       fail-fast: false
     env:
       CI: true
       ANDROID_AVD: emulator
-      ANDROID_SDK_VERSION: '${{ matrix.apiLevel }}'
-      PLATFORM_VERSION: '${{ matrix.platformVersion }}'
-      EMU_TAG: '${{ matrix.emuTag }}'
+      ANDROID_SDK_VERSION: '${{ matrix.emu.apiLevel }}'
+      PLATFORM_VERSION: '${{ matrix.emu.platformVersion }}'
+      EMU_TAG: '${{ matrix.emu.emuTag }}'
+      SHARD_COUNT: 4
+      SHARD_INDEX: ${{ matrix.shard }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - name: Enable KVM group perms
@@ -53,7 +58,7 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-${{ matrix.apiLevel }}
+          key: avd-${{ matrix.emu.apiLevel }}
       # https://github.com/marketplace/actions/android-emulator-runner
       - uses: reactivecircus/android-emulator-runner@v2
         if: steps.avd-cache.outputs.cache-hit != 'true'
@@ -62,11 +67,11 @@ jobs:
           script: echo "Generated AVD snapshot for caching."
           avd-name: $ANDROID_AVD
           force-avd-creation: false
-          api-level: ${{ matrix.apiLevel }}
+          api-level: ${{ matrix.emu.apiLevel }}
           disable-spellchecker: true
-          target: ${{ matrix.emuTag }}
+          target: ${{ matrix.emu.emuTag }}
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          arch: ${{ matrix.arch }}
+          arch: ${{ matrix.emu.arch }}
           disable-animations: true
       - uses: reactivecircus/android-emulator-runner@v2
         name: Run end-to-end tests
@@ -77,15 +82,15 @@ jobs:
             npm run test:e2e --workspace appium-uiautomator2-server
           avd-name: $ANDROID_AVD
           force-avd-creation: false
-          api-level: ${{ matrix.apiLevel }}
+          api-level: ${{ matrix.emu.apiLevel }}
           disable-spellchecker: true
-          target: ${{ matrix.emuTag }}
+          target: ${{ matrix.emu.emuTag }}
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
-          arch: ${{ matrix.arch }}
+          arch: ${{ matrix.emu.arch }}
           disable-animations: true
       - name: Save logcat output
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
         with:
-          name: logcat-api${{ matrix.apiLevel }}
+          name: logcat-api${{ matrix.emu.apiLevel }}-shard${{ matrix.shard }}
           path: logcat.log
