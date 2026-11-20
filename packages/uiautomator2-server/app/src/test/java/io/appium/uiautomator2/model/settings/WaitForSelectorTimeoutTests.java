@@ -20,20 +20,23 @@ import androidx.test.uiautomator.Configurator;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
-import static org.mockito.Matchers.anyLong;
+import io.appium.uiautomator2.StaticMocks;
+
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({Configurator.class})
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class WaitForSelectorTimeoutTests {
+    @Rule
+    public final StaticMocks staticMocks = new StaticMocks();
+
     private WaitForSelectorTimeout waitForSelectorTimeout;
 
     @Mock
@@ -42,8 +45,7 @@ public class WaitForSelectorTimeoutTests {
     @Before
     public void setup() {
         waitForSelectorTimeout = new WaitForSelectorTimeout();
-        PowerMockito.mockStatic(Configurator.class);
-        when(Configurator.getInstance()).thenReturn(configurator);
+        staticMocks.mock(Configurator.class).when(Configurator::getInstance).thenReturn(configurator);
         when(configurator.setWaitForSelectorTimeout(anyLong())).thenReturn(configurator);
     }
 

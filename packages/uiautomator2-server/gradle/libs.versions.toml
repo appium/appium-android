@@ -1,7 +1,6 @@
 [versions]
 androidGradlePlugin = "9.5.1"
 gson = "2.15.0"
-javassist = "3.33.0-GA"
 junidecode = "0.5.2"
 junit = "4.13.2"
 nettyBuffer = "4.2.21.Final"
@@ -9,7 +8,7 @@ nettyCommon = "4.2.21.Final"
 nettyTransport = "4.2.21.Final"
 nettyCodecHttp = "4.2.21.Final"
 nettyHandler = "4.2.21.Final"
-powermockApiMockito2 = "2.0.9"
+mockito = "5.24.0"
 robolectric = "4.18.1"
 unmockplugin = "0.11.0"
 xpath2Processor = "2.0.6"
@@ -20,7 +19,6 @@ androidx-test-runner = "1.7.0"
 
 [libraries]
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
-javassist = { module = "org.javassist:javassist", version.ref = "javassist" }
 junidecode = { module = "net.gcardone.junidecode:junidecode", version.ref = "junidecode" }
 junit = { module = "junit:junit", version.ref = "junit" }
 netty-buffer = { module = "io.netty:netty-buffer", version.ref = "nettyBuffer" }
@@ -28,10 +26,7 @@ netty-common = { module = "io.netty:netty-common", version.ref = "nettyCommon" }
 netty-transport = { module = "io.netty:netty-transport", version.ref = "nettyTransport" }
 netty-codec-http = { module = "io.netty:netty-codec-http", version.ref = "nettyCodecHttp" }
 netty-handler = { module = "io.netty:netty-handler", version.ref = "nettyHandler" }
-powermock-api-mockito2 = { module = "org.powermock:powermock-api-mockito2", version.ref = "powermockApiMockito2" }
-powermock-classloading-xstream = { module = "org.powermock:powermock-classloading-xstream", version.ref = "powermockApiMockito2" }
-powermock-module-junit4 = { module = "org.powermock:powermock-module-junit4", version.ref = "powermockApiMockito2" }
-powermock-module-junit4-rule = { module = "org.powermock:powermock-module-junit4-rule", version.ref = "powermockApiMockito2" }
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 unmockplugin = { module = "com.github.bjoernq:unmockplugin", version.ref = "unmockplugin" }
 xpath2-processor = { module = "com.github.appium.appium-android:xpath2-processor", version.ref = "xpath2Processor" }
@@ -42,7 +37,6 @@ androidx-test-runner = {module = "androidx.test:runner", version.ref = "androidx
 
 [bundles]
 androix-test = ["androidx-test-core","androidx-test-junit","androidx-test-runner"]
-powermock = ["powermock-api-mockito2","powermock-classloading-xstream","powermock-module-junit4","powermock-module-junit4-rule"]
 netty-core = ["netty-buffer","netty-common","netty-transport"]
 netty-http = ["netty-codec-http","netty-handler"]
 

@@ -100,23 +100,6 @@ android {
         unitTests {
             isIncludeAndroidResources = true
             isReturnDefaultValues = true
-            all {
-                it.jvmArgs(
-                    listOf(
-                        "--add-opens", "java.base/java.lang=ALL-UNNAMED",
-                        "--add-opens", "java.base/java.time=ALL-UNNAMED",
-                        "--add-opens", "java.base/java.time.format=ALL-UNNAMED",
-                        "--add-opens", "java.base/java.util=ALL-UNNAMED",
-                        "--add-opens", "java.base/java.util.concurrent=ALL-UNNAMED",
-                        "--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED",
-                        "--add-opens", "java.base/java.lang.reflect=ALL-UNNAMED",
-                        "--add-opens", "java.base/java.io=ALL-UNNAMED",
-                        "--add-opens", "java.base/java.net=ALL-UNNAMED",
-                        "--add-opens", "java.base/sun.net.www.protocol.http=ALL-UNNAMED",
-                        "--add-exports", "jdk.unsupported/sun.misc=ALL-UNNAMED"
-                    )
-                )
-            }
         }
     }
     packaging {
@@ -162,9 +145,8 @@ dependencies {
     implementation(libs.junidecode)
     // Test dependencies
     testImplementation(libs.junit)
-    testImplementation(libs.bundles.powermock)
+    testImplementation(libs.mockito.core)
     testImplementation(libs.robolectric)
-    testImplementation(libs.javassist)
     // Android test dependencies
     androidTestImplementation(libs.junit)
 }

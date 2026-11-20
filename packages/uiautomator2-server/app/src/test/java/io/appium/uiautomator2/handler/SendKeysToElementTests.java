@@ -22,13 +22,13 @@ import androidx.test.uiautomator.UiDevice;
 import androidx.test.uiautomator.UiObjectNotFoundException;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
+import io.appium.uiautomator2.StaticMocks;
 import io.appium.uiautomator2.model.AndroidElement;
 import io.appium.uiautomator2.model.api.SendKeysModel;
 import io.appium.uiautomator2.utils.Device;
@@ -39,9 +39,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({Device.class, TextUtils.class})
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class SendKeysToElementTests {
+    @Rule
+    public final StaticMocks staticMocks = new StaticMocks();
 
     @Mock
     private AndroidElement element;
@@ -58,10 +59,8 @@ public class SendKeysToElementTests {
 
     @Before
     public void setUp() {
-        PowerMockito.mockStatic(Device.class);
-        when(Device.getUiDevice()).thenReturn(uiDevice);
-        PowerMockito.mockStatic(TextUtils.class);
-        when(TextUtils.isEmpty(any())).thenAnswer(invocation -> {
+        staticMocks.mock(Device.class).when(Device::getUiDevice).thenReturn(uiDevice);
+        staticMocks.mock(TextUtils.class).when(() -> TextUtils.isEmpty(any())).thenAnswer(invocation -> {
             CharSequence str = invocation.getArgument(0);
             return str == null || str.length() == 0;
         });

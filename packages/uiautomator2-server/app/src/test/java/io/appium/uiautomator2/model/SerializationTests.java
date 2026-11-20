@@ -19,7 +19,7 @@ package io.appium.uiautomator2.model;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.powermock.modules.junit4.PowerMockRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import io.appium.uiautomator2.http.IHttpRequest;
 import io.appium.uiautomator2.model.api.KeyCodeModel;
@@ -29,9 +29,9 @@ import io.appium.uiautomator2.model.api.actions.W3CItemModel;
 import static io.appium.uiautomator2.utils.ModelUtils.toModel;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.junit.Assert.assertThat;
-import static org.powermock.api.mockito.PowerMockito.when;
+import static org.mockito.Mockito.when;
 
-@RunWith(PowerMockRunner.class)
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class SerializationTests {
     @Mock
     private IHttpRequest req;

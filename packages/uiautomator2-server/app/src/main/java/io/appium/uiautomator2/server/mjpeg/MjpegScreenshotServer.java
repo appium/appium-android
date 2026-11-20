@@ -36,9 +36,15 @@ public class MjpegScreenshotServer extends Thread {
     }
 
     public MjpegScreenshotServer(int port, List<MjpegScreenshotClient> clients) {
+        this(port, clients, new MjpegScreenshotStream(clients));
+    }
+
+    // package-private for tests
+    MjpegScreenshotServer(int port, List<MjpegScreenshotClient> clients,
+                          MjpegScreenshotStream mjpegScreenshotStream) {
         this.port = port;
         this.clients = clients;
-        this.mjpegScreenshotStream = new MjpegScreenshotStream(clients);
+        this.mjpegScreenshotStream = mjpegScreenshotStream;
     }
 
     @Override

@@ -31,15 +31,14 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
+import io.appium.uiautomator2.StaticMocks;
 import io.appium.uiautomator2.common.exceptions.UiSelectorSyntaxException;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
 import static org.mockito.Mockito.anyString;
@@ -51,9 +50,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @SuppressWarnings("deprecation")
-@RunWith(PowerMockRunner.class)
-@PrepareForTest(value = {UiDevice.class})
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class UiScrollableParserTests {
+    @Rule
+    public final StaticMocks staticMocks = new StaticMocks();
 
     @Rule
     public ExpectedException expectedException = ExpectedException.none();
@@ -76,8 +76,7 @@ public class UiScrollableParserTests {
 
     @Before
     public void setUp() {
-        PowerMockito.mockStatic(UiDevice.class);
-        when(UiDevice.getInstance()).thenReturn(uiDevice);
+        staticMocks.mock(UiDevice.class).when(UiDevice::getInstance).thenReturn(uiDevice);
         isUiObjectExist = false;
     }
 

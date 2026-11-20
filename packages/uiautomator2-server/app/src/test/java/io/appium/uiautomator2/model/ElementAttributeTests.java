@@ -22,13 +22,14 @@ import androidx.test.uiautomator.UiObject;
 import androidx.test.uiautomator.UiObject2;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.MockedStatic;
 import org.mockito.Mock;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
+import io.appium.uiautomator2.StaticMocks;
 import io.appium.uiautomator2.common.exceptions.NoSuchAttributeException;
 import io.appium.uiautomator2.core.AxNodeInfoExtractor;
 import io.appium.uiautomator2.utils.Attribute;
@@ -45,9 +46,11 @@ import static org.mockito.Mockito.when;
  * The values come from the page source reader {@link UiElementSnapshot#getAttributeValue}, which is
  * stubbed here because the unit test Android runtime predates these AccessibilityNodeInfo getters.
  */
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({AxNodeInfoExtractor.class, UiElementSnapshot.class})
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class ElementAttributeTests {
+    @Rule
+    public final StaticMocks staticMocks = new StaticMocks();
+
     @Mock
     private AccessibilityNodeInfo node;
     @Mock
@@ -60,13 +63,17 @@ public class ElementAttributeTests {
 
     @Before
     public void setup() {
-        PowerMockito.mockStatic(AxNodeInfoExtractor.class);
-        when(AxNodeInfoExtractor.toAxNodeInfo(any())).thenReturn(node);
-        PowerMockito.mockStatic(UiElementSnapshot.class);
-        when(UiElementSnapshot.getAttributeValue(node, Attribute.ERROR_TEXT)).thenReturn("Enter a valid email");
-        when(UiElementSnapshot.getAttributeValue(node, Attribute.PANE_TITLE)).thenReturn("Sign in");
-        when(UiElementSnapshot.getAttributeValue(node, Attribute.HEADING)).thenReturn(true);
-        when(UiElementSnapshot.getAttributeValue(node, Attribute.INPUT_TYPE)).thenReturn(33);
+        staticMocks.mock(AxNodeInfoExtractor.class)
+                .when(() -> AxNodeInfoExtractor.toAxNodeInfo(any())).thenReturn(node);
+        MockedStatic<UiElementSnapshot> snapshot = staticMocks.mock(UiElementSnapshot.class);
+        snapshot.when(() -> UiElementSnapshot.getAttributeValue(node, Attribute.ERROR_TEXT))
+                .thenReturn("Enter a valid email");
+        snapshot.when(() -> UiElementSnapshot.getAttributeValue(node, Attribute.PANE_TITLE))
+                .thenReturn("Sign in");
+        snapshot.when(() -> UiElementSnapshot.getAttributeValue(node, Attribute.HEADING))
+                .thenReturn(true);
+        snapshot.when(() -> UiElementSnapshot.getAttributeValue(node, Attribute.INPUT_TYPE))
+                .thenReturn(33);
         uiObject2Element = new UiObject2Element(uiObject2, true, null, null);
         uiObjectElement = new UiObjectElement(uiObject, true, null, null);
     }

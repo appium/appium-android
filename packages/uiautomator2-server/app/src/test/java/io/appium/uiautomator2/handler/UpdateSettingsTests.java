@@ -17,16 +17,16 @@
 package io.appium.uiautomator2.handler;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.Spy;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.Collections;
 
+import io.appium.uiautomator2.StaticMocks;
 import io.appium.uiautomator2.common.exceptions.UiAutomator2Exception;
 import io.appium.uiautomator2.handler.request.BaseRequestHandler;
 import io.appium.uiautomator2.http.AppiumResponse;
@@ -86,11 +86,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
-import static org.powermock.api.mockito.PowerMockito.when;
+import static org.mockito.Mockito.when;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest(BaseRequestHandler.class)
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class UpdateSettingsTests {
+    @Rule
+    public final StaticMocks staticMocks = new StaticMocks();
+
     private static final String SETTING_NAME = "my_setting";
     private static final String SETTING_VALUE = "my_value";
 
@@ -108,8 +110,8 @@ public class UpdateSettingsTests {
         AppiumUIA2Driver.getInstance().initializeSession(Collections.emptyMap());
         doNothing().when(mySetting).update(any());
 
-        PowerMockito.mockStatic(BaseRequestHandler.class);
-        when(BaseRequestHandler.getSessionId(req)).thenReturn("sessionId");
+        staticMocks.mock(BaseRequestHandler.class)
+                .when(() -> BaseRequestHandler.getSessionId(req)).thenReturn("sessionId");
         doReturn(mySetting).when(updateSettings).getSetting(SETTING_NAME);
     }
 
