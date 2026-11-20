@@ -1,29 +1,23 @@
 package io.appium.uiautomator2.server.mjpeg;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.junit.After;
 import org.junit.Before;
 import static org.junit.Assert.*;
 
 import java.net.URL;
 import java.net.HttpURLConnection;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 import java.nio.charset.StandardCharsets;
 import java.net.Socket;
 
 import org.junit.Assume;
-import static org.mockito.Mockito.spy;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
 import io.appium.uiautomator2.server.mjpeg.MjpegScreenshotServer;
 import io.appium.uiautomator2.server.mjpeg.MjpegScreenshotStream;
 import io.appium.uiautomator2.server.ServerConfig;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest(MjpegScreenshotStream.class)
 public class MjpegScreenshotTest {
   private static MjpegScreenshotServer serverThread;
   private static int streamingPort;
@@ -35,8 +29,7 @@ public class MjpegScreenshotTest {
     Assume.assumeTrue(System.getenv("CI") == null);
 
     // Create a MJPEG server with a mocked getScreenshot method
-    MjpegScreenshotStream mockScreenshotStreamSpy =
-        spy(new MjpegScreenshotStream(Collections.emptyList()));
+    List<MjpegScreenshotClient> clients = new ArrayList<>();
     String mockScreenshotData = "screenshot data";
     byte[] mockHTTPResponse =
         ("HTTP/1.1 200 OK\n"
@@ -45,14 +38,15 @@ public class MjpegScreenshotTest {
                 + "\n\n"
                 + mockScreenshotData)
             .getBytes(StandardCharsets.UTF_8);
-    PowerMockito.stub(PowerMockito.method(MjpegScreenshotStream.class, "getScreenshot"))
-        .toReturn(mockHTTPResponse);
-    PowerMockito.whenNew(MjpegScreenshotStream.class)
-        .withAnyArguments()
-        .thenReturn(mockScreenshotStreamSpy);
+    MjpegScreenshotStream mockScreenshotStream = new MjpegScreenshotStream(clients) {
+      @Override
+      byte[] getScreenshot() {
+        return mockHTTPResponse;
+      }
+    };
 
     streamingPort = ServerConfig.DEFAULT_MJPEG_SERVER_PORT;
-    serverThread = new MjpegScreenshotServer(streamingPort);
+    serverThread = new MjpegScreenshotServer(streamingPort, clients, mockScreenshotStream);
     serverThread.start();
     assertTrue(serverThread.isAlive());
   }

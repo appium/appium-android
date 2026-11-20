@@ -20,12 +20,12 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.UiDevice;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
+import io.appium.uiautomator2.StaticMocks;
 import io.appium.uiautomator2.core.UiAutomation;
 import io.appium.uiautomator2.core.UiAutomatorBridge;
 import io.appium.uiautomator2.model.NotificationListener;
@@ -37,31 +37,28 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({NotificationListener.class, UiAutomation.class, UiAutomatorBridge.class,
-        UiDevice.class, InstrumentationRegistry.class})
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class EnableNotificationListenerTests {
+    @Rule
+    public final StaticMocks staticMocks = new StaticMocks();
 
     private NotificationListener notificationListener;
     private EnableNotificationListener enableNotificationListener;
 
     @Before
     public void setup() {
-        PowerMockito.mockStatic(InstrumentationRegistry.class);
-        when(InstrumentationRegistry.getInstrumentation()).thenReturn(null);
+        staticMocks.mock(InstrumentationRegistry.class).when(InstrumentationRegistry::getInstrumentation).thenReturn(null);
 
-        PowerMockito.mockStatic(UiDevice.class);
-        when(UiDevice.getInstance(null)).thenReturn(mock(UiDevice.class));
+        staticMocks.mock(UiDevice.class)
+                .when(() -> UiDevice.getInstance(null)).thenReturn(mock(UiDevice.class));
+        staticMocks.mock(UiAutomatorBridge.class)
+                .when(UiAutomatorBridge::getInstance).thenReturn(mock(UiAutomatorBridge.class));
+        staticMocks.mock(UiAutomation.class)
+                .when(UiAutomation::getInstance).thenReturn(mock(UiAutomation.class));
 
-        PowerMockito.mockStatic(UiAutomatorBridge.class);
-        when(UiAutomatorBridge.getInstance()).thenReturn(mock(UiAutomatorBridge.class));
-
-        PowerMockito.mockStatic(UiAutomation.class);
-        when(UiAutomation.getInstance()).thenReturn(mock(UiAutomation.class));
-
-        PowerMockito.mockStatic(NotificationListener.class);
         notificationListener = mock(NotificationListener.class);
-        when(NotificationListener.getInstance()).thenReturn(notificationListener);
+        staticMocks.mock(NotificationListener.class)
+                .when(NotificationListener::getInstance).thenReturn(notificationListener);
 
         enableNotificationListener = new EnableNotificationListener();
 

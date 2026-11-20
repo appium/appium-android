@@ -23,16 +23,17 @@ import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.uiautomator.UiDevice;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+import org.mockito.MockedStatic;
+import org.mockito.junit.MockitoJUnitRunner;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import io.appium.uiautomator2.StaticMocks;
 import io.appium.uiautomator2.core.UiAutomation;
 import io.appium.uiautomator2.core.UiAutomatorBridge;
 
@@ -46,12 +47,12 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.powermock.api.mockito.PowerMockito.spy;
+import static org.mockito.Mockito.spy;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({NotificationListener.class, UiAutomation.class, UiAutomatorBridge.class,
-        UiDevice.class, InstrumentationRegistry.class})
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class NotificationListenerTests {
+    @Rule
+    public final StaticMocks staticMocks = new StaticMocks();
 
     private NotificationListener notificationListener;
     private UiAutomation uiAutomation;
@@ -64,19 +65,17 @@ public class NotificationListenerTests {
         toastText.add("toast text");
 
         originalAccessibilityEventListener = mock(OnAccessibilityEventListener.class);
-        PowerMockito.mockStatic(InstrumentationRegistry.class);
-        when(InstrumentationRegistry.getInstrumentation()).thenReturn(null);
+        staticMocks.mock(InstrumentationRegistry.class).when(InstrumentationRegistry::getInstrumentation).thenReturn(null);
 
-        PowerMockito.mockStatic(UiDevice.class);
-        when(UiDevice.getInstance(null)).thenReturn(mock(UiDevice.class));
-        when(UiDevice.getInstance()).thenReturn(mock(UiDevice.class));
+        MockedStatic<UiDevice> uiDeviceStatic = staticMocks.mock(UiDevice.class);
+        uiDeviceStatic.when(() -> UiDevice.getInstance(null)).thenReturn(mock(UiDevice.class));
+        uiDeviceStatic.when(UiDevice::getInstance).thenReturn(mock(UiDevice.class));
 
-        PowerMockito.mockStatic(UiAutomatorBridge.class);
-        when(UiAutomatorBridge.getInstance()).thenReturn(mock(UiAutomatorBridge.class));
+        staticMocks.mock(UiAutomatorBridge.class)
+                .when(UiAutomatorBridge::getInstance).thenReturn(mock(UiAutomatorBridge.class));
 
-        PowerMockito.mockStatic(UiAutomation.class);
         uiAutomation = mock(UiAutomation.class);
-        when(UiAutomation.getInstance()).thenReturn(uiAutomation);
+        staticMocks.mock(UiAutomation.class).when(UiAutomation::getInstance).thenReturn(uiAutomation);
         when(uiAutomation.getOnAccessibilityEventListener())
                 .thenReturn(originalAccessibilityEventListener);
 

@@ -20,23 +20,24 @@ import androidx.test.uiautomator.UiDevice;
 
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
+import org.mockito.junit.MockitoJUnitRunner;
 
+import io.appium.uiautomator2.StaticMocks;
 import io.appium.uiautomator2.utils.Device;
 
-import static org.mockito.Matchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({Device.class})
+@RunWith(MockitoJUnitRunner.Silent.class)
 public class CompressedLayoutHierarchyTests {
+    @Rule
+    public final StaticMocks staticMocks = new StaticMocks();
 
     private CompressedLayoutHierarchy compressedLayoutHierarchy;
 
@@ -47,8 +48,7 @@ public class CompressedLayoutHierarchyTests {
     public void setup() {
         compressedLayoutHierarchy = new CompressedLayoutHierarchy();
         doNothing().when(uiDevice).setCompressedLayoutHeirarchy(anyBoolean());
-        PowerMockito.mockStatic(Device.class);
-        when(Device.getUiDevice()).thenReturn(uiDevice);
+        staticMocks.mock(Device.class).when(Device::getUiDevice).thenReturn(uiDevice);
     }
 
     @Test

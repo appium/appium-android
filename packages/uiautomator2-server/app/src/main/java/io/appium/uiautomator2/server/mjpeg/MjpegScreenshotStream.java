@@ -116,7 +116,8 @@ public class MjpegScreenshotStream extends Thread {
         }
     }
 
-    private byte[] getScreenshot() {
+    // package-private for tests
+    byte[] getScreenshot() {
         Bitmap screenshot = CustomUiDevice.getInstance().getUiAutomation().takeScreenshot();
         if (screenshot == null) {
             throw new TakeScreenshotException("Could not take screenshot: UiAutomation returned null");
