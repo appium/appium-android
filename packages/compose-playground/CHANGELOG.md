@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.2.6](https://github.com/appium/appium-android/compare/compose-playground@1.2.5...compose-playground@1.2.6) (2026-11-20)
+
+### Miscellaneous Chores
+
+* **gradle:** update dependency androidx.lifecycle:lifecycle-runtime-ktx to v2.11.1 ([#166](https://github.com/appium/appium-android/issues/166)) ([0c91c91](https://github.com/appium/appium-android/commit/0c91c91eb18b4f8751627d82b9e48acb6789057f))
+
+
 ## [1.2.5](https://github.com/appium/appium-android/compare/compose-playground@1.2.4...compose-playground@1.2.5) (2026-11-19)
 
 ### Miscellaneous Chores
