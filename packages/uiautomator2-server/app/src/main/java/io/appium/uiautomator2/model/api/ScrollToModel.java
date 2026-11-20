@@ -16,6 +16,10 @@
 
 package io.appium.uiautomator2.model.api;
 
+import androidx.test.uiautomator.Direction;
+
+import java.util.Arrays;
+
 import io.appium.uiautomator2.model.RequiredField;
 
 public class ScrollToModel extends BaseModel {
@@ -31,6 +35,20 @@ public class ScrollToModel extends BaseModel {
         @RequiredField
         public String selector;
         public Integer maxSwipes;
+        public String direction;
+        public Boolean fromStart;
+
+        public Direction getDirection() {
+            if (direction == null) {
+                return null;
+            }
+            try {
+                return Direction.valueOf(direction.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(
+                        String.format("Scroll direction must be one of %s", Arrays.toString(Direction.values())));
+            }
+        }
 
         public ScrollParams() {}
     }

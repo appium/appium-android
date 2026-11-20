@@ -16,9 +16,12 @@
 
 package io.appium.uiautomator2.handler.gestures;
 
+import io.appium.uiautomator2.common.exceptions.ElementNotFoundException;
+import io.appium.uiautomator2.core.AxNodeInfoHelper;
 import io.appium.uiautomator2.handler.request.SafeRequestHandler;
 import io.appium.uiautomator2.http.AppiumResponse;
 import io.appium.uiautomator2.http.IHttpRequest;
+import io.appium.uiautomator2.model.AccessibleUiObject;
 import io.appium.uiautomator2.model.AndroidElement;
 import io.appium.uiautomator2.model.AppiumUIA2Driver;
 import io.appium.uiautomator2.model.Session;
@@ -26,6 +29,7 @@ import io.appium.uiautomator2.model.api.gestures.ScrollModel;
 import io.appium.uiautomator2.model.internal.CustomUiDevice;
 
 import static io.appium.uiautomator2.utils.ModelUtils.toModel;
+import static io.appium.uiautomator2.utils.ScrollHelpers.findFirstScrollable;
 
 public class Scroll extends SafeRequestHandler {
 
@@ -40,11 +44,18 @@ public class Scroll extends SafeRequestHandler {
         final boolean result;
         if (elementId == null) {
             if (scrollModel.area == null) {
-                throw new IllegalArgumentException("The scroll area coordinates must be provided if " +
-                        "element is not set");
+                // Neither an element nor an area is given: scroll the first scrollable view
+                AccessibleUiObject scrollable = findFirstScrollable();
+                if (scrollable == null) {
+                    throw new ElementNotFoundException("There are no scrollable elements on the " +
+                            "current display. Provide either the element or the scroll area coordinates");
+                }
+                result = AxNodeInfoHelper.scroll(
+                        scrollable.getInfo(), scrollModel.getDirection(), scrollModel.percent, scrollModel.speed);
+            } else {
+                result = CustomUiDevice.getInstance().getGestureController()
+                        .scroll(scrollModel.area.toNativeRect(), scrollModel.getDirection(), scrollModel.percent, scrollModel.speed);
             }
-            result = CustomUiDevice.getInstance().getGestureController()
-                    .scroll(scrollModel.area.toNativeRect(), scrollModel.getDirection(), scrollModel.percent, scrollModel.speed);
         } else {
             Session session = AppiumUIA2Driver.getInstance().getSessionOrThrow();
             AndroidElement element = session.getElementsCache().get(elementId);

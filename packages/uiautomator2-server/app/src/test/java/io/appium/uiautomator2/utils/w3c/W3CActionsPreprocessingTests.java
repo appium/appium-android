@@ -146,6 +146,23 @@ public class W3CActionsPreprocessingTests {
     }
 
     @Test
+    public void verifyWheelInputSourceIsRejectedWithHint() {
+        final String wheelAction = "[ {" +
+                "\"type\": \"wheel\"," +
+                "\"id\": \"w\"," +
+                "\"actions\": [" +
+                "{\"type\": \"scroll\", \"x\": 100, \"y\": 100, \"deltaX\": 0, \"deltaY\": 300}]" +
+                "} ]";
+        try {
+            actionsPreprocessor.preprocess(toActionItems(wheelAction));
+            fail("The wheel input source should be rejected");
+        } catch (ActionsParseException e) {
+            assertThat(e.getMessage().contains("'wheel'"), is(true));
+            assertThat(e.getMessage().contains("mobile: scrollGesture"), is(true));
+        }
+    }
+
+    @Test
     public void verifyValidActionChainPreprocessingWithoutChange() {
         final String actionJson = "[ {" +
                 "\"type\": \"pointer\"," +

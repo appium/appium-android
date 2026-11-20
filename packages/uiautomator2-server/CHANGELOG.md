@@ -3,6 +3,48 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.2.1](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.2.0...appium-uiautomator2-server@11.2.1) (2026-11-20)
+
+### Bug Fixes
+
+* **uiautomator2-server:** reset the AX cache before looking up the first scrollable ([#163](https://github.com/appium/appium-android/issues/163)) ([32d7034](https://github.com/appium/appium-android/commit/32d703484e439157c5acca588780484be2cc248b))
+
+
+## [11.2.0](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.1.1...appium-uiautomator2-server@11.2.0) (2026-11-20)
+
+### Features
+
+* **uiautomator2-server:** scroll to an element without UiScrollable ([#162](https://github.com/appium/appium-android/issues/162)) ([17f9083](https://github.com/appium/appium-android/commit/17f90839e2dd3fcc90b50ab4398a1e9403b4557c))
+
+
+## [11.1.1](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.1.0...appium-uiautomator2-server@11.1.1) (2026-11-20)
+
+### Bug Fixes
+
+* **uiautomator2-server:** clamp rectangle gestures to the display ([#160](https://github.com/appium/appium-android/issues/160)) ([aa3537b](https://github.com/appium/appium-android/commit/aa3537ba220a0e54e5a629165ef4321a29c597fe))
+
+
+## [11.1.0](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.15...appium-uiautomator2-server@11.1.0) (2026-11-20)
+
+### Features
+
+* **uiautomator2-server:** scroll the first scrollable view by default ([#161](https://github.com/appium/appium-android/issues/161)) ([a5db1da](https://github.com/appium/appium-android/commit/a5db1dad491a4cfa7c7ff14f899fe0c4af3d1b9f))
+
+
+## [11.0.15](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.14...appium-uiautomator2-server@11.0.15) (2026-11-20)
+
+### Bug Fixes
+
+* **uiautomator2-server:** reject zero percent in scroll gesture ([#159](https://github.com/appium/appium-android/issues/159)) ([8fb8cf1](https://github.com/appium/appium-android/commit/8fb8cf1537eccd4ebb8efc03c6128f534f7b2b0c))
+
+
+## [11.0.14](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.13...appium-uiautomator2-server@11.0.14) (2026-11-20)
+
+### Bug Fixes
+
+* **uiautomator2-server:** clarify scroll and wheel action error messages ([#158](https://github.com/appium/appium-android/issues/158)) ([3d09610](https://github.com/appium/appium-android/commit/3d096107e4555824e22f7cfd00b4829d7bd175b7))
+
+
 ## [11.0.13](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.12...appium-uiautomator2-server@11.0.13) (2026-11-20)
 
 ### Code Refactoring

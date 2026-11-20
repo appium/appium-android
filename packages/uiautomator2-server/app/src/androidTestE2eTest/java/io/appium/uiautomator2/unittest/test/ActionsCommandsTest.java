@@ -17,8 +17,10 @@
 package io.appium.uiautomator2.unittest.test;
 
 import android.graphics.Rect;
+import android.hardware.display.DisplayManager;
 import android.os.Build;
 import android.os.SystemClock;
+import android.view.Display;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -361,8 +363,13 @@ public class ActionsCommandsTest extends BaseTest {
         assertTrue(scrollResponse.isSuccessful());
         scrollResponse = scroll(null, new Rect(200, 200, 300, 300), 0.5f, "left",1000);
         assertTrue(scrollResponse.isSuccessful());
+        // more than one page is allowed
+        scrollResponse = scroll(dot1Response.getElementId(), null, 2.5f, "left", null);
+        assertTrue(scrollResponse.isSuccessful());
         // negative
         scrollResponse = scroll(null, new Rect(200, 200, 300, 300), -1f, "up", null);
+        assertFalse(scrollResponse.isSuccessful());
+        scrollResponse = scroll(null, new Rect(200, 200, 300, 300), 0f, "up", null);
         assertFalse(scrollResponse.isSuccessful());
         scrollResponse = scroll(null, null, 0.5f, "up",null);
         assertFalse(scrollResponse.isSuccessful());
@@ -370,6 +377,54 @@ public class ActionsCommandsTest extends BaseTest {
         assertFalse(scrollResponse.isSuccessful());
         scrollResponse = scroll(dot1Response.getElementId(), null, 0.5f, "foo", null);
         assertFalse(scrollResponse.isSuccessful());
+    }
+
+    @Test
+    public void verifyScrollGestureWithoutElementAndArea() {
+        startActivity(".view.List1");
+        waitForElement(By.id("android:id/list"));
+        By firstItem = By.xpath("//*[@text='Abbaye de Belloc']");
+        assertTrue(findElement(firstItem).isSuccessful());
+
+        // The first scrollable element is used
+        Response scrollResponse = scroll(null, null, 0.5f, "down", null);
+        assertTrue(scrollResponse.isSuccessful());
+        assertFalse("The list should have been scrolled", findElement(firstItem).isSuccessful());
+
+        // There is nothing to scroll
+        setupDragDropView();
+        assertFalse(scroll(null, null, 0.5f, "down", null).isSuccessful());
+    }
+
+    @Test
+    public void verifyScrollGestureWithoutElementAndAreaAfterScreenChange() {
+        startActivity(".view.List1");
+        waitForElement(By.id("android:id/list"));
+        // The previous screen must not be used to look up the scrollable element
+        startActivity(".view.Tabs5");
+        SystemClock.sleep(1500);
+        assertTrue(scroll(null, null, 0.5f, "right", null).isSuccessful());
+        assertFalse("The tab strip should have been scrolled",
+                findElement(By.xpath("//*[@text='TAB 1']")).isSuccessful());
+    }
+
+    @Test
+    public void verifyScrollGestureWithDisplaySizedArea() {
+        startActivity(".view.List1");
+        waitForElement(By.id("android:id/list"));
+        By firstItem = By.xpath("//*[@text='Abbaye de Belloc']");
+        assertTrue(findElement(firstItem).isSuccessful());
+
+        // A swipe starts at the edge of its area, which is one pixel outside of the display
+        // for a rectangle that covers it entirely
+        android.graphics.Point size = new android.graphics.Point();
+        InstrumentationRegistry.getInstrumentation().getTargetContext()
+                .getSystemService(DisplayManager.class)
+                .getDisplay(Display.DEFAULT_DISPLAY)
+                .getRealSize(size);
+        Response scrollResponse = scroll(null, new Rect(0, 0, size.x, size.y), 0.5f, "down", null);
+        assertTrue(scrollResponse.isSuccessful());
+        assertFalse("The list should have been scrolled", findElement(firstItem).isSuccessful());
     }
 
     @Test

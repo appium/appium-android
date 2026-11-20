@@ -31,6 +31,7 @@ import static io.appium.uiautomator2.utils.w3c.ActionsConstants.ACTION_ITEM_TYPE
 import static io.appium.uiautomator2.utils.w3c.ActionsConstants.ACTION_KEY_ID;
 import static io.appium.uiautomator2.utils.w3c.ActionsConstants.ACTION_KEY_TYPE;
 import static io.appium.uiautomator2.utils.w3c.ActionsConstants.ACTION_TYPES;
+import static io.appium.uiautomator2.utils.w3c.ActionsConstants.ACTION_TYPE_WHEEL;
 import static io.appium.uiautomator2.utils.w3c.ActionsConstants.ACTION_TYPE_KEY;
 import static io.appium.uiautomator2.utils.w3c.ActionsConstants.ACTION_TYPE_NONE;
 import static io.appium.uiautomator2.utils.w3c.ActionsConstants.ACTION_TYPE_POINTER;
@@ -116,10 +117,14 @@ public class ActionsPreprocessor {
             }
             final String actionType = actionItem.type;
             if (!ACTION_TYPES.contains(actionType)) {
+                final String hint = ACTION_TYPE_WHEEL.equals(actionType)
+                        ? " Wheel (scroll) actions are not supported; use touch pointer actions"
+                        + " or 'mobile: scrollGesture' to scroll."
+                        : "";
                 throw new ActionsParseException(String.format(
-                        "Only %s values are supported for %s key. "
-                                + "'%s' is passed instead for action '%s'",
-                        ACTION_TYPES, ACTION_KEY_TYPE, actionType, actionId));
+                        "The input source type '%s' of action '%s' is not supported. "
+                                + "Only %s are supported.%s",
+                        actionType, actionId, ACTION_TYPES, hint));
             }
 
             if (actionItem.parameters != null && actionItem.parameters.pointerType != null) {
