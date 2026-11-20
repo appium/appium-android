@@ -122,6 +122,7 @@ export async function createBaseADB(this: AndroidDriver): Promise<ADB> {
   const {
     adbPort,
     suppressKillServer,
+    adbHost,
     remoteAdbHost,
     clearDeviceLogsOnStart,
     adbExecTimeout,
@@ -144,7 +145,7 @@ export async function createBaseADB(this: AndroidDriver): Promise<ADB> {
   return await ADB.createADB({
     adbPort,
     suppressKillServer,
-    remoteAdbHost,
+    remoteAdbHost: adbHost || remoteAdbHost,
     clearDeviceLogsOnStart,
     adbExecTimeout,
     useKeystore,
