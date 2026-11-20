@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.2.1](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.2.0...appium-uiautomator2-server@11.2.1) (2026-11-20)
+
+### Bug Fixes
+
+* **uiautomator2-server:** reset the AX cache before looking up the first scrollable ([#163](https://github.com/appium/appium-android/issues/163)) ([32d7034](https://github.com/appium/appium-android/commit/32d703484e439157c5acca588780484be2cc248b))
+
+
 ## [11.2.0](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.1.1...appium-uiautomator2-server@11.2.0) (2026-11-20)
 
 ### Features
