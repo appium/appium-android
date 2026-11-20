@@ -29,6 +29,7 @@ import io.appium.uiautomator2.model.api.gestures.ScrollModel;
 import io.appium.uiautomator2.model.internal.CustomUiDevice;
 
 import static io.appium.uiautomator2.utils.ModelUtils.toModel;
+import static io.appium.uiautomator2.utils.ScrollHelpers.findFirstScrollable;
 
 public class Scroll extends SafeRequestHandler {
 
@@ -44,8 +45,7 @@ public class Scroll extends SafeRequestHandler {
         if (elementId == null) {
             if (scrollModel.area == null) {
                 // Neither an element nor an area is given: scroll the first scrollable view
-                AccessibleUiObject scrollable = CustomUiDevice.getInstance()
-                        .findObject(androidx.test.uiautomator.By.scrollable(true));
+                AccessibleUiObject scrollable = findFirstScrollable();
                 if (scrollable == null) {
                     throw new ElementNotFoundException("There are no scrollable elements on the " +
                             "current display. Provide either the element or the scroll area coordinates");

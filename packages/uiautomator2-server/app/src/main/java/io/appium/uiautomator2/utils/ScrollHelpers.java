@@ -18,12 +18,17 @@ package io.appium.uiautomator2.utils;
 
 import android.widget.HorizontalScrollView;
 
+import androidx.annotation.Nullable;
 import androidx.test.uiautomator.Direction;
 import androidx.test.uiautomator.UiObjectNotFoundException;
 
 import java.util.function.BooleanSupplier;
 
+import io.appium.uiautomator2.model.AccessibleUiObject;
 import io.appium.uiautomator2.model.AndroidElement;
+import io.appium.uiautomator2.model.internal.CustomUiDevice;
+
+import static io.appium.uiautomator2.utils.AXWindowHelpers.resetAccessibilityCache;
 
 public final class ScrollHelpers {
     public static final int DEFAULT_MAX_SWIPES = 30;
@@ -31,6 +36,16 @@ public final class ScrollHelpers {
     private static final float SWIPE_PERCENT = 0.7f;
 
     private ScrollHelpers() {
+    }
+
+    /**
+     * @return the first scrollable element on the current display or null if there is none
+     */
+    @Nullable
+    public static AccessibleUiObject findFirstScrollable() {
+        // Without the reset, the window roots of the previous screen may be used
+        resetAccessibilityCache();
+        return CustomUiDevice.getInstance().findObject(androidx.test.uiautomator.By.scrollable(true));
     }
 
     /**

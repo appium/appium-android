@@ -36,7 +36,6 @@ import io.appium.uiautomator2.model.AppiumUIA2Driver;
 import io.appium.uiautomator2.model.By;
 import io.appium.uiautomator2.model.ElementsCache;
 import io.appium.uiautomator2.model.api.ScrollToModel;
-import io.appium.uiautomator2.model.internal.CustomUiDevice;
 import io.appium.uiautomator2.model.internal.ElementsLookupStrategy;
 import io.appium.uiautomator2.utils.Logger;
 
@@ -50,6 +49,7 @@ import static io.appium.uiautomator2.utils.ElementLocationHelpers.toSelector;
 import static io.appium.uiautomator2.utils.ModelUtils.toModel;
 import static io.appium.uiautomator2.utils.ScrollHelpers.DEFAULT_MAX_SWIPES;
 import static io.appium.uiautomator2.utils.ScrollHelpers.defaultDirection;
+import static io.appium.uiautomator2.utils.ScrollHelpers.findFirstScrollable;
 import static io.appium.uiautomator2.utils.ScrollHelpers.scrollUntilVisible;
 
 public class ScrollTo extends SafeRequestHandler {
@@ -112,7 +112,7 @@ public class ScrollTo extends SafeRequestHandler {
 
     private static void scrollWithoutUiScrollable(
             ScrollToModel model, By by, AndroidElement originElement) throws UiObjectNotFoundException {
-        final AndroidElement container = originElement == null ? findFirstScrollable() : originElement;
+        final AndroidElement container = originElement == null ? firstScrollableElement() : originElement;
         final Direction direction = model.params.getDirection() == null
                 ? defaultDirection(container)
                 : model.params.getDirection();
@@ -128,9 +128,8 @@ public class ScrollTo extends SafeRequestHandler {
         }
     }
 
-    private static AndroidElement findFirstScrollable() {
-        AccessibleUiObject scrollable = CustomUiDevice.getInstance()
-                .findObject(androidx.test.uiautomator.By.scrollable(true));
+    private static AndroidElement firstScrollableElement() {
+        AccessibleUiObject scrollable = findFirstScrollable();
         if (scrollable == null) {
             throw new ElementNotFoundException("There are no scrollable elements on the current display. " +
                     "Provide the element to scroll");
