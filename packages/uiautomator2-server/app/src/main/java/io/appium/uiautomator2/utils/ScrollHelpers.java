@@ -35,6 +35,7 @@ public final class ScrollHelpers {
 
     /**
      * Horizontal scroll views are scrolled to the right, everything else to the bottom.
+     * Other horizontal containers (for example, a RecyclerView) need an explicit direction.
      */
     public static Direction defaultDirection(AndroidElement container) throws UiObjectNotFoundException {
         return HorizontalScrollView.class.getName().equals(container.getAttribute("class"))
@@ -62,7 +63,8 @@ public final class ScrollHelpers {
 
             @Override
             public void scrollToStart(int maxSwipes) {
-                // Values above 1 scroll that many pages, stopping at the end of the content
+                // Values above 1 scroll that many pages, stopping at the end of the content.
+                // Like UiScrollable, the way back is limited by the maximum number of swipes.
                 container.scroll(Direction.reverse(direction), maxSwipes);
             }
         }, fromStart, maxSwipes);

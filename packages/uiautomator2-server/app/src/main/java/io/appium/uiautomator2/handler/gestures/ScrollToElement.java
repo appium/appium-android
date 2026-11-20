@@ -16,10 +16,12 @@
 
 package io.appium.uiautomator2.handler.gestures;
 
+import androidx.test.uiautomator.StaleObjectException;
 import androidx.test.uiautomator.UiObject;
 import androidx.test.uiautomator.UiObjectNotFoundException;
 import androidx.test.uiautomator.UiSelector;
 
+import io.appium.uiautomator2.common.exceptions.UiAutomator2Exception;
 import io.appium.uiautomator2.handler.request.SafeRequestHandler;
 import io.appium.uiautomator2.http.AppiumResponse;
 import io.appium.uiautomator2.http.IHttpRequest;
@@ -27,6 +29,7 @@ import io.appium.uiautomator2.model.AndroidElement;
 import io.appium.uiautomator2.model.AppiumUIA2Driver;
 import io.appium.uiautomator2.model.ElementsCache;
 
+import static io.appium.uiautomator2.utils.AXWindowHelpers.resetAccessibilityCache;
 import static io.appium.uiautomator2.utils.ScrollHelpers.DEFAULT_MAX_SWIPES;
 import static io.appium.uiautomator2.utils.ScrollHelpers.defaultDirection;
 import static io.appium.uiautomator2.utils.ScrollHelpers.scrollUntilVisible;
@@ -48,10 +51,14 @@ public class ScrollToElement extends SafeRequestHandler {
         // UiScrollable only works with UiObject instances, which are the result of
         // the '-android uiautomator' locator strategy. Everything else is scrolled by gestures.
         if (!(element.getUiObject() instanceof UiObject) || !(scrollToElement.getUiObject() instanceof UiObject)) {
-            final boolean isVisible = scrollUntilVisible(element, () -> isDisplayed(scrollToElement),
+            final boolean isVisible = scrollUntilVisible(element, () -> isDisplayed(ke, elementIds[1]),
                     defaultDirection(element), true, DEFAULT_MAX_SWIPES);
             if (!isVisible) {
-                throw new UiObjectNotFoundException("Cannot scroll to the given element");
+                throw new UiObjectNotFoundException(String.format(
+                        "Cannot scroll the element '%s' to the element '%s'. Neither of them was located " +
+                                "using the '-android uiautomator' strategy, so the view has been scrolled " +
+                                "with gestures from the beginning, up to %s swipes",
+                        elementIds[0], elementIds[1], DEFAULT_MAX_SWIPES));
             }
             return new AppiumResponse(getSessionId(request));
         }
@@ -66,10 +73,12 @@ public class ScrollToElement extends SafeRequestHandler {
         return new AppiumResponse(getSessionId(request));
     }
 
-    private static boolean isDisplayed(AndroidElement element) {
+    private static boolean isDisplayed(ElementsCache cache, String elementId) {
+        resetAccessibilityCache();
         try {
-            return Boolean.parseBoolean(element.getAttribute("displayed"));
-        } catch (UiObjectNotFoundException e) {
+            // The cache restores the elements that became stale after scrolling
+            return Boolean.parseBoolean(cache.get(elementId).getAttribute("displayed"));
+        } catch (UiObjectNotFoundException | StaleObjectException | UiAutomator2Exception e) {
             return false;
         }
     }
