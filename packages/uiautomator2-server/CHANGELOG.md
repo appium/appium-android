@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.1.0](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.15...appium-uiautomator2-server@11.1.0) (2026-11-20)
+
+### Features
+
+* **uiautomator2-server:** scroll the first scrollable view by default ([#161](https://github.com/appium/appium-android/issues/161)) ([a5db1da](https://github.com/appium/appium-android/commit/a5db1dad491a4cfa7c7ff14f899fe0c4af3d1b9f))
+
+
 ## [11.0.15](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.14...appium-uiautomator2-server@11.0.15) (2026-11-20)
 
 ### Bug Fixes
