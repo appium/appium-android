@@ -39,6 +39,9 @@ import io.appium.uiautomator2.model.settings.CurrentDisplayId;
 import io.appium.uiautomator2.model.settings.Settings;
 
 public class GestureController {
+    // Tolerance for comparing float values
+    private static final float FLT_DELTA = 1e-6f;
+
     private final Object wrappedInstance;
     private final Method performGestureMethod;
     private final Gestures gestures;
@@ -150,13 +153,13 @@ public class GestureController {
 
     public boolean scroll(Rect area, Direction direction, float percent, @Nullable Integer speed) {
         // Values above 1.0 scroll that many pages, stopping early at the end of the content
-        if (percent <= 0.0f) {
+        if (percent < FLT_DELTA) {
             throw new IllegalArgumentException("Percent must be greater than 0.0f");
         }
 
         Direction swipeDirection = Direction.reverse(direction);
         int scrollSpeed = speed == null ? Gestures.getDefaultScrollSpeed() : checkSpeed(speed);
-        for (float swipePercent = percent; swipePercent > 0.0f; swipePercent -= 1.0f) {
+        for (float swipePercent = percent; swipePercent > FLT_DELTA; swipePercent -= 1.0f) {
             float segment = Math.min(swipePercent, 1.0f);
             PointerGesture swipe = gestures.swipe(area, swipeDirection, segment, scrollSpeed).pause(250);
 

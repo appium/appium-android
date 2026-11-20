@@ -354,6 +354,8 @@ public class ActionsCommandsTest extends BaseTest {
         assertFalse(scrollResponse.isSuccessful());
         scrollResponse = scroll(null, new Rect(200, 200, 300, 300), 0f, "up", null);
         assertFalse(scrollResponse.isSuccessful());
+        scrollResponse = scroll(null, new Rect(200, 200, 300, 300), 1e-9f, "up", null);
+        assertFalse(scrollResponse.isSuccessful());
         scrollResponse = scroll(null, null, 0.5f, "up",null);
         assertFalse(scrollResponse.isSuccessful());
         scrollResponse = scroll(null, new Rect(200, 200, 300, 300), 0.5f, "up",-1);
