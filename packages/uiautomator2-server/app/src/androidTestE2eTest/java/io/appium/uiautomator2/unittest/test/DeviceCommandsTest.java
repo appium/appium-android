@@ -57,6 +57,8 @@ import static io.appium.uiautomator2.unittest.test.internal.commands.DeviceComma
 import static io.appium.uiautomator2.unittest.test.internal.commands.DeviceCommands.rotateScreen;
 import static io.appium.uiautomator2.unittest.test.internal.commands.DeviceCommands.screenshot;
 import static io.appium.uiautomator2.unittest.test.internal.commands.DeviceCommands.scrollToClassName;
+import static io.appium.uiautomator2.unittest.test.internal.commands.DeviceCommands.scrollBackTo;
+import static io.appium.uiautomator2.unittest.test.internal.commands.DeviceCommands.scrollTo;
 import static io.appium.uiautomator2.unittest.test.internal.commands.DeviceCommands.scrollToElement;
 import static io.appium.uiautomator2.unittest.test.internal.commands.DeviceCommands.scrollToText;
 import static io.appium.uiautomator2.unittest.test.internal.commands.DeviceCommands.setRotation;
@@ -580,6 +582,81 @@ public class DeviceCommandsTest extends BaseTest {
                 "Item '%s' should now be found in the horizontal list.", item),
                 findElement(By.text(item)).isSuccessful());
         }
+    }
+
+    @Test
+    public void scrollToElementWithoutUiScrollable() throws JSONException {
+        startActivity(".view.List1");
+        waitForElement(By.id("android:id/list"));
+        String target = "//*[@text='Armenian String']";
+
+        assertFalse(findElement(By.xpath(target)).isSuccessful());
+        // The first scrollable element is scrolled
+        assertTrue(scrollTo("xpath", target, null, null, null, null).isSuccessful());
+        assertTrue(findElement(By.xpath(target)).isSuccessful());
+        // The target is visible already
+        assertTrue(scrollTo("xpath", target, null, null, null, null).isSuccessful());
+        assertTrue(scrollTo("id", "android:id/list", null, null, null, null).isSuccessful());
+    }
+
+    @Test
+    public void scrollToElementInContainerFoundByIdWithoutUiScrollable() throws JSONException {
+        startActivity(".view.List1");
+        String listId = waitForElement(By.id("android:id/list")).getElementId();
+        String target = "//*[@text='Armenian String']";
+
+        assertTrue(scrollTo("xpath", target, listId, "down", null, null).isSuccessful());
+        assertTrue(findElement(By.xpath(target)).isSuccessful());
+    }
+
+    @Test
+    public void scrollToElementWithoutUiScrollableFailsIfElementDoesNotExist() throws JSONException {
+        startActivity(".view.List1");
+        waitForElement(By.id("android:id/list"));
+        assertFalse(scrollTo("xpath", "//*[@text='No such cheese']", null, null, null, 3).isSuccessful());
+        assertFalse(scrollTo("xpath", "//*[@text='Armenian String']", null, null, null, 0).isSuccessful());
+        assertFalse(scrollTo("xpath", "//*[@text='Armenian String']", null, "sideways", null, null).isSuccessful());
+    }
+
+    @Test
+    public void scrollToElementWithoutUiScrollableCanStartFromTheBeginning() throws JSONException {
+        startActivity(".view.List1");
+        waitForElement(By.id("android:id/list"));
+        String top = "//*[@text='Abbaye de Belloc']";
+        assertTrue(scrollTo("xpath", "//*[@text='Armenian String']", null, null, null, null).isSuccessful());
+        assertFalse(findElement(By.xpath(top)).isSuccessful());
+
+        assertFalse(scrollTo("xpath", top, null, null, null, 3).isSuccessful());
+        assertTrue(scrollTo("xpath", top, null, null, true, null).isSuccessful());
+        assertTrue(findElement(By.xpath(top)).isSuccessful());
+    }
+
+    @Test
+    public void scrollToElementWithoutUiScrollableUsesHorizontalDirectionForHorizontalScrollViews()
+            throws JSONException {
+        startActivity(".view.Tabs5");
+        waitForElement(By.xpath("//*[@text='TAB 1']"));
+        String target = "//*[@text='TAB 20']";
+        assertFalse(findElement(By.xpath(target)).isSuccessful());
+        assertTrue(scrollTo("xpath", target, null, null, null, null).isSuccessful());
+        assertTrue(findElement(By.xpath(target)).isSuccessful());
+    }
+
+    @Test
+    public void scrollBackToElementWithoutUiScrollable() throws JSONException {
+        startActivity(".view.Tabs5");
+        waitForElement(By.xpath("//*[@text='TAB 1']"));
+        String stripId = findElement(By.androidUiAutomator("new UiSelector().scrollable(true).instance(0)"))
+                .getElementId();
+        String tabId = findElement(By.xpath("//*[@text='TAB 3']")).getElementId();
+        // Scroll the tab away, but keep the reference to it
+        assertTrue(io.appium.uiautomator2.unittest.test.internal.commands.ElementCommands
+                .scroll(stripId, null, 2f, "right", null).isSuccessful());
+
+        // Neither the strip nor the tab have been located by the strategy UiScrollable supports
+        String xpathStripId = findElement(By.xpath("(//*[@scrollable='true'])[1]")).getElementId();
+        assertTrue(scrollBackTo(xpathStripId, tabId).isSuccessful());
+        assertTrue(findElement(By.xpath("//*[@text='TAB 3']")).isSuccessful());
     }
 
     /**
