@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.0.13](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.12...appium-uiautomator2-server@11.0.13) (2026-11-20)
+
+### Code Refactoring
+
+* **uiautomator2-server:** replace reflection with public APIs ([#140](https://github.com/appium/appium-android/issues/140)) ([29c444f](https://github.com/appium/appium-android/commit/29c444f5e8866aa4e110bbdb47fe9a3917b20148))
+
+
 ## [11.0.12](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.0.11...appium-uiautomator2-server@11.0.12) (2026-11-20)
 
 ### Miscellaneous Chores
