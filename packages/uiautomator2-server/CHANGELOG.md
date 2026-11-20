@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.2.5](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.2.4...appium-uiautomator2-server@11.2.5) (2026-11-20)
+
+### Code Refactoring
+
+* **uiautomator2-server:** replace powermock with mockito ([#168](https://github.com/appium/appium-android/issues/168)) ([3c8a60f](https://github.com/appium/appium-android/commit/3c8a60fbcec4bfaf660d668db5db7e0f5e384b02))
+
+
 ## [11.2.4](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.2.3...appium-uiautomator2-server@11.2.4) (2026-11-20)
 
 ### Code Refactoring
