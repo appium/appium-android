@@ -16,11 +16,12 @@
 
 package io.appium.uiautomator2.utils.w3c;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.junit.Test;
 
 import java.util.List;
@@ -28,63 +29,66 @@ import java.util.Map;
 
 import io.appium.uiautomator2.common.exceptions.InvalidArgumentException;
 
-import static io.appium.uiautomator2.utils.ModelUtils.toObject;
 import static org.junit.Assert.assertEquals;
 
 public class W3CCapsUtilsTests {
 
-    private static Map<String, Object> toMap(JSONObject json) {
+    private static JsonObject toJson(String json) {
+        return JsonParser.parseString(json).getAsJsonObject();
+    }
+
+    private static Map<String, Object> toMap(JsonObject json) {
         //noinspection unchecked
-        return (Map<String, Object>) toObject(json, new TypeToken<Map<String, Object>>() { }.getType());
+        return (Map<String, Object>) new Gson().fromJson(json, new TypeToken<Map<String, Object>>() { }.getType());
     }
 
     @Test
-    public void verifyValidW3CCapsParsingWithoutPrefixes() throws JSONException {
-        JSONArray firstMatch = new JSONArray();
-        JSONObject firstMatchEntry = new JSONObject("{" +
+    public void verifyValidW3CCapsParsingWithoutPrefixes() {
+        JsonArray firstMatch = new JsonArray();
+        JsonObject firstMatchEntry = toJson("{" +
                 "\"activity\": \"io.appium.activity\"," +
-                "\"package\": \"io.appium\"," +
+                "\"package\": \"io.appium\"" +
                 "}");
-        firstMatch.put(firstMatchEntry);
-        JSONObject alwaysMatch = new JSONObject();
-        JSONObject caps = new JSONObject();
-        caps.put(W3CCapsUtils.FIRST_MATCH_KEY, firstMatch);
-        caps.put(W3CCapsUtils.ALWAYS_MATCH_KEY, alwaysMatch);
+        firstMatch.add(firstMatchEntry);
+        JsonObject alwaysMatch = new JsonObject();
+        JsonObject caps = new JsonObject();
+        caps.add(W3CCapsUtils.FIRST_MATCH_KEY, firstMatch);
+        caps.add(W3CCapsUtils.ALWAYS_MATCH_KEY, alwaysMatch);
         Map<String, Object> parsedCaps = W3CCapsUtils.parseCapabilities(toMap(caps));
         assertEquals(parsedCaps.get("activity"), "io.appium.activity");
         assertEquals(parsedCaps.get("package"), "io.appium");
     }
 
     @Test
-    public void verifyValidW3CCapsParsingWithPrefixes() throws JSONException {
-        JSONArray firstMatch = new JSONArray();
-        JSONObject firstMatchEntry = new JSONObject("{" +
+    public void verifyValidW3CCapsParsingWithPrefixes() {
+        JsonArray firstMatch = new JsonArray();
+        JsonObject firstMatchEntry = toJson("{" +
                 "\"appium:activity\": \"io.appium.activity\"," +
-                "\"appium:package\": \"io.appium\"," +
+                "\"appium:package\": \"io.appium\"" +
                 "}");
-        firstMatch.put(firstMatchEntry);
-        JSONObject alwaysMatch = new JSONObject();
-        JSONObject caps = new JSONObject();
-        caps.put(W3CCapsUtils.FIRST_MATCH_KEY, firstMatch);
-        caps.put(W3CCapsUtils.ALWAYS_MATCH_KEY, alwaysMatch);
+        firstMatch.add(firstMatchEntry);
+        JsonObject alwaysMatch = new JsonObject();
+        JsonObject caps = new JsonObject();
+        caps.add(W3CCapsUtils.FIRST_MATCH_KEY, firstMatch);
+        caps.add(W3CCapsUtils.ALWAYS_MATCH_KEY, alwaysMatch);
         Map<String, Object> parsedCaps = W3CCapsUtils.parseCapabilities(toMap(caps));
         assertEquals(parsedCaps.get("activity"), "io.appium.activity");
         assertEquals(parsedCaps.get("package"), "io.appium");
     }
 
     @Test
-    public void verifyValidW3CCapsParsingWithUnknownPrefixes() throws JSONException {
-        JSONArray firstMatch = new JSONArray();
-        JSONObject firstMatchEntry = new JSONObject("{" +
+    public void verifyValidW3CCapsParsingWithUnknownPrefixes() {
+        JsonArray firstMatch = new JsonArray();
+        JsonObject firstMatchEntry = toJson("{" +
                 "\"appium:activity\": \"io.appium.activity\"," +
                 "\"appium:package\": \"io.appium\"," +
-                "\"goog:chromeOptions\": {\"args\" :[\"--disable-popup-blocking\"]}," +
+                "\"goog:chromeOptions\": {\"args\" :[\"--disable-popup-blocking\"]}" +
                 "}");
-        firstMatch.put(firstMatchEntry);
-        JSONObject alwaysMatch = new JSONObject();
-        JSONObject caps = new JSONObject();
-        caps.put(W3CCapsUtils.FIRST_MATCH_KEY, firstMatch);
-        caps.put(W3CCapsUtils.ALWAYS_MATCH_KEY, alwaysMatch);
+        firstMatch.add(firstMatchEntry);
+        JsonObject alwaysMatch = new JsonObject();
+        JsonObject caps = new JsonObject();
+        caps.add(W3CCapsUtils.FIRST_MATCH_KEY, firstMatch);
+        caps.add(W3CCapsUtils.ALWAYS_MATCH_KEY, alwaysMatch);
         Map<String, Object> parsedCaps = W3CCapsUtils.parseCapabilities(toMap(caps));
         assertEquals(parsedCaps.get("activity"), "io.appium.activity");
         assertEquals(parsedCaps.get("package"), "io.appium");
@@ -94,53 +98,53 @@ public class W3CCapsUtilsTests {
     }
 
     @Test
-    public void verifyValidW3CCapsParsingWithPrefixesBothMatch() throws JSONException {
-        JSONArray firstMatch = new JSONArray();
-        JSONObject firstMatchEntry = new JSONObject("{" +
-                "\"appium:activity\": \"io.appium.activity\"," +
+    public void verifyValidW3CCapsParsingWithPrefixesBothMatch() {
+        JsonArray firstMatch = new JsonArray();
+        JsonObject firstMatchEntry = toJson("{" +
+                "\"appium:activity\": \"io.appium.activity\"" +
                 "}");
-        firstMatch.put(firstMatchEntry);
-        JSONObject alwaysMatch = new JSONObject("{" +
-                "\"appium:package\": \"io.appium\"," +
+        firstMatch.add(firstMatchEntry);
+        JsonObject alwaysMatch = toJson("{" +
+                "\"appium:package\": \"io.appium\"" +
                 "}");
-        JSONObject caps = new JSONObject();
-        caps.put(W3CCapsUtils.FIRST_MATCH_KEY, firstMatch);
-        caps.put(W3CCapsUtils.ALWAYS_MATCH_KEY, alwaysMatch);
+        JsonObject caps = new JsonObject();
+        caps.add(W3CCapsUtils.FIRST_MATCH_KEY, firstMatch);
+        caps.add(W3CCapsUtils.ALWAYS_MATCH_KEY, alwaysMatch);
         Map<String, Object> parsedCaps = W3CCapsUtils.parseCapabilities(toMap(caps));
         assertEquals(parsedCaps.get("activity"), "io.appium.activity");
         assertEquals(parsedCaps.get("package"), "io.appium");
     }
 
     @Test(expected = InvalidArgumentException.class)
-    public void verifyInvalidW3CCapsParsingWithPrefixedStandardCap() throws JSONException {
-        JSONArray firstMatch = new JSONArray();
-        JSONObject firstMatchEntry = new JSONObject("{" +
+    public void verifyInvalidW3CCapsParsingWithPrefixedStandardCap() {
+        JsonArray firstMatch = new JsonArray();
+        JsonObject firstMatchEntry = toJson("{" +
                 "\"appium:activity\": \"io.appium.activity\"," +
-                "\"appium:platformName\": \"android\"," +
+                "\"appium:platformName\": \"android\"" +
                 "}");
-        firstMatch.put(firstMatchEntry);
-        JSONObject alwaysMatch = new JSONObject("{" +
-                "\"appium:package\": \"io.appium\"," +
+        firstMatch.add(firstMatchEntry);
+        JsonObject alwaysMatch = toJson("{" +
+                "\"appium:package\": \"io.appium\"" +
                 "}");
-        JSONObject caps = new JSONObject();
-        caps.put(W3CCapsUtils.FIRST_MATCH_KEY, firstMatch);
-        caps.put(W3CCapsUtils.ALWAYS_MATCH_KEY, alwaysMatch);
+        JsonObject caps = new JsonObject();
+        caps.add(W3CCapsUtils.FIRST_MATCH_KEY, firstMatch);
+        caps.add(W3CCapsUtils.ALWAYS_MATCH_KEY, alwaysMatch);
         W3CCapsUtils.parseCapabilities(toMap(caps));
     }
 
     @Test(expected = InvalidArgumentException.class)
-    public void verifyInvalidW3CCapsParsingWithDuplicatedCaps() throws JSONException {
-        JSONArray firstMatch = new JSONArray();
-        JSONObject firstMatchEntry = new JSONObject("{" +
-                "\"appium:activity\": \"io.appium.activity\"," +
+    public void verifyInvalidW3CCapsParsingWithDuplicatedCaps() {
+        JsonArray firstMatch = new JsonArray();
+        JsonObject firstMatchEntry = toJson("{" +
+                "\"appium:activity\": \"io.appium.activity\"" +
                 "}");
-        firstMatch.put(firstMatchEntry);
-        JSONObject alwaysMatch = new JSONObject("{" +
-                "\"activity\": \"io.appium.activity\"," +
+        firstMatch.add(firstMatchEntry);
+        JsonObject alwaysMatch = toJson("{" +
+                "\"activity\": \"io.appium.activity\"" +
                 "}");
-        JSONObject caps = new JSONObject();
-        caps.put(W3CCapsUtils.FIRST_MATCH_KEY, firstMatch);
-        caps.put(W3CCapsUtils.ALWAYS_MATCH_KEY, alwaysMatch);
+        JsonObject caps = new JsonObject();
+        caps.add(W3CCapsUtils.FIRST_MATCH_KEY, firstMatch);
+        caps.add(W3CCapsUtils.ALWAYS_MATCH_KEY, alwaysMatch);
         W3CCapsUtils.parseCapabilities(toMap(caps));
     }
 }

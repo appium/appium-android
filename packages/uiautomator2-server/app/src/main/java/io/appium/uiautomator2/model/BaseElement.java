@@ -198,7 +198,7 @@ public abstract class BaseElement implements AndroidElement {
     }
 
     /**
-     * Return the JSONObject which Appium returns for an element
+     * Return the JSON object which Appium returns for an element
      * <p>
      * For example, appium returns elements like [{"ELEMENT":1}, {"ELEMENT":2}]
      */

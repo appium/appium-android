@@ -2,7 +2,6 @@
 androidGradlePlugin = "9.5.1"
 gson = "2.15.0"
 javassist = "3.33.0-GA"
-json = "20250517"
 junidecode = "0.5.2"
 junit = "4.13.2"
 nettyBuffer = "4.2.21.Final"
@@ -23,7 +22,6 @@ androidx-test-runner = "1.7.0"
 [libraries]
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 javassist = { module = "org.javassist:javassist", version.ref = "javassist" }
-json = { module = "org.json:json", version.ref = "json" }
 junidecode = { module = "net.gcardone.junidecode:junidecode", version.ref = "junidecode" }
 junit = { module = "junit:junit", version.ref = "junit" }
 netty-buffer = { module = "io.netty:netty-buffer", version.ref = "nettyBuffer" }

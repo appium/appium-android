@@ -13,9 +13,6 @@ import android.view.accessibility.AccessibilityNodeInfo;
 import androidx.test.uiautomator.Direction;
 import androidx.test.uiautomator.UiObjectNotFoundException;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import java.io.InvalidClassException;
 
 import io.appium.uiautomator2.common.exceptions.UiAutomator2Exception;
@@ -209,18 +206,7 @@ public class ContentSizeHelpers {
 
         @Override
         public String toString() {
-            JSONObject jsonObject = new JSONObject();
-            try {
-                jsonObject.put("width", width);
-                jsonObject.put("height", height);
-                jsonObject.put("top", top);
-                jsonObject.put("left", left);
-                jsonObject.put("scrollableOffset", scrollableOffset);
-                jsonObject.put("touchPadding", touchPadding);
-            } catch (JSONException e) {
-                throw new RuntimeException(e);
-            }
-            return jsonObject.toString();
+            return ModelUtils.toJsonString(this);
         }
     }
 }

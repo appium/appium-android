@@ -20,8 +20,8 @@ import android.content.Intent;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import org.json.JSONArray;
-import org.json.JSONException;
+import com.google.gson.JsonArray;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -43,7 +43,7 @@ import static org.junit.Assert.assertTrue;
 public class ClassRegexCommandsTest extends BaseTest {
     @Before
     @Override
-    public void launchAUT() throws JSONException {
+    public void launchAUT() {
         Context context = InstrumentationRegistry.getInstrumentation().getTargetContext();
         context.startActivity(new Intent(context, ClassRegexActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
@@ -51,19 +51,19 @@ public class ClassRegexCommandsTest extends BaseTest {
     }
 
     @Test
-    public void findsMatchesAtTheSameIndexUnderDifferentParents() throws JSONException {
+    public void findsMatchesAtTheSameIndexUnderDifferentParents() {
         // Both labels have index 0, so enumerating index(0), index(1), ... loses one.
         assertRegexMatchesExactClass("android.widget.TextView");
     }
 
     @Test
-    public void findsMatchesWhenNoMatchHasIndexZero() throws JSONException {
+    public void findsMatchesWhenNoMatchHasIndexZero() {
         // Both buttons have index 1, so index(0) stops the old enumeration immediately.
         assertRegexMatchesExactClass("android.widget.Button");
     }
 
     @Test
-    public void preservesExplicitInstance() throws JSONException {
+    public void preservesExplicitInstance() {
         for (int i = 0; i < 2; i++) {
             Set<String> expected = elementIds(By.accessibilityId("regex-button-" + i));
             assertEquals(1, expected.size());
@@ -72,7 +72,7 @@ public class ClassRegexCommandsTest extends BaseTest {
         }
     }
 
-    private void assertRegexMatchesExactClass(String className) throws JSONException {
+    private void assertRegexMatchesExactClass(String className) {
         Set<String> expected = elementIds(By.androidUiAutomator(selector(className, false)));
         assertEquals("The fixture must expose two distinct matching elements", 2, expected.size());
         assertEquals(expected, elementIds(By.androidUiAutomator(selector(className, true))));
@@ -84,13 +84,13 @@ public class ClassRegexCommandsTest extends BaseTest {
                 + "(\"" + (regex ? className.replace(".", "[.]") : className) + "\")";
     }
 
-    private Set<String> elementIds(By by) throws JSONException {
+    private Set<String> elementIds(By by) {
         Response response = findElements(by);
         assertTrue(by + " should succeed", response.isSuccessful());
-        JSONArray elements = response.getValue();
+        JsonArray elements = response.getValue(JsonArray.class);
         Set<String> result = new HashSet<>();
-        for (int i = 0; i < elements.length(); i++) {
-            String id = extractElementId(elements.getJSONObject(i));
+        for (int i = 0; i < elements.size(); i++) {
+            String id = extractElementId(elements.get(i).getAsJsonObject());
             assertNotNull(id);
             assertTrue("Duplicate element: " + id, result.add(id));
         }

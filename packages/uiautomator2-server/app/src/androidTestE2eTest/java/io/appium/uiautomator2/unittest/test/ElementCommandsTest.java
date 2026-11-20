@@ -19,8 +19,8 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Base64;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.google.gson.JsonObject;
+
 import org.junit.Test;
 
 import io.appium.uiautomator2.model.By;
@@ -50,7 +50,7 @@ public class ElementCommandsTest extends BaseTest {
      * Test for click on element
      */
     @Test
-    public void clickElementTest() throws JSONException {
+    public void clickElementTest() {
         By by = By.accessibilityId("Accessibility");
         Response response = findElement(by);
         assertTrue(by + " should be found", response.isSuccessful());
@@ -68,16 +68,16 @@ public class ElementCommandsTest extends BaseTest {
         String elementId = response.getElementId();
 
         response = getAttribute(elementId, "resourceId");
-        assertEquals("android:id/text1", response.getValue());
+        assertEquals("android:id/text1", response.getValue(String.class));
 
         response = getAttribute(elementId, "contentDescription");
-        assertEquals("App", response.getValue());
+        assertEquals("App", response.getValue(String.class));
 
         response = getAttribute(elementId, "text");
-        assertEquals("App", response.getValue());
+        assertEquals("App", response.getValue(String.class));
 
         response = getAttribute(elementId, "className");
-        assertEquals("android.widget.TextView", response.getValue());
+        assertEquals("android.widget.TextView", response.getValue(String.class));
     }
 
     /**
@@ -87,44 +87,42 @@ public class ElementCommandsTest extends BaseTest {
     public void getTextTest() {
         Response response = findElement(By.accessibilityId("App"));
         response = getText(response.getElementId());
-        assertEquals("App", response.getValue());
+        assertEquals("App", response.getValue(String.class));
     }
 
     /**
      * Test for send keys to element
      */
     @Test
-    public void sendKeysTest() throws JSONException {
+    public void sendKeysTest() {
         startActivity(".view.Controls1");
         Response response = findElement(By.id("io.appium.android.apis:id/edit"));
         sendKeys(response.getElementId(), "Dummy Theme");
         response = getText(response.getElementId());
-        assertEquals("Dummy Theme", response.getValue());
+        assertEquals("Dummy Theme", response.getValue(String.class));
     }
 
     /**
      * Test for element name
      *
-     * @throws JSONException
      */
     @Test
     public void getNameTest() {
         Response response = findElement(By.id("android:id/text1"));
         response = getName(response.getElementId());
-        assertEquals("Access'ibility", response.getValue());
+        assertEquals("Access'ibility", response.getValue(String.class));
     }
 
     /**
      * Test for element size
      *
-     * @throws JSONException
      */
     @Test
-    public void getElementSizeTest() throws JSONException {
+    public void getElementSizeTest() {
         Response response = findElement(By.id("android:id/text1"));
-        JSONObject value = getSize(response.getElementId()).getValue();
-        int height = value.getInt("height");
-        int width = value.getInt("width");
+        JsonObject value = getSize(response.getElementId()).getValue(JsonObject.class);
+        int height = value.get("height").getAsInt();
+        int width = value.get("width").getAsInt();
         assertTrue("Element height is zero(0), which is not expected", height > 0);
         assertTrue("Element width is zero(0), which is not expected", width > 0);
     }
@@ -132,34 +130,33 @@ public class ElementCommandsTest extends BaseTest {
     /**
      * getLocation will get the location of the element on the screen
      *
-     * @throws JSONException
      */
     @Test
-    public void getLocationTest() throws JSONException {
+    public void getLocationTest() {
         startActivity(".view.ChronometerDemo");
         Response response = findElement(By.id("io.appium.android.apis:id/start"));
         response = getLocation(response.getElementId());
-        JSONObject json = response.getValue();
-        int x = json.getInt("x");
-        int y = json.getInt("y");
+        JsonObject json = response.getValue(JsonObject.class);
+        int x = json.get("x").getAsInt();
+        int y = json.get("y").getAsInt();
         assertTrue("element location x coordinate is zero(0), which is not expected", x > 0);
         assertTrue("element location y coordinate is zero(0), which is not expected", y > 0);
     }
 
     @Test
     @SkipHeadlessDevices
-    public void elementScreenshotTest() throws JSONException {
+    public void elementScreenshotTest() {
         Response response = findElement(By.accessibilityId("Accessibility"));
         clickAndWaitForStaleness(response.getElementId());
 
         String elementId = findElement(By.id("android:id/text1")).getElementId();
         response = getSize(elementId);
-        JSONObject json = response.getValue();
-        int height = json.getInt("height");
-        int width = json.getInt("width");
+        JsonObject json = response.getValue(JsonObject.class);
+        int height = json.get("height").getAsInt();
+        int width = json.get("width").getAsInt();
 
         response = screenshot(elementId);
-        String value = response.getValue();
+        String value = response.getValue(String.class);
         byte[] bytes = Base64.decode(value, Base64.NO_WRAP);
         Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
         assertNotNull(bitmap);

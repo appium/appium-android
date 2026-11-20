@@ -24,9 +24,10 @@ import android.view.Display;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
 import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -67,7 +68,7 @@ public class ActionsCommandsTest extends BaseTest {
         do {
             Response response = findElement(DRAG_TEXT);
             try {
-                dragLabel = getText(response.getElementId()).getValue();
+                dragLabel = getText(response.getElementId()).getValue(String.class);
                 if (dragLabel.contains("Dropped")) {
                     return;
                 }
@@ -78,12 +79,12 @@ public class ActionsCommandsTest extends BaseTest {
         fail(String.format("The drag result has an unexpected label: %s", dragLabel));
     }
 
-    private void setupDragDropView() throws JSONException {
+    private void setupDragDropView() {
         startActivity(".view.DragAndDropDemo");
         waitForElement(By.id("io.appium.android.apis:id/drag_explanation"));
     }
 
-    private void setupEditView() throws JSONException {
+    private void setupEditView() {
         startActivity(".app.AlertDialogSamples");
         Response response = waitForElement(By.accessibilityId("Text Entry dialog"));
         clickAndWaitForStaleness(response.getElementId());
@@ -97,12 +98,12 @@ public class ActionsCommandsTest extends BaseTest {
 
     @Ignore("This test is not stable on CI as probably slow response. Please enable again once we move the CI instance to faster emulator one such as M1 macOS instance. Local run works.")
     @Test
-    public void verifyDragAndDropOnAnotherElement() throws JSONException {
+    public void verifyDragAndDropOnAnotherElement() {
         setupDragDropView();
 
         Response dot1Response = findElement(By.id(dotIdByIdx(1)));
         Response dot2Response = findElement(By.id(dotIdByIdx(2)));
-        final JSONArray actionsJson = new JSONArray(String.format("[ {" +
+        final JsonArray actionsJson = toJsonArray(String.format("[ {" +
                 "\"type\": \"pointer\"," +
                 "\"id\": \"finger1\"," +
                 "\"parameters\": {\"pointerType\": \"touch\"}," +
@@ -120,12 +121,12 @@ public class ActionsCommandsTest extends BaseTest {
 
     @Ignore("This test is not stable on CI as probably slow response. Please enable again once we move the CI instance to faster emulator one such as M1 macOS instance. Local run works.")
     @Test
-    public void verifyTypingText() throws JSONException {
+    public void verifyTypingText() {
         setupEditView();
 
         Response edit = findElement(By.id("io.appium.android.apis:id/username_edit"));
         click(edit.getElementId());
-        final JSONArray actionsJson = new JSONArray("[ {" +
+        final JsonArray actionsJson = toJsonArray("[ {" +
                 "\"type\": \"key\"," +
                 "\"id\": \"keyboard\"," +
                 "\"actions\": [" +
@@ -137,33 +138,47 @@ public class ActionsCommandsTest extends BaseTest {
         Response actionsResponse = performActions(actionsJson);
         assertTrue(actionsResponse.isSuccessful());
         Response response = getText(edit.getElementId());
-        assertThat((String) response.getValue(), equalTo("hi"));
+        assertThat(response.getValue(String.class), equalTo("hi"));
     }
 
-    private static JSONArray keySequence(boolean releaseAfterAllPressed, String... keys) throws JSONException {
-        final JSONArray actions = new JSONArray();
+    private static JsonArray toJsonArray(String json) {
+        return JsonParser.parseString(json).getAsJsonArray();
+    }
+
+    private static JsonObject keyAction(String type, String key) {
+        final JsonObject action = new JsonObject();
+        action.addProperty("type", type);
+        action.addProperty("value", key);
+        return action;
+    }
+
+    private static JsonArray keySequence(boolean releaseAfterAllPressed, String... keys) {
+        final JsonArray actions = new JsonArray();
         for (String key : keys) {
-            actions.put(new JSONObject().put("type", "keyDown").put("value", key));
+            actions.add(keyAction("keyDown", key));
             if (!releaseAfterAllPressed) {
-                actions.put(new JSONObject().put("type", "keyUp").put("value", key));
+                actions.add(keyAction("keyUp", key));
             }
         }
         if (releaseAfterAllPressed) {
             for (String key : keys) {
-                actions.put(new JSONObject().put("type", "keyUp").put("value", key));
+                actions.add(keyAction("keyUp", key));
             }
         }
-        return new JSONArray().put(new JSONObject()
-                .put("type", "key")
-                .put("id", "keyboard")
-                .put("actions", actions));
+        final JsonObject keyboard = new JsonObject();
+        keyboard.addProperty("type", "key");
+        keyboard.addProperty("id", "keyboard");
+        keyboard.add("actions", actions);
+        final JsonArray result = new JsonArray();
+        result.add(keyboard);
+        return result;
     }
 
-    private String typeIntoUsernameField(String... keys) throws JSONException {
+    private String typeIntoUsernameField(String... keys) {
         return typeIntoUsernameField(false, keys);
     }
 
-    private Response openUsernameField() throws JSONException {
+    private Response openUsernameField() {
         // The dialog is not always shown right after the first attempt
         for (int attempt = 0; attempt < 3; attempt++) {
             setupEditView();
@@ -176,15 +191,15 @@ public class ActionsCommandsTest extends BaseTest {
         throw new AssertionError("The username field has not been shown");
     }
 
-    private String typeIntoUsernameField(boolean releaseAfterAllPressed, String... keys) throws JSONException {
+    private String typeIntoUsernameField(boolean releaseAfterAllPressed, String... keys) {
         Response edit = openUsernameField();
         assertTrue(click(edit.getElementId()).isSuccessful());
         assertTrue(performActions(keySequence(releaseAfterAllPressed, keys)).isSuccessful());
-        return (String) getText(edit.getElementId()).getValue();
+        return getText(edit.getElementId()).getValue(String.class);
     }
 
     @Test
-    public void verifyTypingNonAsciiText() throws JSONException {
+    public void verifyTypingNonAsciiText() {
         assertThat(typeIntoUsernameField("П", "р", "и", "в", "і", "т"), equalTo("Привіт"));
     }
 
@@ -198,13 +213,13 @@ public class ActionsCommandsTest extends BaseTest {
     }
 
     @Test
-    public void verifyTypingNonAsciiTextMixedWithAscii() throws JSONException {
+    public void verifyTypingNonAsciiTextMixedWithAscii() {
         assumeStableKeyboard();
         assertThat(typeIntoUsernameField("a", "-", "ж", "-", "b"), equalTo("a-ж-b"));
     }
 
     @Test
-    public void verifyTypingNonAsciiTextWhenKeysAreReleasedAfterAllPressed() throws JSONException {
+    public void verifyTypingNonAsciiTextWhenKeysAreReleasedAfterAllPressed() {
         assumeStableKeyboard();
         // This is how WebdriverIO sends keys: the ASCII key events are still pending
         // when the non-ASCII character is typed, but the order must be preserved
@@ -212,13 +227,13 @@ public class ActionsCommandsTest extends BaseTest {
     }
 
     @Test
-    public void verifyTypingNonAsciiTextAtCursorPosition() throws JSONException {
+    public void verifyTypingNonAsciiTextAtCursorPosition() {
         // \uE012 is the W3C code of the left arrow key
         assertThat(typeIntoUsernameField("a", "c", "\uE012", "Ж"), equalTo("aЖc"));
     }
 
     @Test
-    public void verifyTypingUnknownSpecialKeyFails() throws JSONException {
+    public void verifyTypingUnknownSpecialKeyFails() {
         Response edit = openUsernameField();
         assertTrue(click(edit.getElementId()).isSuccessful());
         // A private use code point that is not a known W3C special key must not be typed as text
@@ -227,7 +242,7 @@ public class ActionsCommandsTest extends BaseTest {
 
     @Ignore("This test is not stable on CI as probably slow response. Please enable again once we move the CI instance to faster emulator one such as M1 macOS instance. Local run works.")
     @Test
-    public void verifyLongClickGesture() throws JSONException {
+    public void verifyLongClickGesture() {
         setupDragDropView();
 
         Response dot1Response = findElement(By.id(dotIdByIdx(1)));
@@ -246,7 +261,7 @@ public class ActionsCommandsTest extends BaseTest {
 
     @Ignore("This test is not stable on CI as probably slow response. Please enable again once we move the CI instance to faster emulator one such as M1 macOS instance. Local run works.")
     @Test
-    public void verifyDragGesture() throws JSONException {
+    public void verifyDragGesture() {
         setupDragDropView();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -271,7 +286,7 @@ public class ActionsCommandsTest extends BaseTest {
     }
 
     @Test
-    public void verifyFlingGesture() throws JSONException {
+    public void verifyFlingGesture() {
         setupDragDropView();
 
         Response dot1Response = findElement(By.id(dotIdByIdx(1)));
@@ -292,7 +307,7 @@ public class ActionsCommandsTest extends BaseTest {
 
     @Ignore("This test is not stable on CI as probably slow response. Please enable again once we move the CI instance to faster emulator one such as M1 macOS instance. Local run works.")
     @Test
-    public void verifyPinchCloseGesture() throws JSONException {
+    public void verifyPinchCloseGesture() {
         setupDragDropView();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -318,7 +333,7 @@ public class ActionsCommandsTest extends BaseTest {
 
     @Ignore("This test is not stable on CI as probably slow response. Please enable again once we move the CI instance to faster emulator one such as M1 macOS instance. Local run works.")
     @Test
-    public void verifyPinchOpenGesture() throws JSONException {
+    public void verifyPinchOpenGesture() {
         setupDragDropView();
 
         Response dot1Response = findElement(By.id(dotIdByIdx(1)));
@@ -338,7 +353,7 @@ public class ActionsCommandsTest extends BaseTest {
     }
 
     @Test
-    public void verifyScrollGesture() throws JSONException {
+    public void verifyScrollGesture() {
         setupDragDropView();
 
         Response dot1Response = findElement(By.id(dotIdByIdx(1)));
@@ -365,7 +380,7 @@ public class ActionsCommandsTest extends BaseTest {
     }
 
     @Test
-    public void verifyScrollGestureWithoutElementAndArea() throws JSONException {
+    public void verifyScrollGestureWithoutElementAndArea() {
         startActivity(".view.List1");
         waitForElement(By.id("android:id/list"));
         By firstItem = By.xpath("//*[@text='Abbaye de Belloc']");
@@ -382,7 +397,7 @@ public class ActionsCommandsTest extends BaseTest {
     }
 
     @Test
-    public void verifyScrollGestureWithoutElementAndAreaAfterScreenChange() throws JSONException {
+    public void verifyScrollGestureWithoutElementAndAreaAfterScreenChange() {
         startActivity(".view.List1");
         waitForElement(By.id("android:id/list"));
         // The previous screen must not be used to look up the scrollable element
@@ -394,7 +409,7 @@ public class ActionsCommandsTest extends BaseTest {
     }
 
     @Test
-    public void verifyScrollGestureWithDisplaySizedArea() throws JSONException {
+    public void verifyScrollGestureWithDisplaySizedArea() {
         startActivity(".view.List1");
         waitForElement(By.id("android:id/list"));
         By firstItem = By.xpath("//*[@text='Abbaye de Belloc']");
@@ -413,7 +428,7 @@ public class ActionsCommandsTest extends BaseTest {
     }
 
     @Test
-    public void verifySwipeGesture() throws JSONException {
+    public void verifySwipeGesture() {
         setupDragDropView();
 
         Response dot1Response = findElement(By.id(dotIdByIdx(1)));
@@ -435,7 +450,7 @@ public class ActionsCommandsTest extends BaseTest {
     }
 
     @Test
-    public void verifyTypingNonAsciiTextIntoPasswordFieldFails() throws JSONException {
+    public void verifyTypingNonAsciiTextIntoPasswordFieldFails() {
         startActivity(".view.TextFields");
         Response password = waitForElement(By.id("io.appium.android.apis:id/edit1"));
         click(password.getElementId());
@@ -443,6 +458,6 @@ public class ActionsCommandsTest extends BaseTest {
         // The content of the field is masked, so it cannot be safely modified
         assertFalse(performActions(keySequence(false, "Ж")).isSuccessful());
         Response mirror = findElement(By.id("io.appium.android.apis:id/edit1Text"));
-        assertThat((String) getText(mirror.getElementId()).getValue(), equalTo("ab"));
+        assertThat(getText(mirror.getElementId()).getValue(String.class), equalTo("ab"));
     }
 }

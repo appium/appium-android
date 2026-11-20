@@ -17,12 +17,12 @@ package io.appium.uiautomator2.unittest.test.internal;
 
 import android.os.SystemClock;
 
+import com.google.gson.JsonObject;
 import com.squareup.okhttp.MediaType;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.RequestBody;
 
-import org.json.JSONObject;
 
 import java.io.IOException;
 
@@ -53,11 +53,11 @@ public abstract class Client {
         return execute(request);
     }
 
-    public static Response post(final String path, final JSONObject body) {
+    public static Response post(final String path, final JsonObject body) {
         return post(WebDriverSession.getInstance().getBaseUrl(), path, body);
     }
 
-    public static Response post(final String baseUrl, final String path, final JSONObject body) {
+    public static Response post(final String baseUrl, final String path, final JsonObject body) {
         Request request = new Request.Builder().url(baseUrl + path)
                 .post(RequestBody.create(JSON, body.toString())).build();
         return execute(request);
@@ -65,7 +65,7 @@ public abstract class Client {
 
     public static Response delete() {
         Request request = new Request.Builder().url(WebDriverSession.getInstance().getBaseUrl())
-                .delete(RequestBody.create(JSON, new JSONObject().toString())).build();
+                .delete(RequestBody.create(JSON, new JsonObject().toString())).build();
         return execute(request);
     }
 

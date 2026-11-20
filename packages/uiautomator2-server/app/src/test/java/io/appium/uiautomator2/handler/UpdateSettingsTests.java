@@ -16,7 +16,6 @@
 
 package io.appium.uiautomator2.handler;
 
-import org.json.JSONException;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -27,7 +26,6 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import java.util.Collections;
-import java.util.HashMap;
 
 import io.appium.uiautomator2.common.exceptions.UiAutomator2Exception;
 import io.appium.uiautomator2.handler.request.BaseRequestHandler;
@@ -106,16 +104,12 @@ public class UpdateSettingsTests {
     private IHttpRequest req;
 
     @Before
-    public void setUp() throws JSONException {
+    public void setUp() {
         AppiumUIA2Driver.getInstance().initializeSession(Collections.emptyMap());
-        HashMap<String, Object> payload = new HashMap<>();
-        payload.put(SETTING_NAME, SETTING_VALUE);
-
         doNothing().when(mySetting).update(any());
 
         PowerMockito.mockStatic(BaseRequestHandler.class);
         when(BaseRequestHandler.getSessionId(req)).thenReturn("sessionId");
-        when(BaseRequestHandler.getPayload(req, "settings")).thenReturn(payload);
         doReturn(mySetting).when(updateSettings).getSetting(SETTING_NAME);
     }
 

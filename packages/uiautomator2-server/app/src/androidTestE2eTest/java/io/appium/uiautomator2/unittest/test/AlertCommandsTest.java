@@ -18,7 +18,6 @@ package io.appium.uiautomator2.unittest.test;
 
 import android.os.Build;
 
-import org.json.JSONException;
 import org.junit.Test;
 
 import io.appium.uiautomator2.model.By;
@@ -39,13 +38,13 @@ import static org.junit.Assert.assertTrue;
 
 public class AlertCommandsTest extends BaseTest {
 
-    private void setupView() throws JSONException {
+    private void setupView() {
         startActivity(".app.AlertDialogSamples");
         waitForElement(By.accessibilityId("List dialog"));
     }
 
     @Test
-    public void verifyAcceptingAnAlert() throws JSONException {
+    public void verifyAcceptingAnAlert() {
         setupView();
 
         Response response = findElement(By.accessibilityId("OK Cancel dialog with a long message"));
@@ -56,7 +55,7 @@ public class AlertCommandsTest extends BaseTest {
     }
 
     @Test
-    public void verifyDismissingAnAlertWithButton() throws JSONException {
+    public void verifyDismissingAnAlertWithButton() {
         if (Build.VERSION.SDK_INT < 23) {
             return;
         }
@@ -70,7 +69,7 @@ public class AlertCommandsTest extends BaseTest {
         // so read the negative button label from the alert instead of guessing it
         // from the API level.
         response = waitForElement(By.id("android:id/button2"));
-        String cancelLabel = getText(response.getElementId()).getValue();
+        String cancelLabel = getText(response.getElementId()).getValue(String.class);
         assertTrue("Cancel".equalsIgnoreCase(cancelLabel));
 
         response = dismissAlert(cancelLabel);
@@ -78,7 +77,7 @@ public class AlertCommandsTest extends BaseTest {
     }
 
     @Test
-    public void verifyGettingAlertText() throws JSONException {
+    public void verifyGettingAlertText() {
         setupView();
 
         Response response = findElement(By.accessibilityId("OK Cancel dialog with a message"));
@@ -86,11 +85,11 @@ public class AlertCommandsTest extends BaseTest {
 
         response = getAlertText();
         assertTrue(response.isSuccessful());
-        assertThat((String) response.getValue(), startsWith("Lorem ipsum dolor"));
+        assertThat(response.getValue(String.class), startsWith("Lorem ipsum dolor"));
     }
 
     @Test
-    public void verifyExceptionIfNoAlertPresent() throws JSONException {
+    public void verifyExceptionIfNoAlertPresent() {
         setupView();
 
         Response response = getAlertText();

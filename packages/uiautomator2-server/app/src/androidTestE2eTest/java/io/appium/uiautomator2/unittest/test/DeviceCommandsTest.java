@@ -20,9 +20,10 @@ import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.util.Base64;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+
 import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -75,10 +76,17 @@ import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings("JavaDoc")
 public class DeviceCommandsTest extends BaseTest {
+    private static JsonObject rotation(int z) {
+        final JsonObject rotateMap = new JsonObject();
+        rotateMap.addProperty("x", 0);
+        rotateMap.addProperty("y", 0);
+        rotateMap.addProperty("z", z);
+        return rotateMap;
+    }
+
     @After
-    public void resetRotation() throws JSONException {
-        assertTrue(setRotation(new JSONObject().put("x", 0).put("y", 0).put("z", 0))
-                .isSuccessful());
+    public void resetRotation() {
+        assertTrue(setRotation(rotation(0)).isSuccessful());
     }
 
     /**
@@ -116,13 +124,13 @@ public class DeviceCommandsTest extends BaseTest {
         by = By.xpath("(//*[@class='android.widget.TextView'])[3]");
         response = findElement(by);
         response = getAttribute(response.getElementId(), "text");
-        assertEquals("Accessibility", response.getValue());
+        assertEquals("Accessibility", response.getValue(String.class));
 
         by = By.xpath("//*[@resource-id='android:id/content']" +
                 "//*[@resource-id='android:id/text1'][5]");
         response = findElement(by);
         response = getAttribute(response.getElementId(), "text");
-        assertEquals("Content", response.getValue());
+        assertEquals("Content", response.getValue(String.class));
 
         // Xpath 2.0
         by = By.xpath("//*[@resource-id[matches(., 'action_bar$')]]");
@@ -134,7 +142,7 @@ public class DeviceCommandsTest extends BaseTest {
      * test to find element using "-android automator" property
      */
     @Test
-    public void findElementUsingUiAutomatorTest() throws JSONException {
+    public void findElementUsingUiAutomatorTest() {
         scrollToText("Views"); // Due to 'Views' option not visible on small screen
         Response response = findElement(By.accessibilityId("Views"));
         clickAndWaitForStaleness(response.getElementId());
@@ -154,12 +162,12 @@ public class DeviceCommandsTest extends BaseTest {
      * test to find elements using "-android automator" property
      */
     @Test
-    public void findElementsUsingUiAutomatorTest() throws JSONException {
+    public void findElementsUsingUiAutomatorTest() {
         By by = By.androidUiAutomator("resourceId(\"android:id/text1\")");
         Response response = findElements(by);
         assertTrue(by + " should be found", response.isSuccessful());
 
-        JSONArray elements = response.getValue();
+        JsonArray elements = response.getValue(JsonArray.class);
         int elementCount = getJsonObjectCountInJsonArray(elements);
         // Local exceeded 5, but CI was 5. This adding '=' is Android 16 emulator on CI related,
         // but it's ok for this test's purpose to get multiple elements.
@@ -171,11 +179,11 @@ public class DeviceCommandsTest extends BaseTest {
      * Test for findElements
      */
     @Test
-    public void findElementsTest() throws JSONException {
+    public void findElementsTest() {
         By by = By.className("android.widget.TextView");
         Response response = findElements(by);
         assertTrue(by + " should be found", response.isSuccessful());
-        JSONArray elements = response.getValue();
+        JsonArray elements = response.getValue(JsonArray.class);
         int elementCount = getJsonObjectCountInJsonArray(elements);
         assertTrue("Elements Count in Home launch screen should at least > 5, " +
                 "in all variants of screen sizes, but actual: " + elementCount, elementCount > 5);
@@ -184,13 +192,12 @@ public class DeviceCommandsTest extends BaseTest {
     /**
      * Test for Device size
      *
-     * @throws JSONException
      */
     @Test
-    public void getDeviceSizeTest() throws JSONException {
-        JSONObject value = getDeviceSize().getValue();
-        int height = value.getInt("height");
-        int width = value.getInt("width");
+    public void getDeviceSizeTest() {
+        JsonObject value = getDeviceSize().getValue(JsonObject.class);
+        int height = value.get("height").getAsInt();
+        int width = value.get("width").getAsInt();
         assertTrue("device window height is " + height + ", which is not expected", height > 200);
         assertTrue("device window width is " + width + ", which is not expected", width > 100);
     }
@@ -205,8 +212,7 @@ public class DeviceCommandsTest extends BaseTest {
         do {
             Response response = getDeclaredOrientation();
             assertTrue(response.isSuccessful());
-            Object value = response.getValue();
-            declaredOrientation = value instanceof String ? (String) value : null;
+            declaredOrientation = response.getValue(String.class);
             if (declaredOrientation != null && declaredOrientation.matches("SCREEN_ORIENTATION_.+")) {
                 return;
             }
@@ -220,10 +226,9 @@ public class DeviceCommandsTest extends BaseTest {
     /**
      * performs screen rotation
      *
-     * @throws JSONException
      */
     @Test
-    public void screenRotationLandscapeTest() throws JSONException {
+    public void screenRotationLandscapeTest() {
         Response response = rotateScreen("LANDSCAPE");
         assertTrue(response.isSuccessful());
         Device.waitForIdle();
@@ -233,10 +238,9 @@ public class DeviceCommandsTest extends BaseTest {
     /**
      * performs screen rotation
      *
-     * @throws JSONException
      */
     @Test
-    public void screenRotationPortraitTest() throws JSONException {
+    public void screenRotationPortraitTest() {
         Response response = rotateScreen("PORTRAIT");
         assertTrue(response.isSuccessful());
         Device.waitForIdle();
@@ -246,15 +250,13 @@ public class DeviceCommandsTest extends BaseTest {
     /**
      * performs screen rotation
      *
-     * @throws JSONException
      */
     @Test
-    public void screenRotationLandscapeRightTest() throws JSONException {
+    public void screenRotationLandscapeRightTest() {
         /*
           LANDSCAPE RIGHT
          */
-        JSONObject rotateMap = new JSONObject().put("x", 0).put("y", 0)
-                .put("z", 90);
+        JsonObject rotateMap = rotation(90);
         Response response = setRotation(rotateMap);
         Device.waitForIdle();
         assertTrue(response.isSuccessful());
@@ -263,15 +265,13 @@ public class DeviceCommandsTest extends BaseTest {
     /**
      * performs screen rotation
      *
-     * @throws JSONException
      */
     @Test
-    public void screenRotationPortraitUpsideDownTest() throws JSONException {
+    public void screenRotationPortraitUpsideDownTest() {
         /*
           PORTRAIT UPSIDE DOWN
          */
-        JSONObject rotateMap = new JSONObject().put("x", 0).put("y", 0)
-                .put("z", 180);
+        JsonObject rotateMap = rotation(180);
         Response response = setRotation(rotateMap);
         Device.waitForIdle();
         assertTrue(response.isSuccessful());
@@ -280,15 +280,13 @@ public class DeviceCommandsTest extends BaseTest {
     /**
      * performs screen rotation
      *
-     * @throws JSONException
      */
     @Test
-    public void screenRotationPortraitMapTest() throws JSONException {
+    public void screenRotationPortraitMapTest() {
         /*
           PORTRAIT
          */
-        JSONObject rotateMap = new JSONObject().put("x", 0).put("y", 0)
-                .put("z", 0);
+        JsonObject rotateMap = rotation(0);
         Response response = setRotation(rotateMap);
         Device.waitForIdle();
         assertTrue(response.isSuccessful());
@@ -297,15 +295,13 @@ public class DeviceCommandsTest extends BaseTest {
     /**
      * performs screen rotation
      *
-     * @throws JSONException
      */
     @Test
-    public void screenRotationInvalidTest() throws JSONException {
+    public void screenRotationInvalidTest() {
         /*
           INVALID MAP
          */
-        JSONObject rotateMap = new JSONObject().put("x", 0).put("y", 0)
-                .put("z", 10);
+        JsonObject rotateMap = rotation(10);
         Response response = setRotation(rotateMap);
         assertFalse(response.isSuccessful());
     }
@@ -320,7 +316,7 @@ public class DeviceCommandsTest extends BaseTest {
         //child  element - By.className (UiObject2)
         response = findElement(By.className("android.widget.TextView"), contextId);
         response = getText(response.getElementId());
-        assertEquals("Access'ibility", response.getValue());
+        assertEquals("Access'ibility", response.getValue(String.class));
     }
 
     @Test
@@ -332,7 +328,7 @@ public class DeviceCommandsTest extends BaseTest {
         //child  element - By.className (UiObject2)
         response = findElement(By.className("android.widget.TextView"), contextId);
         response = getText(response.getElementId());
-        assertEquals("Access'ibility", response.getValue());
+        assertEquals("Access'ibility", response.getValue(String.class));
     }
 
     @Test
@@ -344,7 +340,7 @@ public class DeviceCommandsTest extends BaseTest {
         //child element - By.xpath  (UiObject2)
         response = findElement(By.xpath("//*[@class='android.widget.TextView'][2]"), contextId);
         response = getText(response.getElementId());
-        assertEquals("Accessibility", response.getValue());
+        assertEquals("Accessibility", response.getValue(String.class));
     }
 
     @Test
@@ -356,7 +352,7 @@ public class DeviceCommandsTest extends BaseTest {
         //child element - By.xpath  (UiObject2)
         response = findElement(By.xpath("(//*[@class='android.widget.TextView'])[2]"), contextId);
         response = getText(response.getElementId());
-        assertEquals("Accessibility", response.getValue());
+        assertEquals("Accessibility", response.getValue(String.class));
     }
 
     @Test
@@ -369,7 +365,7 @@ public class DeviceCommandsTest extends BaseTest {
         response = waitForElement(By.androidUiAutomator("new UiSelector().text(\"Animation\");"),
                 contextId);
         response = getText(response.getElementId());
-        assertEquals("Animation", response.getValue());
+        assertEquals("Animation", response.getValue(String.class));
     }
 
     @Test
@@ -381,7 +377,7 @@ public class DeviceCommandsTest extends BaseTest {
         //child element - By.xpath  (UiObject2)
         response = findElement(By.xpath("(//*[@class='android.widget.TextView'])[2]"), contextId);
         response = getText(response.getElementId());
-        assertEquals("Accessibility", response.getValue());
+        assertEquals("Accessibility", response.getValue(String.class));
     }
 
     @Test
@@ -394,11 +390,11 @@ public class DeviceCommandsTest extends BaseTest {
         //child element - By.xpath  (UiObject2)
         response = findElement(By.xpath("//*[@class='android.widget.TextView'][2]"), contextId);
         response = getText(response.getElementId());
-        assertEquals("Accessibility", response.getValue());
+        assertEquals("Accessibility", response.getValue(String.class));
     }
 
     @Test
-    public void findElementWithContextId8() throws JSONException {
+    public void findElementWithContextId8() {
         Response response = findElement(By.accessibilityId("Animation"));
         clickAndWaitForStaleness(response.getElementId());
         response = findElement(By.accessibilityId("Events"));
@@ -415,7 +411,7 @@ public class DeviceCommandsTest extends BaseTest {
         response = waitForElement(By.androidUiAutomator("new UiSelector().className(\"android.widget" +
                 ".TextView\")"), contextId);
         response = getText(response.getElementId());
-        assertEquals("Access'ibility", response.getValue());
+        assertEquals("Access'ibility", response.getValue(String.class));
     }
 
     @Test
@@ -431,7 +427,7 @@ public class DeviceCommandsTest extends BaseTest {
     }
 
     @Test
-    public void findElementWithAttributes() throws JSONException {
+    public void findElementWithAttributes() {
         scrollToText("Views");
         Response response = findElement(By.accessibilityId("Views"));
         clickAndWaitForStaleness(response.getElementId());
@@ -442,28 +438,28 @@ public class DeviceCommandsTest extends BaseTest {
         assertTrue(response.isSuccessful());
 
         response = getAttribute(elementId, "clickable");
-        assertEquals("true", response.getValue());
+        assertEquals("true", response.getValue(String.class));
 
         response = getAttribute(elementId, "enabled");
-        assertEquals("true", response.getValue());
+        assertEquals("true", response.getValue(String.class));
     }
 
     @Test
     public void findElementWithClassName() {
         Response response = findElement(By.className("android.widget.TextView"));
         response = getText(response.getElementId());
-        assertEquals("API Demos", response.getValue());
+        assertEquals("API Demos", response.getValue(String.class));
     }
 
     @Test
-    public void findElementsWithAttribute() throws JSONException {
+    public void findElementsWithAttribute() {
         Response response = findElement(By.accessibilityId("Accessibility"));
         clickAndWaitForStaleness(response.getElementId());
 
         response = findElements(By.xpath("//*[@enabled='true' and @class='android.widget" +
                 ".TextView']"));
 
-        JSONArray elements = response.getValue();
+        JsonArray elements = response.getValue(JsonArray.class);
         int elementCount = getJsonObjectCountInJsonArray(elements);
         assertTrue("Elements Count in views screen should at least > 4, " +
                 "in all variants of screen sizes, but actual: " + elementCount, elementCount > 4);
@@ -473,13 +469,13 @@ public class DeviceCommandsTest extends BaseTest {
         List<String> expectedTexts = Arrays.asList("API Demos", "Accessibility Node Provider",
                 "Accessibility Node Querying", "Accessibility Service");
         for (int i = 0; i < 4; i++) {
-            String elementId = TestUtils.extractElementId(elements.getJSONObject(i));
-            assertEquals(expectedTexts.get(i), getText(elementId).getValue());
+            String elementId = TestUtils.extractElementId(elements.get(i).getAsJsonObject());
+            assertEquals(expectedTexts.get(i), getText(elementId).getValue(String.class));
         }
     }
 
     @Test
-    public void toastVerificationTest1() throws JSONException {
+    public void toastVerificationTest1() {
         startActivity(".view.PopupMenu1");
 
         Response response = waitForElement(By.accessibilityId("Make a Popup!"));
@@ -490,12 +486,12 @@ public class DeviceCommandsTest extends BaseTest {
         By by = By.xpath("//*[@text='Clicked popup menu item Search']");
         response = waitForElement(by);
         response = getText(response.getElementId());
-        assertEquals("Clicked popup menu item Search", response.getValue());
+        assertEquals("Clicked popup menu item Search", response.getValue(String.class));
         assertTrue(response.isSuccessful());
     }
 
     @Test
-    public void toastVerificationTest2() throws JSONException {
+    public void toastVerificationTest2() {
         startActivity(".view.PopupMenu1");
 
         Response response = waitForElement(By.accessibilityId("Make a Popup!"));
@@ -507,11 +503,11 @@ public class DeviceCommandsTest extends BaseTest {
         response = waitForElement(by);
         assertTrue(response.isSuccessful());
         response = getText(response.getElementId());
-        assertEquals("Clicked popup menu item Add", response.getValue());
+        assertEquals("Clicked popup menu item Add", response.getValue(String.class));
     }
 
     @Test
-    public void toastVerificationTest3() throws JSONException {
+    public void toastVerificationTest3() {
         startActivity(".view.PopupMenu1");
 
         Response response = waitForElement(By.accessibilityId("Make a Popup!"));
@@ -523,11 +519,11 @@ public class DeviceCommandsTest extends BaseTest {
         response = waitForElement(by);
         assertTrue(response.isSuccessful());
         response = getText(response.getElementId());
-        assertEquals("Clicked popup menu item Edit", response.getValue());
+        assertEquals("Clicked popup menu item Edit", response.getValue(String.class));
     }
 
     @Test
-    public void toastVerificationTest4() throws JSONException {
+    public void toastVerificationTest4() {
         startActivity(".view.PopupMenu1");
 
         Response response = waitForElement(By.accessibilityId("Make a Popup!"));
@@ -546,16 +542,15 @@ public class DeviceCommandsTest extends BaseTest {
         response = waitForElement(by);
         assertTrue(response.isSuccessful());
         response = getText(response.getElementId());
-        assertEquals("Clicked popup menu item Share", response.getValue());
+        assertEquals("Clicked popup menu item Share", response.getValue(String.class));
     }
 
     /**
      * Performs scrolling through a horizontal list to an element specified by its text.
      *
-     * @throws JSONException
      */
     @Test
-    public void scrollHorizontalListTest() throws JSONException {
+    public void scrollHorizontalListTest() {
         startActivity(".view.Tabs5"); // Page with horizontally-scrollable tabs
         waitForElement(By.id("android:id/tabs"));
 
@@ -585,7 +580,7 @@ public class DeviceCommandsTest extends BaseTest {
     }
 
     @Test
-    public void scrollToElementWithoutUiScrollable() throws JSONException {
+    public void scrollToElementWithoutUiScrollable() {
         startActivity(".view.List1");
         waitForElement(By.id("android:id/list"));
         String target = "//*[@text='Armenian String']";
@@ -600,7 +595,7 @@ public class DeviceCommandsTest extends BaseTest {
     }
 
     @Test
-    public void scrollToElementInContainerFoundByIdWithoutUiScrollable() throws JSONException {
+    public void scrollToElementInContainerFoundByIdWithoutUiScrollable() {
         startActivity(".view.List1");
         String listId = waitForElement(By.id("android:id/list")).getElementId();
         String target = "//*[@text='Armenian String']";
@@ -610,7 +605,7 @@ public class DeviceCommandsTest extends BaseTest {
     }
 
     @Test
-    public void scrollToElementWithoutUiScrollableFailsIfElementDoesNotExist() throws JSONException {
+    public void scrollToElementWithoutUiScrollableFailsIfElementDoesNotExist() {
         startActivity(".view.List1");
         waitForElement(By.id("android:id/list"));
         assertFalse(scrollTo("xpath", "//*[@text='No such cheese']", null, null, null, 3).isSuccessful());
@@ -619,7 +614,7 @@ public class DeviceCommandsTest extends BaseTest {
     }
 
     @Test
-    public void scrollToElementWithoutUiScrollableCanStartFromTheBeginning() throws JSONException {
+    public void scrollToElementWithoutUiScrollableCanStartFromTheBeginning() {
         startActivity(".view.List1");
         waitForElement(By.id("android:id/list"));
         String top = "//*[@text='Abbaye de Belloc']";
@@ -632,8 +627,7 @@ public class DeviceCommandsTest extends BaseTest {
     }
 
     @Test
-    public void scrollToElementWithoutUiScrollableUsesHorizontalDirectionForHorizontalScrollViews()
-            throws JSONException {
+    public void scrollToElementWithoutUiScrollableUsesHorizontalDirectionForHorizontalScrollViews() {
         startActivity(".view.Tabs5");
         waitForElement(By.xpath("//*[@text='TAB 1']"));
         String target = "//*[@text='TAB 20']";
@@ -643,7 +637,7 @@ public class DeviceCommandsTest extends BaseTest {
     }
 
     @Test
-    public void scrollBackToElementWithoutUiScrollable() throws JSONException {
+    public void scrollBackToElementWithoutUiScrollable() {
         startActivity(".view.Tabs5");
         waitForElement(By.xpath("//*[@text='TAB 1']"));
         String stripId = findElement(By.androidUiAutomator("new UiSelector().scrollable(true).instance(0)"))
@@ -662,12 +656,11 @@ public class DeviceCommandsTest extends BaseTest {
     /**
      * Performs scrolling through a very long list to an element specified by its text.
      *
-     * @throws JSONException
      */
     @Test
     @Ignore("The run-time of this test is ~8.5 minutes, which might fail automated build jobs " +
             "that have timeout of 10 minutes. To verify this scenario, run the test locally.")
-    public void scrollVeryLongListSuccessfully() throws JSONException {
+    public void scrollVeryLongListSuccessfully() {
         startActivity(".view.List1"); // A very long list (500+ items).
         waitForElement(By.id("android:id/list"));
 
@@ -696,10 +689,9 @@ public class DeviceCommandsTest extends BaseTest {
     /**
      * Attempts scrolling through a very long list with a limited number of swipes.
      *
-     * @throws JSONException
      */
     @Test
-    public void scrollVeryLongListUnsuccessfully() throws JSONException {
+    public void scrollVeryLongListUnsuccessfully() {
         startActivity(".view.List1"); // A very long list (500+ items).
         waitForElement(By.id("android:id/list"));
 
@@ -719,10 +711,9 @@ public class DeviceCommandsTest extends BaseTest {
     /**
      * Performs scrolling to an element specified by its class name.
      *
-     * @throws JSONException
      */
     @Test
-    public void scrollByClassNameTest() throws JSONException {
+    public void scrollByClassNameTest() {
         startActivity(".preference.PreferencesFromCode");
         waitForElement(By.id("android:id/list"));
 
@@ -762,10 +753,9 @@ public class DeviceCommandsTest extends BaseTest {
     /**
      * Performs scrolling to an element identified by a UiSelector specification.
      *
-     * @throws JSONException
      */
     @Test
-    public void scrollByUiSelectorTest() throws JSONException {
+    public void scrollByUiSelectorTest() {
         scrollToText("Views"); // Due to 'Views' option not visible on small screen
         Response response = findElement(By.accessibilityId("Views"));
         clickAndWaitForStaleness(response.getElementId());
@@ -785,22 +775,22 @@ public class DeviceCommandsTest extends BaseTest {
 
     @Test
     @SkipHeadlessDevices
-    public void screenshotTest() throws JSONException {
+    public void screenshotTest() {
         Response response = findElement(By.accessibilityId("Accessibility"));
         clickAndWaitForStaleness(response.getElementId());
         waitForElement(By.accessibilityId("Custom View"));
 
         response = screenshot();
-        String value = response.getValue();
+        String value = response.getValue(String.class);
         byte[] bytes = Base64.decode(value, Base64.NO_WRAP);
         Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
         assertNotNull(bitmap);
     }
 
     @Test
-    public void shouldBeAbleToUpdateSettings() throws JSONException {
+    public void shouldBeAbleToUpdateSettings() {
         Response response = getSettings();
-        JSONObject defaultSettings = response.getValue();
+        JsonObject defaultSettings = response.getValue(JsonObject.class);
         Map<String, Object> settings = new HashMap<>();
         settings.put("actionAcknowledgmentTimeout", 123);
         settings.put("allowInvisibleElements", true);
@@ -818,9 +808,9 @@ public class DeviceCommandsTest extends BaseTest {
                 updateSetting(entry.getKey(), entry.getValue());
             }
             response = getSettings();
-            JSONObject jsonObject = response.getValue();
+            JsonObject jsonObject = response.getValue(JsonObject.class);
             for (Map.Entry<String, Object> entry : settings.entrySet()) {
-                assertEquals(entry.getValue(), jsonObject.get(entry.getKey()));
+                assertEquals(new Gson().toJsonTree(entry.getValue()), jsonObject.get(entry.getKey()));
             }
         } finally {
             updateSettings(defaultSettings);
@@ -828,7 +818,7 @@ public class DeviceCommandsTest extends BaseTest {
     }
 
     @Test
-    public void shouldBeAbleToFindElementViaUiSelectorWithQuotesInParams() throws JSONException {
+    public void shouldBeAbleToFindElementViaUiSelectorWithQuotesInParams() {
         startActivity(".view.TextFields");
         Response response = waitForElement(By.id("io.appium.android.apis:id/edit"));
         sendKeys(response.getElementId(), "Use a \"tel:\" URL");
@@ -839,7 +829,7 @@ public class DeviceCommandsTest extends BaseTest {
     }
 
     @Test
-    public void shouldBeAbleToFindElementViaUiSelectorWithParenthesesInParams() throws JSONException {
+    public void shouldBeAbleToFindElementViaUiSelectorWithParenthesesInParams() {
         startActivity(".view.TextFields");
         Response response = waitForElement(By.id("io.appium.android.apis:id/edit"));
         sendKeys(response.getElementId(), "(415)");
@@ -850,7 +840,7 @@ public class DeviceCommandsTest extends BaseTest {
     }
 
     @Test
-    public void shouldBeAbleToFindElementViaUiSelectorWithCommasInParams() throws JSONException {
+    public void shouldBeAbleToFindElementViaUiSelectorWithCommasInParams() {
         startActivity(".view.TextFields");
         Response response = waitForElement(By.id("io.appium.android.apis:id/edit"));
         sendKeys(response.getElementId(), "Expressway, Suite 400, Austin");
@@ -861,7 +851,7 @@ public class DeviceCommandsTest extends BaseTest {
     }
 
     @Test
-    public void shouldBeAbleToFindElementViaUiScrollableScrollIntoView() throws JSONException {
+    public void shouldBeAbleToFindElementViaUiScrollableScrollIntoView() {
         startActivity(".view.List1");
         waitForElement(By.id("android:id/list"));
         By androidUiAutomator = By.androidUiAutomator(
@@ -872,7 +862,7 @@ public class DeviceCommandsTest extends BaseTest {
     }
 
     @Test
-    public void shouldBeAbleToFindElementViaUiScrollableScrollTextIntoView() throws JSONException {
+    public void shouldBeAbleToFindElementViaUiScrollableScrollTextIntoView() {
         startActivity(".view.List1");
         waitForElement(By.id("android:id/list"));
         By androidUiAutomator = By.androidUiAutomator(
@@ -883,7 +873,7 @@ public class DeviceCommandsTest extends BaseTest {
     }
 
     @Test
-    public void shouldBeAbleToFindElementViaUiScrollableGetChildByDescription() throws JSONException {
+    public void shouldBeAbleToFindElementViaUiScrollableGetChildByDescription() {
         startActivity(".view.ScrollBar1");
         waitForElement(By.accessibilityId("Lorem ipsum dolor sit amet."));
         By androidUiAutomator = By.androidUiAutomator(
@@ -896,8 +886,7 @@ public class DeviceCommandsTest extends BaseTest {
     }
 
     @Test
-    public void scrollIntoViewShouldNotThrowExceptionIfScrollableDoesNotExist() throws
-            JSONException {
+    public void scrollIntoViewShouldNotThrowExceptionIfScrollableDoesNotExist() {
         startActivity(".view.ScrollBar1");
         waitForElement(By.accessibilityId("Lorem ipsum dolor sit amet."));
         By androidUiAutomator = By.androidUiAutomator(
@@ -909,7 +898,7 @@ public class DeviceCommandsTest extends BaseTest {
 
     // @Test
     // @RootRequired
-    // public void shouldShutdownServerOnPowerDisconnect() throws IOException, JSONException {
+    // public void shouldShutdownServerOnPowerDisconnect() throws IOException {
     //     try {
     //         UiDevice.getInstance(getInstrumentation()).executeShellCommand(
     //                 "su 0 am broadcast -a android.intent.action.ACTION_POWER_DISCONNECTED " +
@@ -923,17 +912,17 @@ public class DeviceCommandsTest extends BaseTest {
     // }
 
     @Test
-    public void shouldExtractDeviceInformation() throws JSONException {
-        JSONObject info = getInfo().getValue();
-        assertEquals(Build.MANUFACTURER, info.getString("manufacturer"));
-        assertEquals(Build.VERSION.RELEASE, info.getString("platformVersion"));
-        assertTrue(info.getJSONArray("networks").length() > 0);
+    public void shouldExtractDeviceInformation() {
+        JsonObject info = getInfo().getValue(JsonObject.class);
+        assertEquals(Build.MANUFACTURER, info.get("manufacturer").getAsString());
+        assertEquals(Build.VERSION.RELEASE, info.get("platformVersion").getAsString());
+        assertTrue(info.getAsJsonArray("networks").size() > 0);
     }
 
     @Test
-    public void shouldExtractPackages() throws JSONException {
-        JSONArray apps = getPackages().getValue();
-        assertTrue(apps.length() > 0);
+    public void shouldExtractPackages() {
+        JsonArray apps = getPackages().getValue(JsonArray.class);
+        assertTrue(apps.size() > 0);
     }
 
 }

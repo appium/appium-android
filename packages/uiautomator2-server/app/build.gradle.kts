@@ -162,7 +162,6 @@ dependencies {
     implementation(libs.junidecode)
     // Test dependencies
     testImplementation(libs.junit)
-    testImplementation(libs.json)
     testImplementation(libs.bundles.powermock)
     testImplementation(libs.robolectric)
     testImplementation(libs.javassist)
