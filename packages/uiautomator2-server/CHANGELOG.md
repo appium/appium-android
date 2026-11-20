@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.2.4](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.2.3...appium-uiautomator2-server@11.2.4) (2026-11-20)
+
+### Code Refactoring
+
+* **uiautomator2-server:** replace okhttp with HttpURLConnection in e2e tests ([#167](https://github.com/appium/appium-android/issues/167)) ([7426399](https://github.com/appium/appium-android/commit/7426399a85c0364e987e459791bf804c02519a92))
+
+
 ## [11.2.3](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.2.2...appium-uiautomator2-server@11.2.3) (2026-11-20)
 
 **Note:** Version bump only for package appium-uiautomator2-server
