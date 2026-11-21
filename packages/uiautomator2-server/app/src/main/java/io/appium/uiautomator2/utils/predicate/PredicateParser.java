@@ -277,7 +277,7 @@ public final class PredicateParser {
         validate(operator, values, valuePos);
         validateTypes(key, operator, values, valuePos);
         return new Comparison(key.attribute, key.boundsField, operator, caseInsensitive,
-                diacriticInsensitive, values);
+                diacriticInsensitive, normalizeValues(key, values));
     }
 
     private Key parseKey() {
@@ -561,6 +561,10 @@ public final class PredicateParser {
         if (peek() == '-' || peek() == '+') {
             pos++;
         }
+        if (peek() == '0' && "xXoObB".indexOf(peek(1)) >= 0 && peek(1) != '\0') {
+            throw error("Hexadecimal, octal and binary literals are not supported, "
+                    + "use a decimal number", start);
+        }
         readDigits();
         boolean decimal = false;
         if (peek() == '.' && isAsciiDigit(peek(1))) {
@@ -643,6 +647,18 @@ public final class PredicateParser {
             default:
                 break;
         }
+    }
+
+    // Boolean attributes get Boolean values, so the evaluator never sees 1/0 for them
+    private static List<Object> normalizeValues(Key key, List<Object> values) {
+        if (key.boundsField != null || key.attribute.getType() != Attribute.Type.BOOLEAN) {
+            return values;
+        }
+        List<Object> result = new ArrayList<>(values.size());
+        for (Object value : values) {
+            result.add(value instanceof Long ? (Object) ((Long) value == 1L) : value);
+        }
+        return result;
     }
 
     private void validateTypes(Key key, Operator operator, List<Object> values, int valuePos) {

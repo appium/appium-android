@@ -272,6 +272,12 @@ public class PredicateParserTests {
         assertInvalid("index == 1e999", "out of range");
         assertInvalid("index == \u0663", "Unexpected");
         assertInvalid("index == 12abc", "Malformed number");
+        assertInvalid("inputType == 0x1", "Hexadecimal, octal and binary literals are not supported");
+        assertInvalid("inputType == 0X1F", "Hexadecimal, octal and binary literals");
+        assertInvalid("inputType == 0o7", "Hexadecimal, octal and binary literals");
+        assertInvalid("inputType == -0b11", "Hexadecimal, octal and binary literals");
+        assertEquals(0L, comparison("inputType == 0").getValue());
+        assertEquals(7L, comparison("inputType == 007").getValue());
         assertInvalid("index == 1.", "Unexpected '.'");
         assertInvalid("index == -", "expected a literal");
     }
@@ -338,8 +344,12 @@ public class PredicateParserTests {
         assertInvalid("text > 5", "cannot be compared");
         assertInvalid("text == true", "cannot be compared");
         assertInvalid("text BETWEEN {1, 2}", "cannot be compared");
-        assertEquals(1L, comparison("checked == 1").getValue());
-        assertEquals(0L, comparison("checked != 0").getValue());
+        assertEquals(true, comparison("checked == 1").getValue());
+        assertEquals(false, comparison("checked != 0").getValue());
+        assertEquals(Arrays.<Object>asList(true, false, null),
+                comparison("checked IN {1, NO, nil}").getValues());
+        // Numeric attributes keep Long/Double literals
+        assertEquals(1L, comparison("index == 1").getValue());
         assertNull(comparison("hint == nil").getValue());
         assertNull(comparison("maxTextLength != nil").getValue());
     }
@@ -628,7 +638,7 @@ public class PredicateParserTests {
         assertEquals("(class == 'android.widget.Button' AND text BEGINSWITH[cd] 'results')",
                 canonical("className == 'android.widget.Button' AND "
                         + "name BEGINSWITH[cd] 'results'"));
-        assertEquals("displayed == 1", canonical("displayed == 1"));
+        assertEquals("displayed == TRUE", canonical("displayed == 1"));
     }
 
     @Test

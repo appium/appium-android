@@ -133,7 +133,8 @@ public abstract class PredicateNode {
 
     /**
      * {@code attribute OP value}. For BETWEEN and IN the values are the aggregate members,
-     * otherwise there is exactly one value.
+     * otherwise there is exactly one value. Boolean attributes carry Boolean values (1/0 are
+     * normalized); numbers are Long or Double and must be compared by value, not boxed equals.
      */
     public static final class Comparison extends PredicateNode {
         private final Attribute attribute;
