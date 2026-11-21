@@ -29,7 +29,12 @@ Before a Chromedriver executable is run, its SHA-256 checksum is compared to the
 which is updated together with `mapping.json` by the Chromedriver version bump workflow.
 The automatic download feature is an explicit opt-in, so the executables it downloads are trusted locally
 (their checksums are stored in the `.trusted-checksums.json` file inside the download folder).
-Any other executable, including the one set by `executable`/`executableDir`, is rejected.
+Microsoft Edge WebDriver is not on the allowlist, but it is accepted on macOS and Windows if it has a valid
+signature issued by Microsoft (the code signature of the `msedgedriver` identity on macOS and the Authenticode
+signature of `msedgedriver.exe` on Windows). The signature is only verified, the file is never run for this.
+Edge WebDriver binaries for Linux are not signed, so they cannot be verified.
+Any other executable, including custom or self-built Chromedriver builds, drivers that are not
+on the allowlist and the ones set by `executable`/`executableDir`, is rejected.
 
 To restore the legacy behavior and run any executable without verification, set the
 `allowUnverifiedExecutable` option. In the Appium UiAutomator2/Espresso drivers it is controlled by the

@@ -6,6 +6,7 @@ import * as semver from 'semver';
 import {type ExecError} from 'teen_process';
 
 import {assertKnownChromedriver} from '../checksums.js';
+import {assertSignedEdgeDriver} from '../signature.js';
 import type {ChromedriverVersionMapping} from '../types.js';
 import {CHROMEDRIVER_CHROME_MAPPING, getChromedriverBinaryPath, compareVersions, listFiles} from '../utils.js';
 import type {ChromedriverCommandContext} from './types.js';
@@ -275,7 +276,21 @@ async function assertExecutableAllowed(ctx: ChromedriverCommandContext, executab
     }
     return;
   }
-  await assertKnownChromedriver(executable, ctx.executableDir);
+  try {
+    await assertKnownChromedriver(executable, ctx.executableDir);
+  } catch (checksumError) {
+    // Microsoft Edge WebDriver is not on the allowlist, but it is signed by Microsoft (macOS and Windows)
+    try {
+      await assertSignedEdgeDriver(executable);
+      ctx.log.debug(`'${executable}' is a Microsoft Edge WebDriver with a valid signature`);
+    } catch (signatureError) {
+      throw new Error(
+        `${(checksumError as Error).message}. It is also not a signed Microsoft Edge WebDriver: ` +
+          (signatureError as Error).message,
+        {cause: signatureError},
+      );
+    }
+  }
 }
 
 function usesDesktopChromedriverDefault(ctx: ChromedriverCommandContext): boolean {
