@@ -24,11 +24,16 @@ import java.util.List;
 
 import io.appium.uiautomator2.common.exceptions.ClassChainSyntaxException;
 import io.appium.uiautomator2.common.exceptions.PredicateSyntaxException;
+import io.appium.uiautomator2.utils.classchain.ChainStep.Axis;
 import io.appium.uiautomator2.utils.classchain.ChainStep.Filter;
 import io.appium.uiautomator2.utils.classchain.ChainStep.Scope;
 import io.appium.uiautomator2.utils.predicate.PredicateParser;
 
-/** Parser of class chain queries like WebDriverAgent's, with {@link PredicateParser} predicates. */
+/**
+ * Parser of class chain queries like WebDriverAgent's, with {@link PredicateParser} predicates.
+ * Beyond WDA, a step after {@code /} can start with {@code ..} (parent), {@code ^} (ancestors),
+ * {@code >} / {@code <} (following / preceding siblings) or {@code ~} (all siblings).
+ */
 public final class ClassChainParser {
     private static final String DESCENDANT_MARKER = "**/";
 
@@ -54,7 +59,7 @@ public final class ClassChainParser {
             pos = DESCENDANT_MARKER.length();
         }
         while (true) {
-            steps.add(parseStep(descendant));
+            steps.add(parseStep(descendant ? Axis.DESCENDANT : Axis.CHILD));
             if (pos >= source.length()) {
                 return new ClassChain(steps);
             }
@@ -66,8 +71,9 @@ public final class ClassChainParser {
         }
     }
 
-    private ChainStep parseStep(boolean descendant) {
-        String className = parseType();
+    private ChainStep parseStep(Axis plainAxis) {
+        Axis axis = parseAxis(plainAxis);
+        String className = axis == Axis.PARENT ? null : parseType();
         List<Filter> filters = new ArrayList<>();
         Integer position = null;
         while (peek() == '[') {
@@ -81,13 +87,56 @@ public final class ClassChainParser {
                 if (position != null) {
                     throw error("The position can be set only once");
                 }
+                if (axis == Axis.PARENT) {
+                    throw error("A parent step '..' has a single candidate, it takes no position");
+                }
                 position = parsePosition();
             }
         }
         if (pos < source.length() && peek() != '/') {
             throw error(String.format("Unexpected '%s'", peek()));
         }
-        return new ChainStep(descendant, className, filters, position);
+        return new ChainStep(axis, className, filters, position);
+    }
+
+    private Axis parseAxis(Axis plainAxis) {
+        Axis axis;
+        switch (peek()) {
+            case '.':
+                axis = Axis.PARENT;
+                break;
+            case '^':
+                axis = Axis.ANCESTOR;
+                break;
+            case '>':
+                axis = Axis.FOLLOWING_SIBLING;
+                break;
+            case '<':
+                axis = Axis.PRECEDING_SIBLING;
+                break;
+            case '~':
+                axis = Axis.SIBLING;
+                break;
+            default:
+                return plainAxis;
+        }
+        if (plainAxis == Axis.DESCENDANT) {
+            throw error(String.format("'%s' cannot follow the descendant marker '**/'",
+                    axis.getSymbol()));
+        }
+        if (axis == Axis.PARENT) {
+            if (peek(1) != '.') {
+                throw error("Expected '..' for the parent step");
+            }
+            pos += 2;
+            if (peek() == '.' || peek() == '*' || isIdentifierStart(codePoint())) {
+                throw error("A parent step '..' takes no class name, "
+                        + "filter with [`className == ...`] instead");
+            }
+        } else {
+            pos++;
+        }
+        return axis;
     }
 
     @Nullable

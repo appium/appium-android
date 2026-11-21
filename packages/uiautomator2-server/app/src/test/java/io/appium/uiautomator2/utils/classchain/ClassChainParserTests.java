@@ -24,6 +24,7 @@ import java.util.List;
 import io.appium.uiautomator2.common.exceptions.ClassChainSyntaxException;
 import io.appium.uiautomator2.common.exceptions.InvalidSelectorException;
 import io.appium.uiautomator2.common.exceptions.PredicateSyntaxException;
+import io.appium.uiautomator2.utils.classchain.ChainStep.Axis;
 import io.appium.uiautomator2.utils.classchain.ChainStep.Scope;
 
 import static org.junit.Assert.assertEquals;
@@ -155,6 +156,90 @@ public class ClassChainParserTests {
         // brackets and the other marker are plain characters inside a predicate
         ChainStep step = steps("*[`text == '[1]$'`][`text == 'a``]``'`][2]").get(0);
         assertEquals(2, step.getFilters().size());
+    }
+
+    // ---- parent, ancestor and sibling axes ----
+
+    @Test
+    public void axes() {
+        List<ChainStep> steps = steps(VIEW + "/../" + VIEW + "/^" + BUTTON + "/>*[2]/<" + VIEW
+                + "[-1]/~*");
+        assertEquals(7, steps.size());
+        assertEquals(Axis.CHILD, steps.get(0).getAxis());
+        assertEquals(Axis.PARENT, steps.get(1).getAxis());
+        assertNull(steps.get(1).getClassName());
+        assertEquals(Axis.CHILD, steps.get(2).getAxis());
+        assertEquals(Axis.ANCESTOR, steps.get(3).getAxis());
+        assertEquals(BUTTON, steps.get(3).getClassName());
+        assertEquals(Axis.FOLLOWING_SIBLING, steps.get(4).getAxis());
+        assertEquals(Integer.valueOf(2), steps.get(4).getPosition());
+        assertEquals(Axis.PRECEDING_SIBLING, steps.get(5).getAxis());
+        assertEquals(Integer.valueOf(-1), steps.get(5).getPosition());
+        assertEquals(Axis.SIBLING, steps.get(6).getAxis());
+        assertNull(steps.get(6).getClassName());
+        for (ChainStep step : steps) {
+            assertFalse(step.isDescendant());
+        }
+    }
+
+    @Test
+    public void axisAsTheFirstStepAndFollowedByDescendants() {
+        assertEquals(Axis.PARENT, steps("..").get(0).getAxis());
+        assertEquals(Axis.PARENT, steps("../*").get(0).getAxis());
+        List<ChainStep> steps = steps(BUTTON + "/../**/" + VIEW);
+        assertEquals(Axis.PARENT, steps.get(1).getAxis());
+        assertEquals(Axis.DESCENDANT, steps.get(2).getAxis());
+        assertEquals(Axis.FOLLOWING_SIBLING, steps("**/*/>*").get(1).getAxis());
+    }
+
+    @Test
+    public void axisFilters() {
+        ChainStep parent = steps("*/..[`enabled == true`]").get(1);
+        assertEquals(1, parent.getFilters().size());
+        ChainStep sibling = steps("*/>" + BUTTON + "[$text == 'a'$][`checked == true`][1]").get(1);
+        assertEquals(2, sibling.getFilters().size());
+        assertEquals(Integer.valueOf(1), sibling.getPosition());
+    }
+
+    @Test
+    public void axesRoundTrip() {
+        String[] queries = {
+                "**/" + BUTTON + "[`text == 'OK'`]/..", "*/../*/../**/" + VIEW,
+                "a/^b[2]/>*[-1]/<c/~d",
+                "a/..[`enabled == TRUE`]/>*[$text == 'x$$y'$][3]",
+        };
+        for (String query : queries) {
+            assertEquals(query, canonical(query));
+        }
+        assertEquals("a/..", canonical("a/.."));
+    }
+
+    @Test
+    public void invalidAxes() {
+        assertInvalid("**/..", "cannot follow the descendant marker");
+        assertInvalid("a/**/..", "cannot follow the descendant marker");
+        assertInvalid("**/>a", "cannot follow the descendant marker");
+        assertInvalid("a/**/^b", "cannot follow the descendant marker");
+        assertInvalid("a/.", "Expected '..'");
+        assertInvalid("a/...", "takes no class name");
+        assertInvalid("a/..b", "takes no class name");
+        assertInvalid("a/..*", "takes no class name");
+        assertInvalid("a/..[1]", "takes no position");
+        assertInvalid("a/>", "Expected a class name");
+        assertInvalid("a/^", "Expected a class name");
+        assertInvalid("a/>>b", "Expected a class name");
+        assertInvalid("a/<~b", "Expected a class name");
+        assertInvalid("a/>[`text == 'a'`]", "Expected a class name");
+        assertInvalid("a/.. ", "Unexpected ' '");
+        assertInvalid("a>b", "Unexpected '>'");
+        assertInvalid("a/b^", "Unexpected '^'");
+    }
+
+    @Test
+    public void axisErrorPositions() {
+        assertEquals(2, assertInvalid("a/**/..", "cannot follow").getPosition() - 3);
+        assertEquals(4, assertInvalid("a/..b", "takes no class name").getPosition());
+        assertEquals(4, assertInvalid("a/..[1]", "takes no position").getPosition());
     }
 
     // ---- class names ----

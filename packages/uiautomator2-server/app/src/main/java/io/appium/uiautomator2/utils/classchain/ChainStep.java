@@ -70,27 +70,51 @@ public final class ChainStep {
         }
     }
 
-    private final boolean descendant;
+    /**
+     * Where a step looks, relative to each node of the previous step (or the search root).
+     * Positions count along the axis: nearest first for {@code PARENT}, {@code ANCESTOR} and
+     * {@code PRECEDING_SIBLING}, in document order otherwise.
+     */
+    public enum Axis {
+        CHILD(""), DESCENDANT(""), PARENT(".."), ANCESTOR("^"),
+        FOLLOWING_SIBLING(">"), PRECEDING_SIBLING("<"), SIBLING("~");
+
+        private final String symbol;
+
+        Axis(String symbol) {
+            this.symbol = symbol;
+        }
+
+        /** The prefix of the step, empty for {@code CHILD} and {@code DESCENDANT} */
+        public String getSymbol() {
+            return symbol;
+        }
+    }
+
+    private final Axis axis;
     @Nullable
     private final String className;
     private final List<Filter> filters;
     @Nullable
     private final Integer position;
 
-    ChainStep(boolean descendant, @Nullable String className, List<Filter> filters,
+    ChainStep(Axis axis, @Nullable String className, List<Filter> filters,
               @Nullable Integer position) {
-        this.descendant = descendant;
+        this.axis = axis;
         this.className = className;
         this.filters = Collections.unmodifiableList(new ArrayList<>(filters));
         this.position = position;
     }
 
-    /** True for any depth below the previous step (or the root), false for direct children */
-    public boolean isDescendant() {
-        return descendant;
+    public Axis getAxis() {
+        return axis;
     }
 
-    /** The exact class name, or null for {@code *} */
+    public boolean isDescendant() {
+        return axis == Axis.DESCENDANT;
+    }
+
+    /** The exact class name, or null for {@code *} and for the parent axis */
     @Nullable
     public String getClassName() {
         return className;
@@ -107,10 +131,13 @@ public final class ChainStep {
         return position;
     }
 
-    /** The step without its axis ({@code **}{@code /}), which {@link ClassChain} adds */
+    /** The step without the separator before it, which {@link ClassChain} adds */
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder(className == null ? "*" : className);
+        StringBuilder sb = new StringBuilder(axis.getSymbol());
+        if (axis != Axis.PARENT) {
+            sb.append(className == null ? "*" : className);
+        }
         for (Filter filter : filters) {
             sb.append(filter);
         }
