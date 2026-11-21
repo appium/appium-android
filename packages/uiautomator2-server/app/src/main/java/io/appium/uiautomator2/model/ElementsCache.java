@@ -134,7 +134,7 @@ public class ElementsCache {
 
     /**
      * @return true if a stale element with this id can be looked up again by its locator.
-     * The same must hold for the whole chain of its search contexts.
+     * A live search context is used as is, while a stale one must be restorable itself.
      */
     public boolean isRestorable(String id) {
         synchronized (cache) {
@@ -146,8 +146,21 @@ public class ElementsCache {
                     return false;
                 }
                 currentId = element.getContextId();
+                AndroidElement context = currentId == null ? null : cache.get(currentId);
+                if (context != null && isLive(context)) {
+                    return true;
+                }
             }
             return true;
+        }
+    }
+
+    private static boolean isLive(AndroidElement element) {
+        try {
+            element.getName();
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 
@@ -173,11 +186,9 @@ public class ElementsCache {
                 // after AX cache reset has been performed. So we try to recreate
                 // the cached object automatically
                 // in order to avoid an unexpected StaleElementReferenceException
-                try {
-                    resultElement.getName();
-                } catch (Exception e) {
-                    Logger.info(String.format("The element identified by '%s' has been reported as stale (%s). " +
-                            "Trying to restore it", id, e.getMessage()));
+                if (!isLive(resultElement)) {
+                    Logger.info(String.format("The element identified by '%s' has been reported as stale. " +
+                            "Trying to restore it", id));
                     resultElement = restore(resultElement);
                 }
             }

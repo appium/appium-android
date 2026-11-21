@@ -36,6 +36,14 @@ public class ElementsCacheTests {
         return result;
     }
 
+    private static void stale(AndroidElement element) {
+        try {
+            when(element.getName()).thenThrow(new IllegalStateException("stale"));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     @Test
     public void singleMatchWithLocatorIsRestorable() {
         element("a", true, null);
@@ -68,8 +76,30 @@ public class ElementsCacheTests {
     }
 
     @Test
-    public void childOfMultiMatchParentIsNotRestorable() {
+    public void childOfLiveMultiMatchParentIsRestorable() {
         element("parent", false, null);
+        element("child", true, "parent");
+        assertTrue(cache.isRestorable("child"));
+    }
+
+    @Test
+    public void childOfStaleMultiMatchParentIsNotRestorable() {
+        stale(element("parent", false, null));
+        element("child", true, "parent");
+        assertFalse(cache.isRestorable("child"));
+    }
+
+    @Test
+    public void childOfStaleRestorableParentIsRestorable() {
+        stale(element("parent", true, null));
+        element("child", true, "parent");
+        assertTrue(cache.isRestorable("child"));
+    }
+
+    @Test
+    public void childOfStaleParentWithStaleMultiMatchGrandparentIsNotRestorable() {
+        stale(element("grandparent", false, null));
+        stale(element("parent", true, "grandparent"));
         element("child", true, "parent");
         assertFalse(cache.isRestorable("child"));
     }
