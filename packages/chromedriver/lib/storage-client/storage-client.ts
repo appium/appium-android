@@ -5,6 +5,7 @@ import {system, fs, logger, tempDir, zip, util} from '@appium/support';
 import {asyncmap} from 'asyncbox';
 import * as semver from 'semver';
 
+import {trustChecksumOf} from '../checksums.js';
 import {STORAGE_REQ_TIMEOUT_MS, GOOGLEAPIS_CDN, USER_AGENT, CHROMELABS_URL, ARCH, OS, CPU} from '../constants.js';
 import type {ChromedriverStorageClientOpts, SyncOptions, OSInfo, ChromedriverDetailsMapping} from '../types.js';
 import {getChromedriverDir, retrieveData, getOsInfo, convertToInt, getCpuType, compareVersions} from '../utils.js';
@@ -332,6 +333,8 @@ export class ChromedriverStorageClient {
       await this.downloadDriver(url, etag, driverKey, targetPath);
       await fs.chmod(targetPath, 0o755);
       log.debug(`Permissions of the file '${targetPath}' have been changed to 755`);
+      // downloading drivers is an explicit opt-in (autodownload), so what it fetches is trusted locally
+      await trustChecksumOf(targetPath, this.chromedriverDir);
     } catch (e) {
       if (isStrict) {
         throw e;

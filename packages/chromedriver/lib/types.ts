@@ -29,6 +29,10 @@ export interface ChromedriverOpts {
    */
   details?: {info?: {Browser: string}};
   isAutodownloadEnabled?: boolean;
+  /**
+   * Skip the checksum allowlist check and run any executable (insecure)
+   */
+  allowUnverifiedExecutable?: boolean;
   reqBasePath?: string;
 }
 

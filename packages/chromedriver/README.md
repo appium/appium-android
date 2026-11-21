@@ -22,6 +22,30 @@ more details on it.
 > This package can work with Microsoft Edge WebDriver as well, but the support is limited.
 > For example, automatic downloads do not work for Microsoft Edge WebDriver.
 
+## Executable verification
+
+Before a Chromedriver executable is run, its SHA-256 checksum is compared to the allowlists in
+[checksums.json](https://github.com/appium/appium-android/blob/main/packages/chromedriver/config/checksums.json)
+(Chromedriver) and
+[edge-checksums.json](https://github.com/appium/appium-android/blob/main/packages/chromedriver/config/edge-checksums.json)
+(Microsoft Edge WebDriver). The first one is updated together with `mapping.json` by the Chromedriver version bump
+workflow, the second one is updated by the Edge WebDriver checksums bump workflow. The Edge WebDriver allowlist
+contains the latest stable and extended stable releases and the latest release of every major version
+(Edge WebDriver builds older than major version 118 are not available for download anymore).
+The automatic download feature is an explicit opt-in, so the executables it downloads are trusted locally
+(their checksums are stored in the `.trusted-checksums.json` file inside the download folder).
+Any other executable, including custom or self-built builds, drivers that are not on the allowlists
+and the ones set by `executable`/`executableDir`, is rejected.
+
+To restore the legacy behavior and run any executable without verification, set the
+`allowUnverifiedExecutable` option. In the Appium UiAutomator2/Espresso drivers it is controlled by the
+`chromedriver_allow_any_executable` server feature (`--allow-insecure=<driver>:chromedriver_allow_any_executable`).
+Only enable it if you trust everyone who is able to create sessions.
+
+The allowlists can be extended for older versions using
+`node scripts/update_versions_mapping.mjs <latest version> config/mapping.json --backfill <N>` (Chromedriver) and
+`node scripts/update_edge_checksums.mjs config/edge-checksums.json --backfill` (Microsoft Edge WebDriver).
+
 ## Automatic Chromedriver download on module install
 
 Since version 6.0.0 of this module automatic download of the latest known chromedriver

@@ -59,6 +59,7 @@ export class Chromedriver extends events.EventEmitter<ChromedriverEventMap> {
   readonly verbose?: boolean;
   readonly logPath?: string;
   readonly disableBuildCheck: boolean;
+  readonly allowUnverifiedExecutable: boolean;
   readonly storageClient: ChromedriverStorageClient | null;
   readonly details?: ChromedriverOpts['details'];
   capabilities: SessionCapabilities;
@@ -98,6 +99,7 @@ export class Chromedriver extends events.EventEmitter<ChromedriverEventMap> {
       disableBuildCheck,
       details,
       isAutodownloadEnabled = false,
+      allowUnverifiedExecutable = false,
       reqBasePath,
     } = args;
     this._log = logger.getLogger(generateLogPrefix(this));
@@ -129,6 +131,7 @@ export class Chromedriver extends events.EventEmitter<ChromedriverEventMap> {
     this.verbose = verbose;
     this.logPath = logPath;
     this.disableBuildCheck = !!disableBuildCheck;
+    this.allowUnverifiedExecutable = !!allowUnverifiedExecutable;
     this.storageClient = isAutodownloadEnabled
       ? new ChromedriverStorageClient({chromedriverDir: this.executableDir})
       : null;

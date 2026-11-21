@@ -21,7 +21,7 @@ const MODULE_NAME = 'appium-chromedriver';
  * @returns The full path to module root
  * @throws {Error} If the current module root folder cannot be determined
  */
-const getModuleRoot = util.memoize(function getModuleRoot(): string {
+export const getModuleRoot = util.memoize(function getModuleRoot(): string {
   const root = node.getModuleRootSync(MODULE_NAME, fileURLToPath(import.meta.url));
   if (!root) {
     throw new Error(`Cannot find the root folder of the ${MODULE_NAME} Node.js module`);

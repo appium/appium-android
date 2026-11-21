@@ -22,6 +22,8 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: lts/*
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --workspace packages/chromedriver
       - id: release_check
         run: |
           export latest_release=$(curl -sf ${{ env.API_URL }} | jq .channels.Stable.version | tr -d '"' )
