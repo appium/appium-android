@@ -306,10 +306,10 @@ public class PredicateParserTests {
 
     @Test
     public void originalTextAllowsNullChecks() {
-        Comparison c = comparison("originalText == nil");
+        Comparison c = comparison("original-text == nil");
         assertEquals(Attribute.ORIGINAL_TEXT, c.getAttribute());
         assertNull(c.getValue());
-        assertEquals(Attribute.ORIGINAL_TEXT, comparison("originalText != nil").getAttribute());
+        assertEquals(Attribute.ORIGINAL_TEXT, comparison("original-text != nil").getAttribute());
     }
 
     @Test
@@ -345,10 +345,10 @@ public class PredicateParserTests {
     }
 
     @Test
-    public void supportedAttributesAreIdentifiersOnly() {
+    public void supportedAttributeNames() {
         List<String> names = PredicateParser.supportedAttributeNames();
         assertTrue(names.contains("resourceId"));
-        assertFalse(names.contains("resource-id"));
+        assertTrue(names.contains("resource-id"));
         assertFalse(names.contains("bounds"));
         assertFalse(names.contains("extras"));
     }
@@ -383,8 +383,18 @@ public class PredicateParserTests {
         assertEquals("contentDescription", suggestions("desc").get(0));
         assertEquals("resourceId", suggestions("resource").get(0));
         assertEquals("longClickable", suggestions("longClick").get(0));
-        assertEquals(Arrays.asList("selectionEnd", "selectionStart"),
+        assertEquals(Arrays.asList("selection-end", "selection-start"),
                 suggestions("selection").subList(0, 2));
+    }
+
+    @Test
+    public void suggestionsKeepTheTypedSpelling() {
+        assertEquals("content-desc", suggestions("content-des").get(0));
+        assertEquals("resource-id", suggestions("resource-i").get(0));
+        assertEquals("contentDescription", suggestions("contentDescriptio").get(0));
+        // One suggestion per attribute, the preferred spelling wins ties
+        assertEquals(1, suggestions("desc").stream().filter(n -> n.startsWith("content")
+                && n.contains("esc")).count());
     }
 
     @Test
@@ -423,11 +433,40 @@ public class PredicateParserTests {
     }
 
     @Test
-    public void hyphenatedAttributesAreRejected() {
-        assertInvalid("content-desc == 'a'", "use 'contentDescription' instead of 'content-desc'");
-        assertInvalid("resource-id == 'a'", "use 'resourceId' instead of 'resource-id'");
-        assertInvalid("foo-bar == 'a'", "Unknown attribute 'foo'");
-        assertInvalid("selection-start == 1", "use 'selectionStart' instead of 'selection-start'");
+    public void dashedAttributeNames() {
+        assertEquals(Attribute.CONTENT_DESC, comparison("content-desc == 'a'").getAttribute());
+        assertEquals(Attribute.RESOURCE_ID, comparison("resource-id == 'a'").getAttribute());
+        assertEquals(Attribute.LONG_CLICKABLE, comparison("long-clickable == true")
+                .getAttribute());
+        assertEquals(Attribute.SELECTION_START, comparison("selection-start >= 0")
+                .getAttribute());
+        assertEquals(Attribute.SELECTION_END, comparison("selection-end == 3").getAttribute());
+        assertEquals(Attribute.ORIGINAL_TEXT, comparison("original-text == nil").getAttribute());
+        // Both spellings give the same AST and the canonical form uses the identifier one
+        assertEquals(canonical("contentDescription == 'a'"), canonical("content-desc == 'a'"));
+        assertEquals("contentDescription == 'a'", canonical("content-desc == 'a'"));
+        assertEquals("(content-desc == 'a' AND long-clickable == TRUE)".replace("content-desc",
+                "contentDescription").replace("long-clickable", "longClickable"),
+                canonical("content-desc=='a'&&long-clickable==true"));
+    }
+
+    @Test
+    public void dashedAttributeNameErrors() {
+        assertInvalid("foo-bar == 'a'", "Unknown attribute 'foo-bar'");
+        assertInvalid("content-desc-x == 'a'", "Unknown attribute 'content-desc-x'");
+        assertInvalid("content- == 'a'", "Unknown attribute 'content'");
+        assertInvalid("-content == 'a'", "Unexpected '-'");
+        assertInvalid("Content-Desc == 'a'", "Unknown attribute 'Content-Desc'");
+        assertInvalid("content-desc == 1", "cannot be compared");
+        assertInvalid("selection-start == 'a'", "cannot be compared");
+        assertInvalid("content-desc.x == 'a'", "Key paths are not supported");
+    }
+
+    @Test
+    public void dashDoesNotActAsAnOperator() {
+        assertInvalid("index-1 == 2", "Unknown attribute 'index-1'");
+        assertEquals(-1L, comparison("index == -1").getValue());
+        assertEquals(-1L, comparison("index>-1").getValue());
     }
 
     @Test
@@ -437,17 +476,12 @@ public class PredicateParserTests {
     }
 
     @Test
-    public void selectionRange() {
-        assertEquals(Attribute.SELECTION_START, comparison("selectionStart >= 0").getAttribute());
-        assertEquals(Attribute.SELECTION_END, comparison("selectionEnd == 3").getAttribute());
-        assertInvalid("selectionStart == 'a'", "cannot be compared");
-    }
-
-    @Test
-    public void everyAttributeHasAParseableName() {
-        for (Attribute attribute : Attribute.values()) {
-            String name = PredicateParser.keyName(attribute);
-            assertTrue(name, name.matches("[A-Za-z_][A-Za-z0-9_]*"));
+    public void everySupportedNameParses() {
+        for (String name : PredicateParser.supportedAttributeNames()) {
+            Attribute attribute = Attribute.fromString(name);
+            String literal = attribute.getType() == Attribute.Type.STRING ? "'a'"
+                    : attribute.getType() == Attribute.Type.NUMBER ? "1" : "true";
+            assertEquals(name, attribute, comparison(name + " == " + literal).getAttribute());
         }
     }
 
@@ -582,7 +616,7 @@ public class PredicateParserTests {
         assertEquals("contentDescription == 'A'", canonical("contentDescription == 'A'"));
         assertEquals("resourceId == 'pkg:id/a'", canonical("resourceId == 'pkg:id/a'"));
         assertEquals("scrollable == TRUE", canonical("scrollable == true"));
-        assertEquals("originalText == nil", canonical("originalText == nil"));
+        assertEquals("original-text == nil", canonical("original-text == nil"));
     }
 
     @Test

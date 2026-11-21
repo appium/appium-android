@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -57,6 +58,7 @@ public final class PredicateParser {
     private static final Map<String, Operator> SYMBOL_OPERATORS = buildSymbolOperators();
     private static final Map<String, Attribute> ATTRIBUTES = buildAttributeMap();
     private static final List<String> ATTRIBUTE_NAMES = buildAttributeNames();
+    private static final List<String> CANONICAL_NAMES = buildCanonicalNames();
     private static final Map<String, Operator> WORD_OPERATORS = buildWordOperators();
 
     private static final String BOUNDS_KEY = "bounds";
@@ -95,12 +97,12 @@ public final class PredicateParser {
         return result;
     }
 
-    /** Names accepted as attribute keys, sorted */
+    /** All names accepted as attribute keys, including dashed aliases, sorted */
     public static List<String> supportedAttributeNames() {
         return ATTRIBUTE_NAMES;
     }
 
-    /** The attribute name that this parser accepts, used for the canonical form */
+    /** The preferred spelling of an attribute name: the identifier alias if there is one */
     static String keyName(Attribute attribute) {
         for (String alias : attribute.getAliases()) {
             if (isIdentifier(alias)) {
@@ -108,6 +110,14 @@ public final class PredicateParser {
             }
         }
         return attribute.getName();
+    }
+
+    private static List<String> buildCanonicalNames() {
+        Set<String> names = new TreeSet<>();
+        for (Attribute attribute : new HashSet<>(ATTRIBUTES.values())) {
+            names.add(keyName(attribute));
+        }
+        return Collections.unmodifiableList(new ArrayList<>(names));
     }
 
     private static List<String> buildAttributeNames() {
@@ -156,9 +166,7 @@ public final class PredicateParser {
                 continue;
             }
             for (String alias : attribute.getAliases()) {
-                if (isIdentifier(alias)) {
-                    map.put(alias, attribute);
-                }
+                map.put(alias, attribute);
             }
         }
         return map;
@@ -287,19 +295,7 @@ public final class PredicateParser {
             }
             throw error(String.format("Unexpected '%s'", c));
         }
-        String key = readWord();
-        if (peek() == '-' && isIdentifierStart(peek(1))) {
-            int end = pos;
-            while (end < source.length()
-                    && (isIdentifierPart(source.charAt(end)) || source.charAt(end) == '-')) {
-                end++;
-            }
-            Attribute hyphenated = Attribute.fromString(source.substring(start, end));
-            if (hyphenated != null && ATTRIBUTES.get(keyName(hyphenated)) == hyphenated) {
-                throw error(String.format("Hyphenated names are not supported, use '%s' instead "
-                        + "of '%s'", keyName(hyphenated), source.substring(start, end)), start);
-            }
-        }
+        String key = readKey();
         if (key.equals(BOUNDS_KEY)) {
             return parseBoundsKey(start);
         }
@@ -339,7 +335,7 @@ public final class PredicateParser {
     private static String unknownAttributeMessage(String key) {
         List<String> similar = similarAttributeNames(key);
         return String.format("Unknown attribute '%s'. %s", key, similar.isEmpty()
-                ? "Supported attributes: " + ATTRIBUTE_NAMES
+                ? "Supported attributes: " + CANONICAL_NAMES
                 : "Did you mean: " + String.join(", ", similar) + "?");
     }
 
@@ -370,15 +366,26 @@ public final class PredicateParser {
             if (byRank != 0) {
                 return byRank;
             }
+            int byCanonical = Boolean.compare(isCanonical(y.getValue()), isCanonical(x.getValue()));
+            if (byCanonical != 0) {
+                return byCanonical;
+            }
             int byLength = Integer.compare(x.getValue().length(), y.getValue().length());
             return byLength != 0 ? byLength : x.getValue().compareTo(y.getValue());
         });
+        // One suggestion per attribute, in the spelling that ranked best
         List<String> result = new ArrayList<>();
-        for (Map.Entry<Integer, String> entry : ranked.subList(0,
-                Math.min(MAX_SUGGESTIONS, ranked.size()))) {
-            result.add(entry.getValue());
+        Set<Attribute> seen = new HashSet<>();
+        for (Map.Entry<Integer, String> entry : ranked) {
+            if (result.size() < MAX_SUGGESTIONS && seen.add(ATTRIBUTES.get(entry.getValue()))) {
+                result.add(entry.getValue());
+            }
         }
         return result;
+    }
+
+    private static boolean isCanonical(String name) {
+        return name.equals(keyName(ATTRIBUTES.get(name)));
     }
 
     private static int editDistance(String a, String b) {
@@ -721,6 +728,15 @@ public final class PredicateParser {
             return true;
         }
         return false;
+    }
+
+    /** Reads an attribute name: an identifier that may contain dashes, e.g. content-desc */
+    private String readKey() {
+        int start = pos;
+        while (isIdentifierPart(peek()) || (peek() == '-' && isIdentifierPart(peek(1)))) {
+            pos++;
+        }
+        return source.substring(start, pos);
     }
 
     private String readWord() {

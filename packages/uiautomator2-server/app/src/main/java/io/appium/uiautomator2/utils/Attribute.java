@@ -38,8 +38,8 @@ public enum Attribute {
     PASSWORD(Type.BOOLEAN, new String[]{"password"}),
     RESOURCE_ID(Type.STRING, new String[]{"resource-id", "resourceId"}),
     SCROLLABLE(Type.BOOLEAN, new String[]{"scrollable"}),
-    SELECTION_START(Type.NUMBER, new String[]{"selection-start", "selectionStart"}),
-    SELECTION_END(Type.NUMBER, new String[]{"selection-end", "selectionEnd"}),
+    SELECTION_START(Type.NUMBER, new String[]{"selection-start"}),
+    SELECTION_END(Type.NUMBER, new String[]{"selection-end"}),
     SELECTED(Type.BOOLEAN, new String[]{"selected"}),
     TEXT(Type.STRING, new String[]{"text", "name"}),
     HINT(Type.STRING, new String[]{"hint"}),
@@ -47,7 +47,7 @@ public enum Attribute {
 
     // The main difference of this attribute from the preceding one is that
     // it does not replace null values with empty strings
-    ORIGINAL_TEXT(Type.STRING, new String[]{"original-text", "originalText"}, false, false),
+    ORIGINAL_TEXT(Type.STRING, new String[]{"original-text"}, false, false),
     BOUNDS(Type.STRING, new String[]{"bounds"}),
     INDEX(Type.NUMBER, new String[]{"index"}, false, true),
     DISPLAYED(Type.BOOLEAN, new String[]{"displayed"}),
