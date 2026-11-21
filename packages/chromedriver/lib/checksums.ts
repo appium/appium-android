@@ -85,7 +85,7 @@ export async function assertKnownChromedriver(binPath: string, trustDir?: string
   }
   throw new Error(
     `The SHA-256 checksum (${sha256}) of '${binPath}' does not match any known Chromedriver build. ` +
-      `Use a Chromedriver build distributed by Google, or explicitly allow arbitrary executables ` +
-      `(the 'chromedriver_allow_any_executable' server feature when used via Appium)`,
+      `Use a Chromedriver build distributed by Google, or enable the ` +
+      `'chromedriver_allow_any_executable' server feature to allow arbitrary executables`,
   );
 }
