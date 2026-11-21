@@ -63,6 +63,7 @@ export const KNOWN_CHROME_PACKAGE_NAMES = [
   'com.chrome.canary',
 ] as const;
 const CHROMEDRIVER_AUTODOWNLOAD_FEATURE = 'chromedriver_autodownload';
+const CHROMEDRIVER_ALLOW_ANY_EXECUTABLE_FEATURE = 'chromedriver_allow_any_executable';
 const CROSSWALK_SOCKET_PATTERN = /@(?!stetho_)([\w.]+)_devtools_remote\b/;
 const CHROMIUM_DEVTOOLS_SOCKET = 'chrome_devtools_remote';
 export const NATIVE_WIN = 'NATIVE_APP';
@@ -265,6 +266,7 @@ export async function setupNewChromedriver(
     disableBuildCheck: opts.chromedriverDisableBuildCheck,
     details: details as any,
     isAutodownloadEnabled: isChromedriverAutodownloadEnabled.bind(this)(),
+    allowUnverifiedExecutable: this.isFeatureEnabled(CHROMEDRIVER_ALLOW_ANY_EXECUTABLE_FEATURE),
   };
   if (this.basePath) {
     chromedriverOpts.reqBasePath = this.basePath;

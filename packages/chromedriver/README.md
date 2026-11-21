@@ -22,6 +22,23 @@ more details on it.
 > This package can work with Microsoft Edge WebDriver as well, but the support is limited.
 > For example, automatic downloads do not work for Microsoft Edge WebDriver.
 
+## Executable verification
+
+Before a Chromedriver executable is run, its SHA-256 checksum is compared to the allowlist in
+[checksums.json](https://github.com/appium/appium-android/blob/main/packages/chromedriver/config/checksums.json),
+which is updated together with `mapping.json` by the Chromedriver version bump workflow.
+Executables downloaded by the automatic download feature are trusted locally (checksums are
+stored in the `.trusted-checksums.json` file inside the download folder).
+Any other executable, including the one set by `executable`/`executableDir`, is rejected.
+
+To restore the legacy behavior and run any executable without verification, set the
+`allowUnverifiedExecutable` option. In the Appium UiAutomator2/Espresso drivers it is controlled by the
+`chromedriver_allow_any_executable` server feature (`--allow-insecure=<driver>:chromedriver_allow_any_executable`).
+Only enable it if you trust everyone who is able to create sessions.
+
+The allowlist can be extended for older versions using
+`node scripts/update_versions_mapping.mjs <latest version> config/mapping.json --backfill <N>`.
+
 ## Automatic Chromedriver download on module install
 
 Since version 6.0.0 of this module automatic download of the latest known chromedriver

@@ -9,6 +9,7 @@ import {describe, it, before, after, beforeEach, afterEach} from 'node:test';
 
 import {fs, system, zip} from '@appium/support';
 
+import {TRUSTED_CHECKSUMS_FILE, assertKnownChromedriver} from '../../lib/checksums.js';
 import {ChromedriverStorageClient} from '../../lib/storage-client/storage-client.js';
 
 const IS_WIN = system.isWindows();
@@ -82,7 +83,9 @@ describe('ChromedriverStorageClient driver retrieval', function () {
     if (!IS_WIN) {
       assert.strictEqual((await fs.stat(installed)).mode & 0o777, 0o755);
     }
-    assert.deepStrictEqual(await fs.readdir(driversDir), [path.basename(installed)]);
+    assert.deepStrictEqual((await fs.readdir(driversDir)).sort(), [TRUSTED_CHECKSUMS_FILE, path.basename(installed)]);
+    // the downloaded binary is trusted locally
+    await assertKnownChromedriver(installed, driversDir);
   });
 
   it('should not verify the checksum if it is unknown', async function () {

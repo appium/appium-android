@@ -46,13 +46,14 @@ describe('chromedriver', function () {
       it('should find generic binary', async function () {
         currentGetChromedriverBinaryPath = sandbox.stub().resolves('/path/to/chromedriver');
 
-        const cd = new Chromedriver({});
+        const cd = new Chromedriver({allowUnverifiedExecutable: true});
         const binPath = await (cd as any).getCompatibleChromedriver();
         assert.strictEqual(binPath, '/path/to/chromedriver');
       });
 
       it('should search specified directory if provided', async function () {
         const cd = new Chromedriver({
+          allowUnverifiedExecutable: true,
           executableDir: '/some/local/dir/for/chromedrivers',
         });
 
@@ -72,6 +73,7 @@ describe('chromedriver', function () {
       let getChromedriverBinaryPathSpy: sinon.SinonSpy;
       before(function () {
         cd = new Chromedriver({
+          allowUnverifiedExecutable: true,
           adb: {
             getApiLevel: async () => 25,
           } as any,
@@ -218,6 +220,7 @@ describe('chromedriver', function () {
 
       it('should search specified directory if provided', async function () {
         const cd = new Chromedriver({
+          allowUnverifiedExecutable: true,
           adb: {
             getApiLevel: async () => 25,
           } as any,
@@ -236,6 +239,7 @@ describe('chromedriver', function () {
 
       it('should use alternative mapping if provided', async function () {
         const cd = new Chromedriver({
+          allowUnverifiedExecutable: true,
           adb: {
             getApiLevel: async () => 25,
           } as any,
@@ -254,6 +258,7 @@ describe('chromedriver', function () {
 
       it('should use alternative mapping if provided even if semver is broken', async function () {
         const cd = new Chromedriver({
+          allowUnverifiedExecutable: true,
           adb: {
             getApiLevel: async () => 25,
           } as any,
@@ -276,7 +281,11 @@ describe('chromedriver', function () {
         };
 
         async function selectChromedriver(opts: Record<string, any>, caps: Record<string, any>): Promise<string> {
-          const cd = new Chromedriver({adb: {getApiLevel: async () => 34} as any, ...opts});
+          const cd = new Chromedriver({
+            allowUnverifiedExecutable: true,
+            adb: {getApiLevel: async () => 34} as any,
+            ...opts,
+          });
           cd.capabilities = caps;
           currentGetChromeVersion = sandbox
             .stub()

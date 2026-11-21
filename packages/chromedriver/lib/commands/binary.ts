@@ -5,6 +5,7 @@ import {asyncmap} from 'asyncbox';
 import * as semver from 'semver';
 import {type ExecError} from 'teen_process';
 
+import {assertKnownChromedriver} from '../checksums.js';
 import type {ChromedriverVersionMapping} from '../types.js';
 import {CHROMEDRIVER_CHROME_MAPPING, getChromedriverBinaryPath, compareVersions, listFiles} from '../utils.js';
 import type {ChromedriverCommandContext} from './types.js';
@@ -86,6 +87,13 @@ export async function getChromedrivers(
         this.log.warn(errMsg);
         return null;
       };
+
+      try {
+        await assertExecutableAllowed(this, executable);
+      } catch (e) {
+        this.log.warn(`Skipping '${executable}': ${(e as Error).message}`);
+        return null;
+      }
 
       let stdout: string;
       let stderr: string | undefined;
@@ -242,9 +250,18 @@ export async function initChromedriverPath(this: ChromedriverCommandContext): Pr
   if (!(await fs.exists(chromedriver))) {
     throw new Error(`Trying to use a chromedriver binary at the path ${chromedriver}, but it doesn't exist!`);
   }
+  await assertExecutableAllowed(this, chromedriver);
   this.executableVerified = true;
   this.log.info(`Set chromedriver binary as: ${chromedriver}`);
   return chromedriver;
+}
+
+async function assertExecutableAllowed(ctx: ChromedriverCommandContext, executable: string): Promise<void> {
+  if (ctx.allowUnverifiedExecutable) {
+    ctx.log.debug(`Chromedriver checksum verification is disabled. Not verifying '${executable}'`);
+    return;
+  }
+  await assertKnownChromedriver(executable, ctx.executableDir);
 }
 
 function usesDesktopChromedriverDefault(ctx: ChromedriverCommandContext): boolean {
