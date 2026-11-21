@@ -136,32 +136,6 @@ describe('checksums', function () {
     });
   });
 
-  describe('Edge WebDriver signature check', function () {
-    it('should only be attempted for files named like Edge WebDriver', async function () {
-      const driversDir = await mkdtemp(path.join(os.tmpdir(), 'cd-checksums-edge-'));
-      try {
-        const edgeNamed = path.join(driversDir, 'msedgedriver');
-        const other = path.join(driversDir, 'chromedriver');
-        await writeFile(edgeNamed, 'unsigned');
-        await writeFile(other, 'unsigned');
-        const init = (executable: string) =>
-          (new Chromedriver({executable, executableDir: driversDir}) as any).initChromedriverPath();
-
-        await assert.rejects(
-          init(edgeNamed),
-          /does not match any known Chromedriver build.*not a signed Microsoft Edge WebDriver/,
-        );
-        await assert.rejects(init(other), (e: Error) => {
-          assert.match(e.message, /does not match any known Chromedriver build/);
-          assert.doesNotMatch(e.message, /Edge WebDriver/);
-          return true;
-        });
-      } finally {
-        await rm(driversDir, {recursive: true, force: true});
-      }
-    });
-  });
-
   describe('executable replaced after verification', function () {
     it('should be rejected on the next launch', async function () {
       const driversDir = await mkdtemp(path.join(os.tmpdir(), 'cd-checksums-swap-'));

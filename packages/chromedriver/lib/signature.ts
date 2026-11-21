@@ -1,5 +1,3 @@
-import path from 'node:path';
-
 import {exec} from 'teen_process';
 
 const EDGE_DRIVER_IDENTIFIER = 'msedgedriver';
@@ -17,14 +15,6 @@ const WINDOWS_SCRIPT =
   `$info = (Get-Item -LiteralPath $p).VersionInfo; ` +
   `[pscustomobject]@{status = [string]$sig.Status; subject = [string]$sig.SignerCertificate.Subject; ` +
   `original = [string]$info.OriginalFilename} | ConvertTo-Json -Compress`;
-
-/**
- * Whether the file name is like the one of Microsoft Edge WebDriver (`msedgedriver`, `msedgedriver.exe`,
- * `msedgedriver_v157`, ...). It is only used to decide if a signature check is worth running.
- */
-export function hasEdgeDriverFileName(binPath: string): boolean {
-  return path.basename(binPath).toLowerCase().startsWith(EDGE_DRIVER_IDENTIFIER);
-}
 
 export interface SignatureCheckOptions {
   platform?: NodeJS.Platform;

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {describe, it} from 'node:test';
 
-import {assertSignedEdgeDriver, hasEdgeDriverFileName} from '../../lib/signature.js';
+import {assertSignedEdgeDriver} from '../../lib/signature.js';
 
 type ExecCall = {cmd: string; args: string[]; opts: any};
 
@@ -17,18 +17,6 @@ function makeExec(result: {stdout?: string} | Error, calls: ExecCall[] = []): an
 
 const MICROSOFT_SUBJECT = 'CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US';
 const winResult = (info: Record<string, string>) => ({stdout: JSON.stringify(info)});
-
-describe('hasEdgeDriverFileName', function () {
-  it('should match Edge WebDriver file names only', function () {
-    for (const name of ['msedgedriver', 'msedgedriver.exe', 'MSEdgeDriver.EXE', 'msedgedriver_v157.0.4341.60']) {
-      assert.ok(hasEdgeDriverFileName(`/some/dir/${name}`), name);
-    }
-    for (const name of ['chromedriver', 'chromedriver.exe', 'edgedriver', 'my-msedgedriver']) {
-      assert.ok(!hasEdgeDriverFileName(`/some/dir/${name}`), name);
-    }
-    assert.ok(!hasEdgeDriverFileName('/msedgedriver/chromedriver'));
-  });
-});
 
 describe('assertSignedEdgeDriver', function () {
   describe('macOS', function () {
