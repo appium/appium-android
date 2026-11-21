@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {createReadStream, readFileSync} from 'node:fs';
+import {createReadStream} from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -11,13 +11,30 @@ export type ChecksumsMapping = Record<string, Record<string, string>>;
 // Local trust store for binaries downloaded by this module (dotfile, so it is never listed as a driver)
 export const TRUSTED_CHECKSUMS_FILE = '.trusted-checksums.json';
 
-export const CHROMEDRIVER_CHECKSUMS: ChecksumsMapping = JSON.parse(
-  readFileSync(path.join(getModuleRoot(), 'config', 'checksums.json'), 'utf8'),
-);
+let checksumsPromise: Promise<ChecksumsMapping> | undefined;
+let knownChecksumsPromise: Promise<Set<string>> | undefined;
 
-const knownChecksums = new Set(
-  Object.values(CHROMEDRIVER_CHECKSUMS).flatMap((perPlatform) => Object.values(perPlatform)),
-);
+async function loadChecksums(): Promise<ChecksumsMapping> {
+  const content = await fs.readFile(path.join(getModuleRoot(), 'config', 'checksums.json'), 'utf8');
+  return JSON.parse(content) as ChecksumsMapping;
+}
+
+async function loadKnownChecksums(): Promise<Set<string>> {
+  const checksums = await getChromedriverChecksums();
+  return new Set(Object.values(checksums).flatMap((perPlatform) => Object.values(perPlatform)));
+}
+
+/** Reads the shipped allowlist on the first call only */
+export function getChromedriverChecksums(): Promise<ChecksumsMapping> {
+  checksumsPromise ??= loadChecksums();
+  return checksumsPromise;
+}
+
+function getKnownChecksums(): Promise<Set<string>> {
+  knownChecksumsPromise ??= loadKnownChecksums();
+  return knownChecksumsPromise;
+}
+
 const hashCache = new Map<string, {key: string; sha256: string}>();
 let trustWriteQueue: Promise<void> = Promise.resolve();
 
@@ -80,7 +97,7 @@ export async function trustChecksumOf(binPath: string, trustDir: string): Promis
  */
 export async function assertKnownChromedriver(binPath: string, trustDir?: string): Promise<void> {
   const sha256 = await sha256File(binPath);
-  if (knownChecksums.has(sha256) || (trustDir && (await readTrustedChecksums(trustDir)).has(sha256))) {
+  if ((await getKnownChecksums()).has(sha256) || (trustDir && (await readTrustedChecksums(trustDir)).has(sha256))) {
     return;
   }
   throw new Error(

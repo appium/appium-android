@@ -5,9 +5,9 @@ import path from 'node:path';
 import {describe, it, before, after} from 'node:test';
 
 import {
-  CHROMEDRIVER_CHECKSUMS,
   TRUSTED_CHECKSUMS_FILE,
   assertKnownChromedriver,
+  getChromedriverChecksums,
   sha256File,
   trustChecksumOf,
 } from '../../lib/checksums.js';
@@ -28,9 +28,10 @@ describe('checksums', function () {
   });
 
   describe('shipped allowlist', function () {
-    it('should only contain known versions and valid sha256 digests', function () {
-      assert.ok(Object.keys(CHROMEDRIVER_CHECKSUMS).length > 0);
-      for (const [version, perPlatform] of Object.entries(CHROMEDRIVER_CHECKSUMS)) {
+    it('should only contain known versions and valid sha256 digests', async function () {
+      const checksums = await getChromedriverChecksums();
+      assert.ok(Object.keys(checksums).length > 0);
+      for (const [version, perPlatform] of Object.entries(checksums)) {
         assert.ok(version in CHROMEDRIVER_CHROME_MAPPING, `${version} is missing in mapping.json`);
         assert.ok(Object.keys(perPlatform).length > 0);
         for (const sha of Object.values(perPlatform)) {
