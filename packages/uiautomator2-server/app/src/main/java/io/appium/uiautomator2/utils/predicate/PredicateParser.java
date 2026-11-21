@@ -58,8 +58,7 @@ public final class PredicateParser {
     private static final Map<String, Operator> WORD_OPERATORS = buildWordOperators();
 
     private static final String BOUNDS_KEY = "bounds";
-    private static final String BOUNDS_FIELD_KEYS = String.join(", ", Arrays.asList(
-            "bounds.left", "bounds.top", "bounds.right", "bounds.bottom"));
+    private static final String BOUNDS_FIELD_KEYS = buildBoundsFieldKeys();
 
     private static final class Key {
         final Attribute attribute;
@@ -123,6 +122,14 @@ public final class PredicateParser {
             map.put(operator.getSymbol(), operator);
         }
         return map;
+    }
+
+    private static String buildBoundsFieldKeys() {
+        List<String> keys = new ArrayList<>();
+        for (BoundsField field : BoundsField.values()) {
+            keys.add(BOUNDS_KEY + '.' + field.getName());
+        }
+        return String.join(", ", keys);
     }
 
     private static Map<String, Operator> buildSymbolOperators() {

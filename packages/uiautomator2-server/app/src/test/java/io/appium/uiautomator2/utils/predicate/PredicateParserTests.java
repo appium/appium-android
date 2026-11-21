@@ -385,7 +385,7 @@ public class PredicateParserTests {
 
     @Test
     public void boundsFields() {
-        for (String field : Arrays.asList("left", "top", "right", "bottom")) {
+        for (String field : Arrays.asList("left", "top", "right", "bottom", "width", "height")) {
             Comparison c = comparison("bounds." + field + " >= 10");
             assertEquals(Attribute.BOUNDS, c.getAttribute());
             assertEquals(field, c.getBoundsField().getName());
@@ -393,16 +393,17 @@ public class PredicateParserTests {
             assertEquals(10L, c.getValue());
         }
         assertNull(comparison("text == 'a'").getBoundsField());
-        assertEquals("(bounds.left > 5 AND bounds.bottom BETWEEN {100, 200.5})",
-                canonical("bounds.left>5 AND bounds.bottom BETWEEN {100, 200.5}"));
+        assertEquals("(bounds.left > 5 AND bounds.width BETWEEN {100, 200.5})",
+                canonical("bounds.left>5 AND bounds.width BETWEEN {100, 200.5}"));
         assertEquals("bounds.top IN {1, 2}", canonical("bounds.top IN {1,2}"));
         assertEquals("bounds.right != nil", canonical("bounds.right != nil"));
+        assertEquals("bounds.height <= 300", canonical("bounds.height =< 300"));
     }
 
     @Test
     public void boundsFieldErrors() {
         assertInvalid("bounds == 'a'", "'bounds' cannot be compared directly");
-        assertInvalid("bounds.width > 1", "Unknown bounds field 'width'");
+        assertInvalid("bounds.size > 1", "Unknown bounds field 'size'");
         assertInvalid("bounds. > 1", "Unknown bounds field ''");
         assertInvalid("bounds.LEFT > 1", "Unknown bounds field 'LEFT'");
         assertInvalid("bounds.left.x > 1", "Expected a comparison operator");

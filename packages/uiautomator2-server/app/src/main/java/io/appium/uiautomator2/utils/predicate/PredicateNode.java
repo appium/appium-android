@@ -56,9 +56,9 @@ public abstract class PredicateNode {
         }
     }
 
-    /** Numeric parts of the {@code bounds} attribute, written as {@code bounds.left} etc. */
+    /** Numeric parts of the {@code bounds} attribute, written as {@code bounds.left}, {@code bounds.width} etc. */
     public enum BoundsField {
-        LEFT, TOP, RIGHT, BOTTOM;
+        LEFT, TOP, RIGHT, BOTTOM, WIDTH, HEIGHT;
 
         public String getName() {
             return name().toLowerCase(Locale.ROOT);
