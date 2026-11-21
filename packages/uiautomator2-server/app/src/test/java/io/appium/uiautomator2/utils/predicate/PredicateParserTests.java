@@ -380,8 +380,37 @@ public class PredicateParserTests {
 
     @Test
     public void nonScalarAttributesAreRejected() {
-        assertInvalid("bounds == 'a'", "Unknown attribute");
         assertInvalid("extras == 'a'", "Unknown attribute");
+    }
+
+    @Test
+    public void boundsFields() {
+        for (String field : Arrays.asList("left", "top", "right", "bottom")) {
+            Comparison c = comparison("bounds." + field + " >= 10");
+            assertEquals(Attribute.BOUNDS, c.getAttribute());
+            assertEquals(field, c.getBoundsField().getName());
+            assertEquals(Operator.GE, c.getOperator());
+            assertEquals(10L, c.getValue());
+        }
+        assertNull(comparison("text == 'a'").getBoundsField());
+        assertEquals("(bounds.left > 5 AND bounds.bottom BETWEEN {100, 200.5})",
+                canonical("bounds.left>5 AND bounds.bottom BETWEEN {100, 200.5}"));
+        assertEquals("bounds.top IN {1, 2}", canonical("bounds.top IN {1,2}"));
+        assertEquals("bounds.right != nil", canonical("bounds.right != nil"));
+    }
+
+    @Test
+    public void boundsFieldErrors() {
+        assertInvalid("bounds == 'a'", "'bounds' cannot be compared directly");
+        assertInvalid("bounds.width > 1", "Unknown bounds field 'width'");
+        assertInvalid("bounds. > 1", "Unknown bounds field ''");
+        assertInvalid("bounds.LEFT > 1", "Unknown bounds field 'LEFT'");
+        assertInvalid("bounds.left.x > 1", "Expected a comparison operator");
+        assertInvalid("bounds.left == 'a'", "cannot be compared");
+        assertInvalid("bounds.left CONTAINS '1'", "cannot be applied to the numeric attribute");
+        assertInvalid("bounds.left == true", "cannot be compared");
+        assertInvalid("text.left > 1", "Key paths are not supported");
+        assertEquals(0, assertInvalid("bounds.foo > 1", "Unknown bounds field").getPosition());
     }
 
     // ---- unsupported syntax ----

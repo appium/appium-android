@@ -16,6 +16,8 @@
 
 package io.appium.uiautomator2.utils.predicate;
 
+import androidx.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -32,6 +34,7 @@ import java.util.regex.PatternSyntaxException;
 
 import io.appium.uiautomator2.common.exceptions.PredicateSyntaxException;
 import io.appium.uiautomator2.utils.Attribute;
+import io.appium.uiautomator2.utils.predicate.PredicateNode.BoundsField;
 import io.appium.uiautomator2.utils.predicate.PredicateNode.Comparison;
 import io.appium.uiautomator2.utils.predicate.PredicateNode.Operator;
 
@@ -53,6 +56,21 @@ public final class PredicateParser {
     private static final Map<String, Attribute> ATTRIBUTES = buildAttributeMap();
     private static final List<String> ATTRIBUTE_NAMES = buildAttributeNames();
     private static final Map<String, Operator> WORD_OPERATORS = buildWordOperators();
+
+    private static final String BOUNDS_KEY = "bounds";
+    private static final String BOUNDS_FIELD_KEYS = String.join(", ", Arrays.asList(
+            "bounds.left", "bounds.top", "bounds.right", "bounds.bottom"));
+
+    private static final class Key {
+        final Attribute attribute;
+        @Nullable
+        final BoundsField boundsField;
+
+        Key(Attribute attribute, @Nullable BoundsField boundsField) {
+            this.attribute = attribute;
+            this.boundsField = boundsField;
+        }
+    }
 
     private final String source;
     private int pos;
@@ -197,7 +215,7 @@ public final class PredicateParser {
     }
 
     private PredicateNode parseComparison() {
-        Attribute attribute = parseKey();
+        Key key = parseKey();
         skipWhitespace();
         Operator operator = parseOperator();
         boolean caseInsensitive = false;
@@ -240,11 +258,12 @@ public final class PredicateParser {
             values = Collections.singletonList(parseLiteral());
         }
         validate(operator, values, valuePos);
-        validateTypes(attribute, operator, values, valuePos);
-        return new Comparison(attribute, operator, caseInsensitive, diacriticInsensitive, values);
+        validateTypes(key, operator, values, valuePos);
+        return new Comparison(key.attribute, key.boundsField, operator, caseInsensitive,
+                diacriticInsensitive, values);
     }
 
-    private Attribute parseKey() {
+    private Key parseKey() {
         int start = pos;
         char c = peek();
         if (!isIdentifierStart(c)) {
@@ -272,6 +291,9 @@ public final class PredicateParser {
                         + "of '%s'", keyName(hyphenated), source.substring(start, end)), start);
             }
         }
+        if (key.equals(BOUNDS_KEY)) {
+            return parseBoundsKey(start);
+        }
         if (peek() == '.') {
             throw error("Key paths are not supported", start);
         }
@@ -285,7 +307,24 @@ public final class PredicateParser {
         if (attribute == null) {
             throw error(unknownAttributeMessage(key), start);
         }
-        return attribute;
+        return new Key(attribute, null);
+    }
+
+    // 'bounds' is a string, so only its numeric parts can be compared
+    private Key parseBoundsKey(int start) {
+        if (peek() != '.') {
+            throw error(String.format("'bounds' cannot be compared directly, use one of: %s",
+                    BOUNDS_FIELD_KEYS), start);
+        }
+        pos++;
+        String field = isIdentifierStart(peek()) ? readWord() : "";
+        for (BoundsField candidate : BoundsField.values()) {
+            if (candidate.getName().equals(field)) {
+                return new Key(Attribute.BOUNDS, candidate);
+            }
+        }
+        throw error(String.format("Unknown bounds field '%s'. Supported: %s", field,
+                BOUNDS_FIELD_KEYS), start);
     }
 
     private static String unknownAttributeMessage(String key) {
@@ -557,12 +596,14 @@ public final class PredicateParser {
         }
     }
 
-    private void validateTypes(Attribute attribute, Operator operator, List<Object> values,
-                               int valuePos) {
-        String name = keyName(attribute);
-        boolean isString = attribute.getType() == Attribute.Type.STRING;
-        boolean isNumber = attribute.getType() == Attribute.Type.NUMBER;
-        boolean isBoolean = attribute.getType() == Attribute.Type.BOOLEAN;
+    private void validateTypes(Key key, Operator operator, List<Object> values, int valuePos) {
+        String name = key.boundsField == null ? keyName(key.attribute)
+                : BOUNDS_KEY + '.' + key.boundsField.getName();
+        Attribute.Type type = key.boundsField == null ? key.attribute.getType()
+                : Attribute.Type.NUMBER;
+        boolean isString = type == Attribute.Type.STRING;
+        boolean isNumber = type == Attribute.Type.NUMBER;
+        boolean isBoolean = type == Attribute.Type.BOOLEAN;
         boolean stringOperator = operator == Operator.BEGINSWITH || operator == Operator.ENDSWITH
                 || operator == Operator.CONTAINS || operator == Operator.LIKE
                 || operator == Operator.MATCHES;

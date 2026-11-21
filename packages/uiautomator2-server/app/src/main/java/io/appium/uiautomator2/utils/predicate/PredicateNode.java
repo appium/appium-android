@@ -16,6 +16,8 @@
 
 package io.appium.uiautomator2.utils.predicate;
 
+import androidx.annotation.Nullable;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -51,6 +53,15 @@ public abstract class PredicateNode {
 
         public boolean acceptsModifiers() {
             return acceptsModifiers;
+        }
+    }
+
+    /** Numeric parts of the {@code bounds} attribute, written as {@code bounds.left} etc. */
+    public enum BoundsField {
+        LEFT, TOP, RIGHT, BOTTOM;
+
+        public String getName() {
+            return name().toLowerCase(Locale.ROOT);
         }
     }
 
@@ -126,14 +137,17 @@ public abstract class PredicateNode {
      */
     public static final class Comparison extends PredicateNode {
         private final Attribute attribute;
+        private final BoundsField boundsField;
         private final Operator operator;
         private final boolean caseInsensitive;
         private final boolean diacriticInsensitive;
         private final List<Object> values;
 
-        public Comparison(Attribute attribute, Operator operator, boolean caseInsensitive,
+        public Comparison(Attribute attribute, @Nullable BoundsField boundsField,
+                          Operator operator, boolean caseInsensitive,
                           boolean diacriticInsensitive, List<Object> values) {
             this.attribute = attribute;
+            this.boundsField = boundsField;
             this.operator = operator;
             this.caseInsensitive = caseInsensitive;
             this.diacriticInsensitive = diacriticInsensitive;
@@ -142,6 +156,12 @@ public abstract class PredicateNode {
 
         public Attribute getAttribute() {
             return attribute;
+        }
+
+        /** Non-null only for {@code bounds.<field>} keys, where the attribute is BOUNDS. */
+        @Nullable
+        public BoundsField getBoundsField() {
+            return boundsField;
         }
 
         public Operator getOperator() {
@@ -167,7 +187,10 @@ public abstract class PredicateNode {
 
         @Override
         public String toString() {
-            StringBuilder sb = new StringBuilder(PredicateParser.keyName(attribute))
+            String key = boundsField == null
+                    ? PredicateParser.keyName(attribute)
+                    : PredicateParser.keyName(attribute) + '.' + boundsField.getName();
+            StringBuilder sb = new StringBuilder(key)
                     .append(' ').append(operator.getSymbol());
             if (caseInsensitive || diacriticInsensitive) {
                 sb.append('[').append(caseInsensitive ? "c" : "")
