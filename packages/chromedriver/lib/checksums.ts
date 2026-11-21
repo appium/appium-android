@@ -3,6 +3,8 @@ import {createReadStream} from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import {util} from '@appium/support';
+
 import {getModuleRoot} from './utils.js';
 
 /** Chromedriver version -> platform -> SHA-256 of the executable */
@@ -11,29 +13,18 @@ export type ChecksumsMapping = Record<string, Record<string, string>>;
 // Local trust store for binaries downloaded by this module (dotfile, so it is never listed as a driver)
 export const TRUSTED_CHECKSUMS_FILE = '.trusted-checksums.json';
 
-let checksumsPromise: Promise<ChecksumsMapping> | undefined;
-let knownChecksumsPromise: Promise<Set<string>> | undefined;
+/** Reads the shipped allowlist on the first call only */
+export const getChromedriverChecksums = util.memoize(
+  async function getChromedriverChecksums(): Promise<ChecksumsMapping> {
+    const content = await fs.readFile(path.join(getModuleRoot(), 'config', 'checksums.json'), 'utf8');
+    return JSON.parse(content) as ChecksumsMapping;
+  },
+);
 
-async function loadChecksums(): Promise<ChecksumsMapping> {
-  const content = await fs.readFile(path.join(getModuleRoot(), 'config', 'checksums.json'), 'utf8');
-  return JSON.parse(content) as ChecksumsMapping;
-}
-
-async function loadKnownChecksums(): Promise<Set<string>> {
+const getKnownChecksums = util.memoize(async function getKnownChecksums(): Promise<Set<string>> {
   const checksums = await getChromedriverChecksums();
   return new Set(Object.values(checksums).flatMap((perPlatform) => Object.values(perPlatform)));
-}
-
-/** Reads the shipped allowlist on the first call only */
-export function getChromedriverChecksums(): Promise<ChecksumsMapping> {
-  checksumsPromise ??= loadChecksums();
-  return checksumsPromise;
-}
-
-function getKnownChecksums(): Promise<Set<string>> {
-  knownChecksumsPromise ??= loadKnownChecksums();
-  return knownChecksumsPromise;
-}
+});
 
 let trustWriteQueue: Promise<void> = Promise.resolve();
 
