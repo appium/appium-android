@@ -1,9 +1,11 @@
-import {spawn} from 'node:child_process';
 import {createHash} from 'node:crypto';
+import {createReadStream} from 'node:fs';
 import {mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {parseArgs} from 'node:util';
+
+import {zip} from '@appium/support';
 
 const DOWNLOADS_URL = 'https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json';
 const LEGACY_STORAGE_URL = 'https://chromedriver.storage.googleapis.com';
@@ -22,27 +24,19 @@ const readJson = async (p, fallback) => {
 };
 const writeJson = (p, obj) => writeFile(p, `${JSON.stringify(obj, null, 2)}\n`, 'utf8');
 
-/** SHA-256 of a single archive member, streamed from the system `unzip` */
-function sha256OfZipMember(zipPath, member) {
-  return new Promise((resolve, reject) => {
+/** SHA-256 of a single archive member */
+async function sha256OfZipMember(zipPath, member, tmpRoot) {
+  const extractDir = await mkdtemp(path.join(tmpRoot, 'extract-'));
+  try {
+    await zip.extractAllTo(zipPath, extractDir);
     const hash = createHash('sha256');
-    let size = 0;
-    const proc = spawn('unzip', ['-p', zipPath, member], {stdio: ['ignore', 'pipe', 'pipe']});
-    let stderr = '';
-    proc.stdout.on('data', (chunk) => {
-      size += chunk.length;
+    for await (const chunk of createReadStream(path.join(extractDir, member))) {
       hash.update(chunk);
-    });
-    proc.stderr.on('data', (chunk) => (stderr += chunk));
-    proc.on('error', reject);
-    proc.on('close', (code) => {
-      if (code !== 0 || size === 0) {
-        reject(new Error(`Cannot extract '${member}' from '${zipPath}' (code ${code}): ${stderr}`));
-      } else {
-        resolve(hash.digest('hex'));
-      }
-    });
-  });
+    }
+    return hash.digest('hex');
+  } finally {
+    await rm(extractDir, {recursive: true, force: true});
+  }
 }
 
 async function downloadTo(url, dst) {
@@ -62,7 +56,7 @@ async function fetchCftChecksums(entry, tmpRoot) {
     const zipPath = path.join(tmpRoot, `${entry.version}-${platform}.zip`);
     await downloadTo(url, zipPath);
     const exe = platform.startsWith('win') ? 'chromedriver.exe' : 'chromedriver';
-    result[platform] = await sha256OfZipMember(zipPath, `chromedriver-${platform}/${exe}`);
+    result[platform] = await sha256OfZipMember(zipPath, `chromedriver-${platform}/${exe}`, tmpRoot);
     await rm(zipPath, {force: true});
   }
   return result;
@@ -89,7 +83,7 @@ async function fetchLegacyChecksums(version, tmpRoot) {
       throw new Error(`MD5 mismatch for ${key}`);
     }
     const exe = platform.startsWith('win') ? 'chromedriver.exe' : 'chromedriver';
-    result[platform] = await sha256OfZipMember(zipPath, exe);
+    result[platform] = await sha256OfZipMember(zipPath, exe, tmpRoot);
     await rm(zipPath, {force: true});
   }
   return result;
