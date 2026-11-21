@@ -381,6 +381,16 @@ public class PredicateParserTests {
     @Test
     public void nonScalarAttributesAreRejected() {
         assertInvalid("extras == 'a'", "Unknown attribute");
+        assertInvalid("contentSize == 'a'", "Unknown attribute");
+    }
+
+    @Test
+    public void actions() {
+        Comparison c = comparison("actions CONTAINS 'ACTION_CLICK'");
+        assertEquals(Attribute.ACTIONS, c.getAttribute());
+        assertEquals("actions CONTAINS 'ACTION_CLICK'", c.toString());
+        assertNull(comparison("actions == nil").getValue());
+        assertInvalid("actions == 1", "cannot be compared");
     }
 
     @Test

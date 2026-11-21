@@ -47,7 +47,7 @@ public final class PredicateParser {
 
     // Not scalar or too expensive to read for filtering
     private static final Set<Attribute> EXCLUDED_ATTRIBUTES = EnumSet.of(
-            Attribute.BOUNDS, Attribute.EXTRAS, Attribute.ACTIONS, Attribute.CONTENT_SIZE,
+            Attribute.BOUNDS, Attribute.EXTRAS, Attribute.CONTENT_SIZE,
             Attribute.COLLECTION_INFO, Attribute.COLLECTION_ITEM_INFO);
     private static final Set<String> UNSUPPORTED_KEYWORDS = new HashSet<>(Arrays.asList(
             "SELF", "ANY", "ALL", "SOME", "NONE", "SUBQUERY", "FUNCTION", "CAST", "TERNARY"));
