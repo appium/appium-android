@@ -15,7 +15,6 @@ export interface ChromedriverCommandContext extends EventEmitter {
   logPath?: string;
   disableBuildCheck: boolean;
   allowUnverifiedExecutable: boolean;
-  verifiedExecutables: Set<string>;
   mappingPath?: string;
   executableDir: string;
   isCustomExecutableDir: boolean;

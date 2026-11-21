@@ -108,25 +108,46 @@ describe('checksums', function () {
   });
 
   describe('executables folder', function () {
-    it('should not verify an executable again after it was verified while listing the folder', async function () {
+    it('should verify every executable while listing the folder', async function () {
       const driversDir = await mkdtemp(path.join(os.tmpdir(), 'cd-checksums-list-'));
       try {
-        const known = path.join(driversDir, 'chromedriver_known');
+        const known = Array.from({length: 9}, (_, i) => path.join(driversDir, `chromedriver_known_${i}`));
         const unknown = path.join(driversDir, 'chromedriver_unknown');
-        await writeFile(known, 'known driver');
+        for (const f of known) {
+          await writeFile(f, `driver ${f}`);
+          await trustChecksumOf(f, driversDir);
+        }
         await writeFile(unknown, 'unknown driver');
-        await trustChecksumOf(known, driversDir);
 
         const cd = new Chromedriver({executableDir: driversDir});
-        cd._execFunc = (async () => ({stdout: 'ChromeDriver 120.0.6099.109', stderr: ''})) as any;
+        const probed: string[] = [];
+        cd._execFunc = (async (executable: string) => {
+          probed.push(executable);
+          return {stdout: 'ChromeDriver 120.0.6099.109', stderr: ''};
+        }) as any;
         const found = await (cd as any).getChromedrivers({});
 
-        assert.deepStrictEqual(
-          found.map((x: {executable: string}) => x.executable),
-          [known],
-        );
-        assert.ok(cd.verifiedExecutables.has(known));
-        assert.ok(!cd.verifiedExecutables.has(unknown));
+        assert.deepStrictEqual(found.map((x: {executable: string}) => x.executable).sort(), known.sort());
+        // the unknown executable must never be run
+        assert.ok(!probed.includes(unknown));
+      } finally {
+        await rm(driversDir, {recursive: true, force: true});
+      }
+    });
+  });
+
+  describe('executable replaced after verification', function () {
+    it('should be rejected on the next launch', async function () {
+      const driversDir = await mkdtemp(path.join(os.tmpdir(), 'cd-checksums-swap-'));
+      try {
+        const exe = path.join(driversDir, 'chromedriver');
+        await writeFile(exe, 'trusted driver');
+        await trustChecksumOf(exe, driversDir);
+        const cd = new Chromedriver({executable: exe, executableDir: driversDir});
+        assert.strictEqual(await (cd as any).initChromedriverPath(), exe);
+
+        await writeFile(exe, 'malicious replacement');
+        await assert.rejects((cd as any).initChromedriverPath(), /does not match any known Chromedriver build/);
       } finally {
         await rm(driversDir, {recursive: true, force: true});
       }

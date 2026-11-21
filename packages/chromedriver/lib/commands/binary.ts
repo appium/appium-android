@@ -13,6 +13,8 @@ import type {ChromedriverCommandContext} from './types.js';
 const NEW_CD_VERSION_FORMAT_MAJOR_VERSION = 73;
 const CD_VERSION_TIMEOUT = 5000;
 const GET_COMPATIBLE_CHROMEDRIVER_MAX_ITERATIONS = 10;
+// executables are verified and probed in batches to limit disk and process load
+const MAX_PARALLEL_EXECUTABLE_CHECKS = 4;
 
 export interface ChromedriverInfo {
   executable: string;
@@ -73,61 +75,65 @@ export async function getChromedrivers(
   const executables = await listFiles(this.executableDir);
   this.log.debug(`Found ${util.pluralize('executable', executables.length, true)} in '${this.executableDir}'`);
   const cds = (
-    await asyncmap(executables, async (executable: string) => {
-      const logError = ({message, stdout, stderr}: {message: string; stdout?: string; stderr?: string}): null => {
-        let errMsg =
-          `Cannot retrieve version number from '${path.basename(executable)}' Chromedriver binary. ` +
-          `Make sure it returns a valid version string in response to '--version' command line argument. ${message}`;
-        if (stdout) {
-          errMsg += `\nStdout: ${stdout}`;
-        }
-        if (stderr) {
-          errMsg += `\nStderr: ${stderr}`;
-        }
-        this.log.warn(errMsg);
-        return null;
-      };
+    await asyncmap(
+      executables,
+      async (executable: string) => {
+        const logError = ({message, stdout, stderr}: {message: string; stdout?: string; stderr?: string}): null => {
+          let errMsg =
+            `Cannot retrieve version number from '${path.basename(executable)}' Chromedriver binary. ` +
+            `Make sure it returns a valid version string in response to '--version' command line argument. ${message}`;
+          if (stdout) {
+            errMsg += `\nStdout: ${stdout}`;
+          }
+          if (stderr) {
+            errMsg += `\nStderr: ${stderr}`;
+          }
+          this.log.warn(errMsg);
+          return null;
+        };
 
-      try {
-        await assertExecutableAllowed(this, executable);
-      } catch (e) {
-        this.log.warn(`Skipping '${executable}': ${(e as Error).message}`);
-        return null;
-      }
+        try {
+          await assertExecutableAllowed(this, executable);
+        } catch (e) {
+          this.log.warn(`Skipping '${executable}': ${(e as Error).message}`);
+          return null;
+        }
 
-      let stdout: string;
-      let stderr: string | undefined;
-      try {
-        ({stdout, stderr} = await this._execFunc(executable, ['--version'], {
-          timeout: CD_VERSION_TIMEOUT,
-        }));
-      } catch (e) {
-        const err = e as ExecError;
-        if (!(err.message || '').includes('timed out') && !(err.stdout || '').includes('Starting ChromeDriver')) {
-          return logError(err);
+        let stdout: string;
+        let stderr: string | undefined;
+        try {
+          ({stdout, stderr} = await this._execFunc(executable, ['--version'], {
+            timeout: CD_VERSION_TIMEOUT,
+          }));
+        } catch (e) {
+          const err = e as ExecError;
+          if (!(err.message || '').includes('timed out') && !(err.stdout || '').includes('Starting ChromeDriver')) {
+            return logError(err);
+          }
+          // timeouts may still contain the version banner in stdout
+          stdout = err.stdout;
         }
-        // timeouts may still contain the version banner in stdout
-        stdout = err.stdout;
-      }
 
-      const match = /ChromeDriver\s+\(?v?([\d.]+)\)?/i.exec(stdout);
-      if (!match) {
-        return logError({message: 'Cannot parse the version string', stdout, stderr});
-      }
-      let version = match[1];
-      let minChromeVersion = mapping[version] || null;
-      const coercedVersion = semver.coerce(version);
-      if (coercedVersion) {
-        if (coercedVersion.major < NEW_CD_VERSION_FORMAT_MAJOR_VERSION) {
-          version = `${coercedVersion.major}.${coercedVersion.minor}`;
-          minChromeVersion = mapping[version] || null;
+        const match = /ChromeDriver\s+\(?v?([\d.]+)\)?/i.exec(stdout);
+        if (!match) {
+          return logError({message: 'Cannot parse the version string', stdout, stderr});
         }
-        if (!minChromeVersion && coercedVersion.major >= NEW_CD_VERSION_FORMAT_MAJOR_VERSION) {
-          minChromeVersion = `${coercedVersion.major}`;
+        let version = match[1];
+        let minChromeVersion = mapping[version] || null;
+        const coercedVersion = semver.coerce(version);
+        if (coercedVersion) {
+          if (coercedVersion.major < NEW_CD_VERSION_FORMAT_MAJOR_VERSION) {
+            version = `${coercedVersion.major}.${coercedVersion.minor}`;
+            minChromeVersion = mapping[version] || null;
+          }
+          if (!minChromeVersion && coercedVersion.major >= NEW_CD_VERSION_FORMAT_MAJOR_VERSION) {
+            minChromeVersion = `${coercedVersion.major}`;
+          }
         }
-      }
-      return {executable, version, minChromeVersion};
-    })
+        return {executable, version, minChromeVersion};
+      },
+      {concurrency: MAX_PARALLEL_EXECUTABLE_CHECKS},
+    )
   )
     .filter((cd): cd is ChromedriverInfo => !!cd)
     .sort((a, b) => compareVersions(b.version, a.version));
@@ -236,6 +242,8 @@ export async function getCompatibleChromedriver(this: ChromedriverCommandContext
  */
 export async function initChromedriverPath(this: ChromedriverCommandContext): Promise<string> {
   if (this.executableVerified && this.chromedriver) {
+    // the file might have been replaced since the previous launch
+    await assertExecutableAllowed(this, this.chromedriver);
     return this.chromedriver;
   }
   let chromedriver = this.chromedriver;
@@ -267,12 +275,7 @@ async function assertExecutableAllowed(ctx: ChromedriverCommandContext, executab
     }
     return;
   }
-  // already hashed while enumerating the executables folder
-  if (ctx.verifiedExecutables.has(executable)) {
-    return;
-  }
   await assertKnownChromedriver(executable, ctx.executableDir);
-  ctx.verifiedExecutables.add(executable);
 }
 
 function usesDesktopChromedriverDefault(ctx: ChromedriverCommandContext): boolean {
