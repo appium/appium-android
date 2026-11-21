@@ -60,6 +60,7 @@ export class Chromedriver extends events.EventEmitter<ChromedriverEventMap> {
   readonly logPath?: string;
   readonly disableBuildCheck: boolean;
   readonly allowUnverifiedExecutable: boolean;
+  readonly verifiedExecutables = new Set<string>();
   readonly storageClient: ChromedriverStorageClient | null;
   readonly details?: ChromedriverOpts['details'];
   capabilities: SessionCapabilities;

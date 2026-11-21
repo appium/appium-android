@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {mkdtemp, writeFile, rm} from 'node:fs/promises';
+import {mkdtemp, readFile, writeFile, rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {describe, it, before, after} from 'node:test';
@@ -53,7 +53,8 @@ describe('checksums', function () {
     it('should accept an executable whose checksum was trusted locally', async function () {
       await trustChecksumOf(bin, dir);
       await assertKnownChromedriver(bin, dir);
-      assert.ok((await sha256File(bin)).length === 64);
+      const stored: string[] = JSON.parse(await readFile(path.join(dir, TRUSTED_CHECKSUMS_FILE), 'utf8'));
+      assert.ok(stored.includes(await sha256File(bin)));
     });
 
     it('should keep all checksums trusted in parallel', async function () {
@@ -103,6 +104,32 @@ describe('checksums', function () {
     it('should be accepted when arbitrary executables are allowed', async function () {
       const cd = new Chromedriver({executable: bin, allowUnverifiedExecutable: true});
       assert.strictEqual(await (cd as any).initChromedriverPath(), bin);
+    });
+  });
+
+  describe('executables folder', function () {
+    it('should not verify an executable again after it was verified while listing the folder', async function () {
+      const driversDir = await mkdtemp(path.join(os.tmpdir(), 'cd-checksums-list-'));
+      try {
+        const known = path.join(driversDir, 'chromedriver_known');
+        const unknown = path.join(driversDir, 'chromedriver_unknown');
+        await writeFile(known, 'known driver');
+        await writeFile(unknown, 'unknown driver');
+        await trustChecksumOf(known, driversDir);
+
+        const cd = new Chromedriver({executableDir: driversDir});
+        cd._execFunc = (async () => ({stdout: 'ChromeDriver 120.0.6099.109', stderr: ''})) as any;
+        const found = await (cd as any).getChromedrivers({});
+
+        assert.deepStrictEqual(
+          found.map((x: {executable: string}) => x.executable),
+          [known],
+        );
+        assert.ok(cd.verifiedExecutables.has(known));
+        assert.ok(!cd.verifiedExecutables.has(unknown));
+      } finally {
+        await rm(driversDir, {recursive: true, force: true});
+      }
     });
   });
 });

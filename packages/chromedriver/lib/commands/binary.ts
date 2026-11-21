@@ -267,7 +267,12 @@ async function assertExecutableAllowed(ctx: ChromedriverCommandContext, executab
     }
     return;
   }
+  // already hashed while enumerating the executables folder
+  if (ctx.verifiedExecutables.has(executable)) {
+    return;
+  }
   await assertKnownChromedriver(executable, ctx.executableDir);
+  ctx.verifiedExecutables.add(executable);
 }
 
 function usesDesktopChromedriverDefault(ctx: ChromedriverCommandContext): boolean {

@@ -123,14 +123,14 @@ async function main() {
   const checksumsPath = values.checksums ?? path.join(path.dirname(mappingPath), 'checksums.json');
   const backfill = parseInt(values.backfill, 10);
 
-  const mapping = await readJson(mappingPath);
+  let mapping = await readJson(mappingPath);
   const checksums = await readJson(checksumsPath, {});
   let changed = false;
 
-  if (!(latestVersion in mapping)) {
-    const pairs = Object.entries(mapping);
-    pairs.unshift([latestVersion, latestVersion]);
-    await writeJson(mappingPath, Object.fromEntries(pairs));
+  // The mapping is only written after the checksums of the latest version are known
+  const isNewVersion = !(latestVersion in mapping);
+  if (isNewVersion) {
+    mapping = Object.fromEntries([[latestVersion, latestVersion], ...Object.entries(mapping)]);
     changed = true;
   }
 
@@ -139,10 +139,14 @@ async function main() {
   const missing = wanted.filter((v) => !(v in checksums));
   const targets = new Set(missing.filter((v) => v === latestVersion).concat(missing.slice(0, backfill)));
   if (targets.size > 0) {
-    const {versions} = await (await fetch(DOWNLOADS_URL)).json();
+    const downloadsRes = await fetch(DOWNLOADS_URL);
+    if (!downloadsRes.ok) {
+      throw new Error(`Cannot retrieve ${DOWNLOADS_URL}: HTTP ${downloadsRes.status}`);
+    }
+    const {versions} = await downloadsRes.json();
     const tmpRoot = await mkdtemp(path.join(tmpdir(), 'cd-checksums-'));
     // newest first, same order as the mapping
-    const order = Object.keys(mapping).concat(latestVersion);
+    const order = Object.keys(mapping);
     const save = () => {
       const sorted = Object.keys(checksums).sort((a, b) => order.indexOf(a) - order.indexOf(b));
       return writeJson(checksumsPath, Object.fromEntries(sorted.map((k) => [k, checksums[k]])));
@@ -177,6 +181,9 @@ async function main() {
     }
   }
 
+  if (isNewVersion) {
+    await writeJson(mappingPath, mapping);
+  }
   process.stdout.write(changed ? '1' : '0');
 }
 
