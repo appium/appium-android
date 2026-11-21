@@ -6,6 +6,7 @@ import path from 'node:path';
 import {parseArgs} from 'node:util';
 
 import {zip} from '@appium/support';
+import {asyncmap} from 'asyncbox';
 
 const DOWNLOADS_URL = 'https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json';
 const LEGACY_STORAGE_URL = 'https://chromedriver.storage.googleapis.com';
@@ -24,40 +25,50 @@ const readJson = async (p, fallback) => {
 };
 const writeJson = (p, obj) => writeFile(p, `${JSON.stringify(obj, null, 2)}\n`, 'utf8');
 
-/** SHA-256 of a single archive member */
-async function sha256OfZipMember(zipPath, member, tmpRoot) {
-  const extractDir = await mkdtemp(path.join(tmpRoot, 'extract-'));
-  try {
-    await zip.extractAllTo(zipPath, extractDir);
-    const hash = createHash('sha256');
-    for await (const chunk of createReadStream(path.join(extractDir, member))) {
-      hash.update(chunk);
-    }
-    return hash.digest('hex');
-  } finally {
-    await rm(extractDir, {recursive: true, force: true});
+/** Passes the chunks through while feeding them to the hash */
+async function* hashChunks(source, hash) {
+  for await (const chunk of source) {
+    hash.update(chunk);
+    yield chunk;
   }
 }
 
-async function downloadTo(url, dst) {
+/**
+ * Streams the archive into a temporary folder without saving the archive itself
+ * and returns the SHA-256 of the given archive member.
+ * @param {string} url
+ * @param {string} member - Path of the executable inside the archive
+ * @param {string} tmpRoot
+ * @param {string} [expectedMd5] - If set, the archive must have this MD5 checksum
+ */
+async function sha256OfRemoteZipMember(url, member, tmpRoot, expectedMd5) {
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`Cannot download ${url}: HTTP ${res.status}`);
   }
-  const body = Buffer.from(await res.arrayBuffer());
-  await writeFile(dst, body);
-  return body;
+  const extractDir = await mkdtemp(path.join(tmpRoot, 'extract-'));
+  try {
+    const md5 = createHash('md5');
+    await zip.extractStreamTo(hashChunks(res.body, md5), extractDir);
+    if (expectedMd5 && md5.digest('hex') !== expectedMd5) {
+      throw new Error(`MD5 mismatch for ${url}`);
+    }
+    const sha256 = createHash('sha256');
+    for await (const chunk of createReadStream(path.join(extractDir, member))) {
+      sha256.update(chunk);
+    }
+    return sha256.digest('hex');
+  } finally {
+    await rm(extractDir, {recursive: true, force: true});
+  }
 }
 
 /** Chrome for Testing builds (115+): {platform: sha256 of the executable} */
 async function fetchCftChecksums(entry, tmpRoot) {
   const result = {};
   for (const {platform, url} of entry.downloads.chromedriver ?? []) {
-    const zipPath = path.join(tmpRoot, `${entry.version}-${platform}.zip`);
-    await downloadTo(url, zipPath);
     const exe = platform.startsWith('win') ? 'chromedriver.exe' : 'chromedriver';
-    result[platform] = await sha256OfZipMember(zipPath, `chromedriver-${platform}/${exe}`, tmpRoot);
-    await rm(zipPath, {force: true});
+    result[platform] = await sha256OfRemoteZipMember(url, `chromedriver-${platform}/${exe}`, tmpRoot);
   }
   return result;
 }
@@ -77,14 +88,8 @@ async function fetchLegacyChecksums(version, tmpRoot) {
       continue;
     }
     const etag = /<ETag>"?([0-9a-f]{32})"?<\/ETag>/.exec(content)?.[1];
-    const zipPath = path.join(tmpRoot, `${version}-${platform}.zip`);
-    const body = await downloadTo(`${LEGACY_STORAGE_URL}/${key}`, zipPath);
-    if (etag && createHash('md5').update(body).digest('hex') !== etag) {
-      throw new Error(`MD5 mismatch for ${key}`);
-    }
     const exe = platform.startsWith('win') ? 'chromedriver.exe' : 'chromedriver';
-    result[platform] = await sha256OfZipMember(zipPath, exe, tmpRoot);
-    await rm(zipPath, {force: true});
+    result[platform] = await sha256OfRemoteZipMember(`${LEGACY_STORAGE_URL}/${key}`, exe, tmpRoot, etag);
   }
   return result;
 }
@@ -144,13 +149,12 @@ async function main() {
     };
     const failed = [];
     try {
-      const queue = [...targets];
-      const worker = async () => {
-        for (let version = queue.shift(); version; version = queue.shift()) {
+      await asyncmap(
+        [...targets],
+        async (version) => {
           try {
             checksums[version] = await fetchChecksums(version, versions, tmpRoot);
             changed = true;
-            await save();
             process.stderr.write(`Computed checksums for ${version}\n`);
           } catch (e) {
             // the latest version must always be covered, older ones are best effort
@@ -160,10 +164,12 @@ async function main() {
             failed.push(version);
             process.stderr.write(`Skipping ${version}: ${e.message}\n`);
           }
-        }
-      };
-      await Promise.all(Array.from({length: BACKFILL_CONCURRENCY}, worker));
+        },
+        {concurrency: BACKFILL_CONCURRENCY},
+      );
     } finally {
+      // keep the already computed checksums even if the run is aborted
+      await save();
       await rm(tmpRoot, {recursive: true, force: true});
     }
     if (failed.length > 0) {
