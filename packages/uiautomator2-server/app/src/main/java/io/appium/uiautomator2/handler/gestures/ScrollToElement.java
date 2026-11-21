@@ -48,7 +48,6 @@ public class ScrollToElement extends SafeRequestHandler {
         String[] elementIds = getElementIds(request);
         ElementsCache ke = AppiumUIA2Driver.getInstance().getSessionOrThrow().getElementsCache();
         AndroidElement element = ke.get(elementIds[0]);
-        // A target detached by a virtualized list is resolved by gestures while the container scrolls
         AndroidElement scrollToElement = getLiveElementOrNull(ke, elementIds[1]);
 
         // UiScrollable only works with UiObject instances, which are the result of
@@ -77,11 +76,19 @@ public class ScrollToElement extends SafeRequestHandler {
         return new AppiumResponse(getSessionId(request));
     }
 
+    /**
+     * A target detached by a virtualized list is resolved by gestures while the container scrolls,
+     * so null is returned for it. A target the cache cannot restore would never be found again,
+     * so the stale element error is propagated before anything is swiped.
+     */
     @Nullable
-    private static AndroidElement getLiveElementOrNull(ElementsCache cache, String elementId) {
+    static AndroidElement getLiveElementOrNull(ElementsCache cache, String elementId) {
         try {
             return cache.get(elementId);
         } catch (StaleElementReferenceException e) {
+            if (!cache.isRestorable(elementId)) {
+                throw e;
+            }
             return null;
         }
     }

@@ -65,4 +65,23 @@ public class GestureControllerTests {
         assertThrows(IllegalArgumentException.class,
                 () -> GestureController.clampToDisplay(new Rect(-300, -300, -100, -100), DISPLAY));
     }
+
+    @Test
+    public void areaEndingAtTheLeftEdgeIsRejected() {
+        // The right edge is exclusive, so this area lies entirely to the left of the display
+        assertThrows(IllegalArgumentException.class,
+                () -> GestureController.clampToDisplay(new Rect(-100, 10, 0, 50), DISPLAY));
+    }
+
+    @Test
+    public void areaEndingAtTheTopEdgeIsRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> GestureController.clampToDisplay(new Rect(10, -100, 50, 0), DISPLAY));
+    }
+
+    @Test
+    public void areaStartingAtTheRightEdgeIsRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> GestureController.clampToDisplay(new Rect(1080, 10, 1200, 50), DISPLAY));
+    }
 }

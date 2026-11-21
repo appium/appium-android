@@ -24,6 +24,7 @@ import androidx.test.uiautomator.UiSelector;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Predicate;
 
 import io.appium.uiautomator2.common.exceptions.ElementNotFoundException;
 import io.appium.uiautomator2.common.exceptions.InvalidArgumentException;
@@ -45,7 +46,7 @@ import static io.appium.uiautomator2.model.internal.ElementsLookupStrategy.BY_CL
 import static io.appium.uiautomator2.model.internal.ElementsLookupStrategy.BY_UIAUTOMATOR;
 import static io.appium.uiautomator2.utils.AXWindowHelpers.resetAccessibilityCache;
 import static io.appium.uiautomator2.utils.Device.scrollToElement;
-import static io.appium.uiautomator2.utils.ElementLocationHelpers.findElement;
+import static io.appium.uiautomator2.utils.ElementLocationHelpers.findElements;
 import static io.appium.uiautomator2.utils.ElementLocationHelpers.toSelector;
 import static io.appium.uiautomator2.utils.ModelUtils.toModel;
 import static io.appium.uiautomator2.utils.ScrollHelpers.DEFAULT_MAX_SWIPES;
@@ -138,13 +139,17 @@ public class ScrollTo extends SafeRequestHandler {
         return ElementsCache.toAndroidElement(scrollable, true, null, null);
     }
 
+    static <T> boolean anyVisible(List<T> matches, Predicate<T> isVisible) {
+        return matches.stream().anyMatch(isVisible);
+    }
+
     private static boolean isPresent(By by, AndroidElement container) {
         resetAccessibilityCache();
         try {
-            // With allowInvisibleElements, XPath also matches off-screen nodes retained by the container
-            final AccessibleUiObject match = findElement(by, container);
-            return match != null && AxNodeInfoHelper.isVisible(match.getInfo());
-        } catch (UiObjectNotFoundException | ElementNotFoundException e) {
+            // With allowInvisibleElements, XPath also matches off-screen nodes retained by the container,
+            // and they may precede the visible ones
+            return anyVisible(findElements(by, container), match -> AxNodeInfoHelper.isVisible(match.getInfo()));
+        } catch (ElementNotFoundException e) {
             return false;
         }
     }

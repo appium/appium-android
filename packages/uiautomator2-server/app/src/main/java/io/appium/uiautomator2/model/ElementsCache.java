@@ -129,6 +129,16 @@ public class ElementsCache {
         return restoredElement;
     }
 
+    /**
+     * @return true if a stale element with this id can be looked up again by its locator
+     */
+    public boolean isRestorable(String id) {
+        synchronized (cache) {
+            AndroidElement element = cache.get(id);
+            return element != null && element.getBy() != null && element.isSingleMatch();
+        }
+    }
+
     @NonNull
     public AndroidElement get(String id) {
         if (id == null) {
