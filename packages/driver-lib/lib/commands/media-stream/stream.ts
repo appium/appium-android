@@ -43,6 +43,7 @@ export class MediaStream {
   private videoSynced = false;
   private wasSubscribed = false;
   private lastKeyFrameRequestAt = 0;
+  private keyFrameRetry?: NodeJS.Timeout;
   private jpegSeq = 0;
   private lastJpeg?: MediaUnit;
   private lastJpegEmitAt = 0;
@@ -193,6 +194,7 @@ export class MediaStream {
    */
   private async teardown(reason: string): Promise<void> {
     clearInterval(this.heartbeat);
+    this.cancelKeyFrameRetry();
     this.batcher.close();
     this.deps.emitter.off(BACKPRESSURE_EVENT_NAME, this.onBackpressure);
     if (await this.deviceStart) {
@@ -286,6 +288,8 @@ export class MediaStream {
     if (au.track === 'video') {
       if (au.isKeyFrame) {
         this.videoSynced = true;
+        // The subscribers get a keyframe now, so a request still waiting for the rate limit is not needed
+        this.cancelKeyFrameRetry();
         unit.data = this.config ? Buffer.concat([this.config, au.data]) : au.data;
       } else if (!this.videoSynced) {
         return;
@@ -370,13 +374,36 @@ export class MediaStream {
     });
   }
 
+  // At most one request per interval. A request that comes sooner is sent once the interval has passed,
+  // unless a keyframe reaches the subscribers first
   private requestKeyFrame(): void {
-    const now = Date.now();
-    if (this.kind !== 'video' || now - this.lastKeyFrameRequestAt < KEYFRAME_REQUEST_MIN_INTERVAL_MS) {
+    if (this.stopped || this.kind !== 'video') {
       return;
     }
-    this.lastKeyFrameRequestAt = now;
+    const elapsed = Date.now() - this.lastKeyFrameRequestAt;
+    // A negative value means the clock was set back, which must not hold requests back until it catches up
+    if (elapsed >= 0 && elapsed < KEYFRAME_REQUEST_MIN_INTERVAL_MS) {
+      this.keyFrameRetry ??= setTimeout(() => {
+        this.keyFrameRetry = undefined;
+        if (this.deps.hasSubscribers()) {
+          this.requestKeyFrame();
+        } else {
+          // Nobody is left to get the keyframe. A subscriber that comes back before the next unit
+          // is a late joiner too, so reset what that unit would have reset
+          this.wasSubscribed = false;
+          this.videoSynced = false;
+        }
+      }, KEYFRAME_REQUEST_MIN_INTERVAL_MS - elapsed);
+      return;
+    }
+    this.cancelKeyFrameRetry();
+    this.lastKeyFrameRequestAt = Date.now();
     void this.sendKeyFrameRequest();
+  }
+
+  private cancelKeyFrameRetry(): void {
+    clearTimeout(this.keyFrameRetry);
+    this.keyFrameRetry = undefined;
   }
 
   private async sendKeyFrameRequest(): Promise<void> {

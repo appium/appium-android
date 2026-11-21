@@ -289,6 +289,128 @@ describe('MediaStream', function () {
     await stream.stop();
   });
 
+  // The subscriber leaves for one video unit and is back for the next one
+  const leaveAndReturn = async ({session, state, tick}: ReturnType<typeof setup>, sequence: number) => {
+    state.subscribed = false;
+    session.push(au('video', sequence));
+    await tick();
+    state.subscribed = true;
+    session.push(au('video', sequence + 1));
+    await tick();
+  };
+
+  it('sends a late joiner request that comes within the rate limit once the second has passed', async function (t) {
+    t.mock.timers.enable({apis: ['Date', 'setTimeout'], now: 1_000_000});
+    const s = setup('video');
+    await s.begin();
+    await leaveAndReturn(s, 1);
+    assert.equal(s.session.keyFrameRequests, 1);
+    s.session.push(au('video', 3, {isKeyFrame: true}));
+    await s.tick();
+    await leaveAndReturn(s, 4);
+    assert.equal(s.session.keyFrameRequests, 1, 'less than a second after the previous request');
+    t.mock.timers.tick(999);
+    assert.equal(s.session.keyFrameRequests, 1);
+    t.mock.timers.tick(1);
+    assert.equal(s.session.keyFrameRequests, 2, 'sent as soon as the second has passed');
+    t.mock.timers.tick(5000);
+    assert.equal(s.session.keyFrameRequests, 2, 'sent once');
+    await s.stream.stop();
+  });
+
+  it('sends a backpressure request that comes within the rate limit once the second has passed', async function (t) {
+    t.mock.timers.enable({apis: ['Date', 'setTimeout'], now: 1_000_000});
+    const s = setup('video');
+    await s.begin();
+    await leaveAndReturn(s, 1);
+    assert.equal(s.session.keyFrameRequests, 1);
+    t.mock.timers.tick(500);
+    s.emitter.emit('bidiBackpressure', {
+      method: 'appium:mediaStream.units',
+      chain: `${s.stream.streamId}:video`,
+      state: 'dropping',
+      dropped: 1,
+    });
+    assert.equal(s.session.keyFrameRequests, 1);
+    t.mock.timers.tick(500);
+    assert.equal(s.session.keyFrameRequests, 2);
+    await s.stream.stop();
+  });
+
+  it('drops a request waiting for the rate limit once a keyframe reaches the subscriber', async function (t) {
+    t.mock.timers.enable({apis: ['Date', 'setTimeout'], now: 1_000_000});
+    const s = setup('video');
+    await s.begin();
+    await leaveAndReturn(s, 1);
+    await leaveAndReturn(s, 3);
+    s.session.push(au('video', 5, {isKeyFrame: true}));
+    await s.tick();
+    t.mock.timers.tick(1000);
+    assert.equal(s.session.keyFrameRequests, 1);
+    await s.stream.stop();
+  });
+
+  it('drops a request waiting for the rate limit when the subscriber leaves or the stream stops', async function (t) {
+    t.mock.timers.enable({apis: ['Date', 'setTimeout'], now: 1_000_000});
+    const s = setup('video');
+    await s.begin();
+    await leaveAndReturn(s, 1);
+    await leaveAndReturn(s, 3);
+    s.state.subscribed = false;
+    t.mock.timers.tick(1000);
+    assert.equal(s.session.keyFrameRequests, 1, 'nobody is subscribed any more');
+    await leaveAndReturn(s, 5);
+    assert.equal(s.session.keyFrameRequests, 2);
+    await leaveAndReturn(s, 7);
+    await s.stream.stop();
+    t.mock.timers.tick(1000);
+    assert.equal(s.session.keyFrameRequests, 2, 'the stream has stopped');
+  });
+
+  it('treats a subscriber that comes back before the next unit as a late joiner after a waiting request found nobody', async function (t) {
+    t.mock.timers.enable({apis: ['Date', 'setTimeout'], now: 1_000_000});
+    const s = setup('video');
+    await s.begin();
+    await leaveAndReturn(s, 1);
+    s.session.push(au('video', 3, {isKeyFrame: true}));
+    await s.tick();
+    s.emitter.emit('bidiBackpressure', {
+      method: 'appium:mediaStream.units',
+      chain: `${s.stream.streamId}:video`,
+      state: 'dropping',
+      dropped: 1,
+    });
+    s.state.subscribed = false;
+    t.mock.timers.tick(1000);
+    assert.equal(s.session.keyFrameRequests, 1, 'nobody is subscribed when the second has passed');
+    s.state.subscribed = true;
+    const before = unitEvents(s.events).length;
+    s.session.push(au('video', 4));
+    s.session.push(au('video', 5, {isKeyFrame: true}));
+    await s.tick();
+    assert.equal(s.session.keyFrameRequests, 2);
+    assert.deepEqual(
+      unitEvents(s.events)
+        .slice(before)
+        .flatMap((e) => e.params!.units.map((u: {seq: number}) => u.seq)),
+      [5],
+      'no delta frame before the keyframe',
+    );
+    await s.stream.stop();
+  });
+
+  it('does not hold a request back when the clock was set back', async function (t) {
+    t.mock.timers.enable({apis: ['Date', 'setTimeout'], now: 1_000_000});
+    const s = setup('video');
+    await s.begin();
+    await leaveAndReturn(s, 1);
+    assert.equal(s.session.keyFrameRequests, 1);
+    t.mock.timers.setTime(1_000_000 - 30_000);
+    await leaveAndReturn(s, 3);
+    assert.equal(s.session.keyFrameRequests, 2);
+    await s.stream.stop();
+  });
+
   const encoderDump = (...mimes: string[]) =>
     mimes
       .map((m) => `Media type '${m}':\n  Encoder "enc.${m}" supports\n    attributes: 0x1: [ software-only: 0 ]\n`)
