@@ -1,56 +1,12 @@
-import {mkdtemp, rm} from 'node:fs/promises';
-import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {parseArgs} from 'node:util';
 
-import {asyncmap} from 'asyncbox';
+import {ChecksumsStore} from './lib/checksums-store.mjs';
+import {ChecksumsUpdater} from './lib/checksums-updater.mjs';
+import {ChromedriverSource} from './lib/chromedriver-source.mjs';
+import {VersionsMapping} from './lib/versions-mapping.mjs';
 
-import {readJson, sha256OfRemoteZipMember, writeJson} from './checksums-utils.mjs';
-
-const DOWNLOADS_URL = 'https://googlechromelabs.github.io/chrome-for-testing/known-good-versions-with-downloads.json';
-const LEGACY_STORAGE_URL = 'https://chromedriver.storage.googleapis.com';
 const DEFAULT_BACKFILL_COUNT = 0;
-const BACKFILL_CONCURRENCY = 4;
-
-/** Chrome for Testing builds (115+): {platform: sha256 of the executable} */
-async function fetchCftChecksums(entry, tmpRoot) {
-  const result = {};
-  for (const {platform, url} of entry.downloads.chromedriver ?? []) {
-    const exe = platform.startsWith('win') ? 'chromedriver.exe' : 'chromedriver';
-    result[platform] = await sha256OfRemoteZipMember(url, `chromedriver-${platform}/${exe}`, tmpRoot);
-  }
-  return result;
-}
-
-/** Legacy storage builds (up to 114): {platform: sha256 of the executable}; archives are checked against their MD5 ETag */
-async function fetchLegacyChecksums(version, tmpRoot) {
-  const res = await fetch(`${LEGACY_STORAGE_URL}/?prefix=${encodeURIComponent(version)}/`);
-  if (!res.ok) {
-    throw new Error(`Cannot list ${LEGACY_STORAGE_URL} for ${version}: HTTP ${res.status}`);
-  }
-  const xml = await res.text();
-  const result = {};
-  for (const [, content] of xml.matchAll(/<Contents>(.*?)<\/Contents>/gs)) {
-    const key = /<Key>([^<]+)<\/Key>/.exec(content)?.[1] ?? '';
-    const platform = /^[^/]+\/chromedriver_([a-z0-9_]+)\.zip$/.exec(key)?.[1];
-    if (!platform) {
-      continue;
-    }
-    const etag = /<ETag>"?([0-9a-f]{32})"?<\/ETag>/.exec(content)?.[1];
-    const exe = platform.startsWith('win') ? 'chromedriver.exe' : 'chromedriver';
-    result[platform] = await sha256OfRemoteZipMember(`${LEGACY_STORAGE_URL}/${key}`, exe, tmpRoot, etag);
-  }
-  return result;
-}
-
-async function fetchChecksums(version, cftVersions, tmpRoot) {
-  const entry = cftVersions.find((v) => v.version === version && v.downloads.chromedriver);
-  const result = entry ? await fetchCftChecksums(entry, tmpRoot) : await fetchLegacyChecksums(version, tmpRoot);
-  if (Object.keys(result).length === 0) {
-    throw new Error(`No chromedriver downloads were found for version ${version}`);
-  }
-  return result;
-}
 
 async function main() {
   const {
@@ -72,70 +28,25 @@ async function main() {
   const checksumsPath = values.checksums ?? path.join(path.dirname(mappingPath), 'checksums.json');
   const backfill = parseInt(values.backfill, 10);
 
-  let mapping = await readJson(mappingPath);
-  const checksums = await readJson(checksumsPath, {});
-  let changed = false;
-
+  const mapping = await VersionsMapping.load(mappingPath);
   // The mapping is only written after the checksums of the latest version are known
-  const isNewVersion = !(latestVersion in mapping);
-  if (isNewVersion) {
-    mapping = Object.fromEntries([[latestVersion, latestVersion], ...Object.entries(mapping)]);
-    changed = true;
-  }
+  const isNewVersion = mapping.addLatest(latestVersion);
+  const store = await ChecksumsStore.load(checksumsPath, mapping.compare);
 
-  // the latest version plus `--backfill N` most recent ones that still have no checksums
-  const wanted = [latestVersion, ...Object.keys(mapping)].filter((v, i, arr) => arr.indexOf(v) === i);
-  const missing = wanted.filter((v) => !(v in checksums));
-  // `--backfill N` does not count the latest version
+  // the latest version plus `--backfill N` most recent older ones that still have no checksums
+  const missing = mapping.versions.filter((v) => !store.has(v));
   const older = missing.filter((v) => v !== latestVersion).slice(0, backfill);
-  const targets = new Set(missing.includes(latestVersion) ? [latestVersion, ...older] : older);
-  if (targets.size > 0) {
-    const downloadsRes = await fetch(DOWNLOADS_URL);
-    if (!downloadsRes.ok) {
-      throw new Error(`Cannot retrieve ${DOWNLOADS_URL}: HTTP ${downloadsRes.status}`);
-    }
-    const {versions} = await downloadsRes.json();
-    const tmpRoot = await mkdtemp(path.join(tmpdir(), 'cd-checksums-'));
-    // newest first, same order as the mapping
-    const order = Object.keys(mapping);
-    const save = () => {
-      const sorted = Object.keys(checksums).sort((a, b) => order.indexOf(a) - order.indexOf(b));
-      return writeJson(checksumsPath, Object.fromEntries(sorted.map((k) => [k, checksums[k]])));
-    };
-    const failed = [];
-    try {
-      await asyncmap(
-        [...targets],
-        async (version) => {
-          try {
-            checksums[version] = await fetchChecksums(version, versions, tmpRoot);
-            changed = true;
-            process.stderr.write(`Computed checksums for ${version}\n`);
-          } catch (e) {
-            // the latest version must always be covered, older ones are best effort
-            if (version === latestVersion) {
-              throw e;
-            }
-            failed.push(version);
-            process.stderr.write(`Skipping ${version}: ${e.message}\n`);
-          }
-        },
-        {concurrency: BACKFILL_CONCURRENCY},
-      );
-    } finally {
-      // keep the already computed checksums even if the run is aborted
-      await save();
-      await rm(tmpRoot, {recursive: true, force: true});
-    }
-    if (failed.length > 0) {
-      process.stderr.write(`Versions without checksums: ${failed.join(', ')}\n`);
-    }
-  }
+  const targets = missing.includes(latestVersion) ? [latestVersion, ...older] : older;
 
-  if (isNewVersion) {
-    await writeJson(mappingPath, mapping);
+  let computed = [];
+  if (targets.length > 0) {
+    const updater = new ChecksumsUpdater({store, source: await ChromedriverSource.load()});
+    ({computed} = await updater.update(targets, {required: latestVersion}));
   }
-  process.stdout.write(changed ? '1' : '0');
+  if (isNewVersion) {
+    await mapping.save();
+  }
+  process.stdout.write(isNewVersion || computed.length > 0 ? '1' : '0');
 }
 
 await main();
