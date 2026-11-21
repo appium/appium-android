@@ -19,11 +19,14 @@ package io.appium.uiautomator2.model;
 import android.util.LruCache;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.VisibleForTesting;
 import androidx.annotation.Nullable;
 import androidx.test.uiautomator.UiObject;
 import androidx.test.uiautomator.UiObject2;
 
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 import io.appium.uiautomator2.common.exceptions.ElementNotFoundException;
 import io.appium.uiautomator2.common.exceptions.StaleElementReferenceException;
@@ -129,6 +132,45 @@ public class ElementsCache {
         return restoredElement;
     }
 
+    /**
+     * @return true if a stale element with this id can be looked up again by its locator.
+     * A live search context is used as is, while a stale one must be restorable itself.
+     */
+    public boolean isRestorable(String id) {
+        synchronized (cache) {
+            final Set<String> visited = new HashSet<>();
+            String currentId = id;
+            while (currentId != null && visited.add(currentId)) {
+                AndroidElement element = cache.get(currentId);
+                if (element == null || element.getBy() == null || !element.isSingleMatch()) {
+                    return false;
+                }
+                currentId = element.getContextId();
+                AndroidElement context = currentId == null ? null : cache.get(currentId);
+                if (context != null && isLive(context)) {
+                    return true;
+                }
+            }
+            return true;
+        }
+    }
+
+    private static boolean isLive(AndroidElement element) {
+        try {
+            element.getName();
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @VisibleForTesting
+    void put(AndroidElement element) {
+        synchronized (cache) {
+            cache.put(element.getId(), element);
+        }
+    }
+
     @NonNull
     public AndroidElement get(String id) {
         if (id == null) {
@@ -144,11 +186,9 @@ public class ElementsCache {
                 // after AX cache reset has been performed. So we try to recreate
                 // the cached object automatically
                 // in order to avoid an unexpected StaleElementReferenceException
-                try {
-                    resultElement.getName();
-                } catch (Exception e) {
-                    Logger.info(String.format("The element identified by '%s' has been reported as stale (%s). " +
-                            "Trying to restore it", id, e.getMessage()));
+                if (!isLive(resultElement)) {
+                    Logger.info(String.format("The element identified by '%s' has been reported as stale. " +
+                            "Trying to restore it", id));
                     resultElement = restore(resultElement);
                 }
             }

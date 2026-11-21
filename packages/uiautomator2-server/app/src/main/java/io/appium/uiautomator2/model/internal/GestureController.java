@@ -117,8 +117,15 @@ public class GestureController {
     /**
      * A swipe starts at the edge of its area. The right and bottom edges of a rectangle that covers
      * the whole display lie one pixel outside of it, so the touch is dropped silently.
+     *
+     * @throws IllegalArgumentException if the area lies entirely outside of the display
      */
     static Rect clampToDisplay(Rect area, Point displaySize) {
+        // The right and bottom edges are exclusive, so the check must precede the clamping
+        if (!Rect.intersects(area, new Rect(0, 0, displaySize.x, displaySize.y))) {
+            throw new IllegalArgumentException(String.format(
+                    "The area %s is outside of the %sx%s display", area.toShortString(), displaySize.x, displaySize.y));
+        }
         return new Rect(
                 Math.max(area.left, 0),
                 Math.max(area.top, 0),

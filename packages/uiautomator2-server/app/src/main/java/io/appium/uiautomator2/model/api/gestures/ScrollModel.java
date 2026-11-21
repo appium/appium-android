@@ -19,6 +19,7 @@ package io.appium.uiautomator2.model.api.gestures;
 import androidx.test.uiautomator.Direction;
 
 import java.util.Arrays;
+import java.util.Locale;
 
 import io.appium.uiautomator2.model.RequiredField;
 import io.appium.uiautomator2.model.api.BaseModel;
@@ -35,7 +36,7 @@ public class ScrollModel extends BaseModel {
 
     public Direction getDirection() {
         try {
-            return Direction.valueOf(direction.toUpperCase());
+            return Direction.valueOf(direction.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new IllegalArgumentException(
                     String.format("Scroll direction must be one of %s", Arrays.toString(Direction.values())));

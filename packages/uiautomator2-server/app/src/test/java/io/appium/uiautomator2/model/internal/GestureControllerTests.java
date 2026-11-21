@@ -24,6 +24,7 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 @RunWith(RobolectricTestRunner.class)
 public class GestureControllerTests {
@@ -45,5 +46,42 @@ public class GestureControllerTests {
     public void areaInsideOfDisplayIsNotChanged() {
         Rect area = new Rect(108, 242, 972, 2182);
         assertEquals(area, GestureController.clampToDisplay(area, DISPLAY));
+    }
+
+    @Test
+    public void areaBeyondTheRightEdgeIsRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> GestureController.clampToDisplay(new Rect(1200, 100, 1300, 500), DISPLAY));
+    }
+
+    @Test
+    public void areaBelowTheBottomEdgeIsRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> GestureController.clampToDisplay(new Rect(100, 2500, 500, 2600), DISPLAY));
+    }
+
+    @Test
+    public void areaBeforeTheOriginIsRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> GestureController.clampToDisplay(new Rect(-300, -300, -100, -100), DISPLAY));
+    }
+
+    @Test
+    public void areaEndingAtTheLeftEdgeIsRejected() {
+        // The right edge is exclusive, so this area lies entirely to the left of the display
+        assertThrows(IllegalArgumentException.class,
+                () -> GestureController.clampToDisplay(new Rect(-100, 10, 0, 50), DISPLAY));
+    }
+
+    @Test
+    public void areaEndingAtTheTopEdgeIsRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> GestureController.clampToDisplay(new Rect(10, -100, 50, 0), DISPLAY));
+    }
+
+    @Test
+    public void areaStartingAtTheRightEdgeIsRejected() {
+        assertThrows(IllegalArgumentException.class,
+                () -> GestureController.clampToDisplay(new Rect(1080, 10, 1200, 50), DISPLAY));
     }
 }

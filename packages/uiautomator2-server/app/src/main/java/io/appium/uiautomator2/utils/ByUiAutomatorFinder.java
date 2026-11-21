@@ -93,7 +93,16 @@ public class ByUiAutomatorFinder {
         if (doesUiSelectorHaveAttribute(sel, "INSTANCE")) {
             Logger.debug("Selector has INSTANCE attribute");
             // There's exactly one element when using instance.
-            AccessibleUiObject instanceObj = toAccessibleUiObject(getUiDevice().findObject(sel));
+            AccessibleUiObject instanceObj;
+            if (context == null) {
+                instanceObj = toAccessibleUiObject(getUiDevice().findObject(sel));
+            } else {
+                try {
+                    instanceObj = context.getChild(sel);
+                } catch (UiObjectNotFoundException e) {
+                    instanceObj = null;
+                }
+            }
             return instanceObj == null
                     ? Collections.<AccessibleUiObject>emptyList()
                     : Collections.singletonList(instanceObj);
