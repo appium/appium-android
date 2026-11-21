@@ -23,6 +23,7 @@ import java.util.List;
 
 import io.appium.uiautomator2.common.exceptions.ClassChainSyntaxException;
 import io.appium.uiautomator2.common.exceptions.InvalidSelectorException;
+import io.appium.uiautomator2.common.exceptions.PredicateSyntaxException;
 import io.appium.uiautomator2.utils.classchain.ChainStep.Scope;
 
 import static org.junit.Assert.assertEquals;
@@ -159,11 +160,20 @@ public class ClassChainParserTests {
     // ---- class names ----
 
     @Test
+    public void supplementaryPlaneIdentifiers() {
+        String name = "com.example.\uD835\uDC00View"; // MATHEMATICAL BOLD CAPITAL A
+        assertEquals(name, steps(name + "/*").get(0).getClassName());
+        assertEquals(name.length() + 1, assertInvalid(name + "/ ", "Expected").getPosition());
+    }
+
+    @Test
     public void classNames() {
-        assertEquals("android.widget.TextView", steps("android.widget.TextView").get(0).getClassName());
+        assertEquals("android.widget.TextView",
+                steps("android.widget.TextView").get(0).getClassName());
         assertEquals("Button", steps("Button").get(0).getClassName());
         assertEquals("androidx.recyclerview.widget.RecyclerView$ViewHolder",
-                steps("androidx.recyclerview.widget.RecyclerView$ViewHolder").get(0).getClassName());
+                steps("androidx.recyclerview.widget.RecyclerView$ViewHolder")
+                        .get(0).getClassName());
         assertEquals("a.b$1", steps("a.b$1").get(0).getClassName());
         assertEquals("com.example.Вид", steps("com.example.Вид").get(0).getClassName());
     }
@@ -279,8 +289,20 @@ public class ClassChainParserTests {
         ClassChainSyntaxException e = assertInvalid("a[`bogus == 1`]", "Invalid predicate");
         assertTrue(e.getReason(), e.getReason().contains("bogus"));
         assertEquals(3, e.getPosition());
+        assertTrue(e.getCause() instanceof PredicateSyntaxException);
         e = assertInvalid("a[``]", "must not be empty");
         assertEquals(3, e.getPosition());
+    }
+
+    @Test
+    public void predicateErrorPositionsAccountForEscapedMarkers() {
+        String query = "*[`text == 'a``b' AND bogus == 1`]";
+        assertEquals(query.indexOf("bogus"), assertInvalid(query, "bogus").getPosition());
+        query = "*[$text == 'a$$b$$c' AND bogus == 1$]";
+        assertEquals(query.indexOf("bogus"), assertInvalid(query, "bogus").getPosition());
+        // an error at the end of the predicate points at its closing marker
+        query = "*[`text == 'a``b' AND`]";
+        assertEquals(query.indexOf("`]"), assertInvalid(query, "").getPosition());
     }
 
     @Test

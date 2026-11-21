@@ -17,6 +17,8 @@
 
 package io.appium.uiautomator2.common.exceptions;
 
+import androidx.annotation.Nullable;
+
 /**
  * Thrown when a class chain query cannot be parsed. The position is a 0-based character offset.
  */
@@ -26,8 +28,13 @@ public class ClassChainSyntaxException extends InvalidSelectorException {
     private final int position;
 
     public ClassChainSyntaxException(String query, String reason, int position) {
+        this(query, reason, position, null);
+    }
+
+    public ClassChainSyntaxException(String query, String reason, int position,
+                                     @Nullable Throwable cause) {
         super(String.format("Cannot parse class chain query '%s'. %s at position %d",
-                query, reason, position));
+                query, reason, position), cause);
         this.query = query;
         this.reason = reason;
         this.position = position;

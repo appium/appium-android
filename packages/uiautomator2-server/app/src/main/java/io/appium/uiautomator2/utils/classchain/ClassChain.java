@@ -36,7 +36,7 @@ public final class ClassChain {
         return steps;
     }
 
-    /** Canonical form, which parses back to an equal chain */
+    /** Canonical form, which parses back to the same canonical form */
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();

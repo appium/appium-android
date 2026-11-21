@@ -30,7 +30,7 @@ import io.appium.uiautomator2.utils.predicate.PredicateNode;
  */
 public final class ChainStep {
 
-    /** {@code SELF} filters the candidates, {@code DESCENDANT} keeps those having a matching descendant */
+    /** {@code SELF} filters the candidates, {@code DESCENDANT} needs a matching descendant */
     public enum Scope {
         SELF('`'), DESCENDANT('$');
 
@@ -65,7 +65,8 @@ public final class ChainStep {
         @Override
         public String toString() {
             String marker = String.valueOf(scope.getMarker());
-            return "[" + marker + predicate.toString().replace(marker, marker + marker) + marker + "]";
+            String escaped = predicate.toString().replace(marker, marker + marker);
+            return "[" + marker + escaped + marker + "]";
         }
     }
 
@@ -100,7 +101,7 @@ public final class ChainStep {
         return filters;
     }
 
-    /** 1-based among the matches of the class name and filters; negative counts from the end; never 0 */
+    /** 1-based among the matches of class name and filters; negative counts from the end */
     @Nullable
     public Integer getPosition() {
         return position;

@@ -28,16 +28,7 @@ import io.appium.uiautomator2.utils.classchain.ChainStep.Filter;
 import io.appium.uiautomator2.utils.classchain.ChainStep.Scope;
 import io.appium.uiautomator2.utils.predicate.PredicateParser;
 
-/**
- * Hand-written parser of class chain queries, modelled on WebDriverAgent's:
- * <pre>
- * chain  := ["**&#47;"] step ( "/" | "/**&#47;" ) step )*
- * step   := ("*" | className) filter* [position]
- * filter := "[`" predicate "`]" | "[$" predicate "$]"
- * </pre>
- * Whitespace is only allowed inside predicates, and a doubled {@code `} or {@code $} inside a
- * predicate stands for the character itself. See {@link PredicateParser} for the predicates.
- */
+/** Parser of class chain queries like WebDriverAgent's, with {@link PredicateParser} predicates. */
 public final class ClassChainParser {
     private static final String DESCENDANT_MARKER = "**/";
 
@@ -111,14 +102,14 @@ public final class ClassChainParser {
         }
         int start = pos;
         while (true) {
-            if (!isIdentifierStart(peek())) {
+            if (!isIdentifierStart(codePoint())) {
                 throw error(pos >= source.length() && pos > start
                         ? "The class name must not end with '.'"
                         : "Expected a class name or '*'");
             }
-            while (isIdentifierPart(peek())) {
-                pos++;
-            }
+            do {
+                pos += Character.charCount(codePoint());
+            } while (isIdentifierPart(codePoint()));
             if (peek() != '.') {
                 return source.substring(start, pos);
             }
@@ -130,8 +121,9 @@ public final class ClassChainParser {
         char marker = scope.getMarker();
         int open = pos;
         pos += 2; // "[" and the marker
-        int contentStart = pos;
         StringBuilder text = new StringBuilder();
+        // source index of each predicate character, so errors point into the query
+        int[] sourceIndex = new int[source.length() + 1];
         while (true) {
             if (pos >= source.length()) {
                 throw error(String.format("Cannot find the closing '%s' of the predicate", marker),
@@ -140,13 +132,16 @@ public final class ClassChainParser {
             char c = source.charAt(pos);
             if (c == marker) {
                 if (peek(1) == marker) {
+                    sourceIndex[text.length()] = pos;
                     text.append(c);
                     pos += 2;
                     continue;
                 }
+                sourceIndex[text.length()] = pos;
                 pos++;
                 break;
             }
+            sourceIndex[text.length()] = pos;
             text.append(c);
             pos++;
         }
@@ -157,8 +152,9 @@ public final class ClassChainParser {
         try {
             return new Filter(scope, PredicateParser.parse(text.toString()));
         } catch (PredicateSyntaxException e) {
-            throw error(String.format("Invalid predicate: %s (offset %d inside the predicate)",
-                    e.getReason(), e.getPosition()), contentStart);
+            int at = sourceIndex[Math.min(e.getPosition(), text.length())];
+            throw new ClassChainSyntaxException(
+                    source, "Invalid predicate: " + e.getReason(), at, e);
         }
     }
 
@@ -191,12 +187,19 @@ public final class ClassChainParser {
         return value;
     }
 
-    private static boolean isIdentifierStart(char c) {
-        return c != '\0' && Character.isJavaIdentifierStart(c) && !Character.isIdentifierIgnorable(c);
+    /** The code point at the current position, or -1 at the end */
+    private int codePoint() {
+        return pos < source.length() ? source.codePointAt(pos) : -1;
     }
 
-    private static boolean isIdentifierPart(char c) {
-        return c != '\0' && Character.isJavaIdentifierPart(c) && !Character.isIdentifierIgnorable(c);
+    private static boolean isIdentifierStart(int cp) {
+        return cp > 0 && Character.isJavaIdentifierStart(cp)
+                && !Character.isIdentifierIgnorable(cp);
+    }
+
+    private static boolean isIdentifierPart(int cp) {
+        return cp > 0 && Character.isJavaIdentifierPart(cp)
+                && !Character.isIdentifierIgnorable(cp);
     }
 
     private char peek() {
