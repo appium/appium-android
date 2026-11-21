@@ -25,76 +25,87 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public enum Attribute {
-    CHECKABLE(new String[]{"checkable"}),
-    CHECKED(new String[]{"checked"}),
-    CLASS(new String[]{"class", "className"}),
-    CLICKABLE(new String[]{"clickable"}),
-    CONTENT_DESC(new String[]{"content-desc", "contentDescription"}),
-    ENABLED(new String[]{"enabled"}),
-    FOCUSABLE(new String[]{"focusable"}),
-    FOCUSED(new String[]{"focused"}),
-    LONG_CLICKABLE(new String[]{"long-clickable", "longClickable"}),
-    PACKAGE(new String[]{"package"}),
-    PASSWORD(new String[]{"password"}),
-    RESOURCE_ID(new String[]{"resource-id", "resourceId"}),
-    SCROLLABLE(new String[]{"scrollable"}),
-    SELECTION_START(new String[]{"selection-start"}),
-    SELECTION_END(new String[]{"selection-end"}),
-    SELECTED(new String[]{"selected"}),
-    TEXT(new String[]{"text", "name"}),
-    HINT(new String[]{"hint"}),
-    EXTRAS(new String[]{"extras"}),
+    CHECKABLE(Type.BOOLEAN, new String[]{"checkable"}),
+    CHECKED(Type.BOOLEAN, new String[]{"checked"}),
+    CLASS(Type.STRING, new String[]{"class", "className"}),
+    CLICKABLE(Type.BOOLEAN, new String[]{"clickable"}),
+    CONTENT_DESC(Type.STRING, new String[]{"content-desc", "contentDescription"}),
+    ENABLED(Type.BOOLEAN, new String[]{"enabled"}),
+    FOCUSABLE(Type.BOOLEAN, new String[]{"focusable"}),
+    FOCUSED(Type.BOOLEAN, new String[]{"focused"}),
+    LONG_CLICKABLE(Type.BOOLEAN, new String[]{"long-clickable", "longClickable"}),
+    PACKAGE(Type.STRING, new String[]{"package"}),
+    PASSWORD(Type.BOOLEAN, new String[]{"password"}),
+    RESOURCE_ID(Type.STRING, new String[]{"resource-id", "resourceId"}),
+    SCROLLABLE(Type.BOOLEAN, new String[]{"scrollable"}),
+    SELECTION_START(Type.NUMBER, new String[]{"selection-start"}),
+    SELECTION_END(Type.NUMBER, new String[]{"selection-end"}),
+    SELECTED(Type.BOOLEAN, new String[]{"selected"}),
+    TEXT(Type.STRING, new String[]{"text", "name"}),
+    HINT(Type.STRING, new String[]{"hint"}),
+    EXTRAS(Type.STRING, new String[]{"extras"}),
 
     // The main difference of this attribute from the preceding one is that
     // it does not replace null values with empty strings
-    ORIGINAL_TEXT(new String[]{"original-text"}, false, false),
-    BOUNDS(new String[]{"bounds"}),
-    INDEX(new String[]{"index"}, false, true),
-    DISPLAYED(new String[]{"displayed"}),
-    CONTENT_SIZE(new String[]{"contentSize"}, true, false),
+    ORIGINAL_TEXT(Type.STRING, new String[]{"original-text"}, false, false),
+    BOUNDS(Type.STRING, new String[]{"bounds"}),
+    INDEX(Type.NUMBER, new String[]{"index"}, false, true),
+    DISPLAYED(Type.BOOLEAN, new String[]{"displayed"}),
+    CONTENT_SIZE(Type.STRING, new String[]{"contentSize"}, true, false),
 
-    IMPORTANT_FOR_ACCESSIBILITY(new String[]{"a11y-important", "importantForAccessibility"}),
-    SCREEN_READER_FOCUSABLE(new String[]{"screen-reader-focusable", "screenReaderFocusable"}),
-    INPUT_TYPE(new String[]{"input-type", "inputType"}),
-    DRAWING_ORDER(new String[]{"drawing-order", "drawingOrder"}),
-    SHOWING_HINT_TEXT(new String[]{"showing-hint", "showingHintText"}),
-    TEXT_ENTRY_KEY(new String[]{"text-entry-key", "textEntryKey"}),
-    MULTI_LINE(new String[]{"multiline", "multiLine"}),
-    DISMISSABLE(new String[]{"dismissable"}),
-    ACCESSIBILITY_FOCUSED(new String[]{"a11y-focused", "accessibilityFocused"}),
-    HEADING(new String[]{"heading"}),
-    LIVE_REGION(new String[]{"live-region", "liveRegion"}),
-    CONTEXT_CLICKABLE(new String[]{"context-clickable", "contextClickable"}),
-    MAX_TEXT_LENGTH(new String[]{"max-text-length", "maxTextLength"}),
-    CONTENT_INVALID(new String[]{"content-invalid", "contentInvalid"}),
-    ERROR_TEXT(new String[]{"error", "errorText"}),
-    PANE_TITLE(new String[]{"pane-title", "paneTitle"}),
-    TOOLTIP_TEXT(new String[]{"tooltip-text", "tooltipText"}),
-    TEXT_HAS_CLICKABLE_SPAN(new String[]{"text-has-clickable-span", "textHasClickableSpan"}),
-    ACTIONS(new String[]{"actions"}),
-    WINDOW_ID(new String[]{"window-id", "windowId"}),
-    TEXT_SIZE(new String[]{"text-size", "textSize"}),
-    TEXT_UNIT(new String[]{"text-unit", "textUnit"}),
-    IS_COLLECTION(new String[]{"is-collection", "isCollection"}),
-    IS_COLLECTION_ITEM(new String[]{"is-collection-item", "isCollectionItem"}),
+    IMPORTANT_FOR_ACCESSIBILITY(Type.BOOLEAN,
+            new String[]{"a11y-important", "importantForAccessibility"}),
+    SCREEN_READER_FOCUSABLE(Type.BOOLEAN,
+            new String[]{"screen-reader-focusable", "screenReaderFocusable"}),
+    INPUT_TYPE(Type.NUMBER, new String[]{"input-type", "inputType"}),
+    DRAWING_ORDER(Type.NUMBER, new String[]{"drawing-order", "drawingOrder"}),
+    SHOWING_HINT_TEXT(Type.BOOLEAN, new String[]{"showing-hint", "showingHintText"}),
+    TEXT_ENTRY_KEY(Type.BOOLEAN, new String[]{"text-entry-key", "textEntryKey"}),
+    MULTI_LINE(Type.BOOLEAN, new String[]{"multiline", "multiLine"}),
+    DISMISSABLE(Type.BOOLEAN, new String[]{"dismissable"}),
+    ACCESSIBILITY_FOCUSED(Type.BOOLEAN, new String[]{"a11y-focused", "accessibilityFocused"}),
+    HEADING(Type.BOOLEAN, new String[]{"heading"}),
+    LIVE_REGION(Type.NUMBER, new String[]{"live-region", "liveRegion"}),
+    CONTEXT_CLICKABLE(Type.BOOLEAN, new String[]{"context-clickable", "contextClickable"}),
+    MAX_TEXT_LENGTH(Type.NUMBER, new String[]{"max-text-length", "maxTextLength"}),
+    CONTENT_INVALID(Type.BOOLEAN, new String[]{"content-invalid", "contentInvalid"}),
+    ERROR_TEXT(Type.STRING, new String[]{"error", "errorText"}),
+    PANE_TITLE(Type.STRING, new String[]{"pane-title", "paneTitle"}),
+    TOOLTIP_TEXT(Type.STRING, new String[]{"tooltip-text", "tooltipText"}),
+    TEXT_HAS_CLICKABLE_SPAN(Type.BOOLEAN,
+            new String[]{"text-has-clickable-span", "textHasClickableSpan"}),
+    ACTIONS(Type.STRING, new String[]{"actions"}),
+    WINDOW_ID(Type.NUMBER, new String[]{"window-id", "windowId"}),
+    TEXT_SIZE(Type.NUMBER, new String[]{"text-size", "textSize"}),
+    TEXT_UNIT(Type.STRING, new String[]{"text-unit", "textUnit"}),
+    IS_COLLECTION(Type.BOOLEAN, new String[]{"is-collection", "isCollection"}),
+    IS_COLLECTION_ITEM(Type.BOOLEAN, new String[]{"is-collection-item", "isCollectionItem"}),
 
     // These are only available on demand via getAttribute, and are never included in the page source
-    COLLECTION_INFO(new String[]{"collection-info", "collectionInfo"}, true, false),
-    COLLECTION_ITEM_INFO(new String[]{"collection-item-info", "collectionItemInfo"}, true, false);
+    COLLECTION_INFO(Type.STRING, new String[]{"collection-info", "collectionInfo"}, true, false),
+    COLLECTION_ITEM_INFO(Type.STRING, new String[]{"collection-item-info", "collectionItemInfo"}, true, false);
 
+    /** The type of the value, which is used to validate comparisons in predicates */
+    public enum Type {
+        STRING, NUMBER, BOOLEAN
+    }
+
+    private final Type type;
     private final String[] aliases;
     // Defines if the attribute is visible to the user from getAttribute call
     private final boolean isExposable;
     // Defines if the attribute is visible to the user in the xml tree/xpath search
     private final boolean isExposableToXml;
 
-    Attribute(String[] aliases) {
+    Attribute(Type type, String[] aliases) {
+        this.type = type;
         this.aliases = aliases;
         this.isExposable = true;
         this.isExposableToXml = true;
     }
 
-    Attribute(String[] aliases, boolean isExposable, boolean isExposableToXml) {
+    Attribute(Type type, String[] aliases, boolean isExposable, boolean isExposableToXml) {
+        this.type = type;
         this.aliases = aliases;
         this.isExposable = isExposable;
         this.isExposableToXml = isExposableToXml;
@@ -102,6 +113,14 @@ public enum Attribute {
 
     public String getName() {
         return aliases[0];
+    }
+
+    public Type getType() {
+        return type;
+    }
+
+    public String[] getAliases() {
+        return aliases.clone();
     }
 
     public boolean isExposableToXml() {
