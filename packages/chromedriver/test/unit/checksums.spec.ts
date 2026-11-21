@@ -56,6 +56,25 @@ describe('checksums', function () {
       assert.ok((await sha256File(bin)).length === 64);
     });
 
+    it('should keep all checksums trusted in parallel', async function () {
+      const parallelDir = await mkdtemp(path.join(os.tmpdir(), 'cd-checksums-parallel-'));
+      try {
+        const files = await Promise.all(
+          Array.from({length: 20}, async (_, i) => {
+            const f = path.join(parallelDir, `chromedriver-${i}`);
+            await writeFile(f, `driver ${i}`);
+            return f;
+          }),
+        );
+        await Promise.all(files.map((f) => trustChecksumOf(f, parallelDir)));
+        for (const f of files) {
+          await assertKnownChromedriver(f, parallelDir);
+        }
+      } finally {
+        await rm(parallelDir, {recursive: true, force: true});
+      }
+    });
+
     it('should not accept the locally trusted checksum from another folder', async function () {
       const other = await mkdtemp(path.join(os.tmpdir(), 'cd-checksums-other-'));
       try {

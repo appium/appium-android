@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import {util} from '@appium/support';
+import {AsyncLock} from 'asyncbox';
 
 import {getModuleRoot} from './utils.js';
 
@@ -26,7 +27,7 @@ const getKnownChecksums = util.memoize(async function getKnownChecksums(): Promi
   return new Set(Object.values(checksums).flatMap((perPlatform) => Object.values(perPlatform)));
 });
 
-let trustWriteQueue: Promise<void> = Promise.resolve();
+const TRUST_STORE_GUARD = new AsyncLock();
 
 // Always hashes the current content (~10-30 ms): size/mtime based caching could be defeated by a swapped file
 export async function sha256File(filePath: string): Promise<string> {
@@ -52,12 +53,8 @@ async function readTrustedChecksums(trustDir: string): Promise<Set<string>> {
  */
 export async function trustChecksumOf(binPath: string, trustDir: string): Promise<void> {
   const sha256 = await sha256File(binPath);
-  // serialize read-modify-write cycles of the trust file (drivers are downloaded in parallel)
-  const previous = trustWriteQueue;
-  let release!: () => void;
-  trustWriteQueue = new Promise<void>((resolve) => (release = resolve));
-  await previous;
-  try {
+  // drivers are downloaded in parallel, so serialize read-modify-write cycles of the trust file
+  await TRUST_STORE_GUARD.acquire(path.resolve(trustDir), async () => {
     const trusted = await readTrustedChecksums(trustDir);
     if (trusted.has(sha256)) {
       return;
@@ -67,9 +64,7 @@ export async function trustChecksumOf(binPath: string, trustDir: string): Promis
     const tmp = `${dst}.${process.pid}.tmp`;
     await fs.writeFile(tmp, JSON.stringify([...trusted].sort(), null, 2), 'utf8');
     await fs.rename(tmp, dst);
-  } finally {
-    release();
-  }
+  });
 }
 
 /**
