@@ -45,8 +45,8 @@ public class RecorderConstant {
     public static final float BITRATE_MULTIPLIER = 0.25f;
     public static final int AUDIO_CODEC_SAMPLE_RATE_HZ = 44100;
     public static final int AUDIO_CODEC_CHANNEL_COUNT = 1;
-    public static final int AUDIO_CODEC_REPEAT_PREV_FRAME_AFTER_MS = 1000000;
-    public static final int AUDIO_CODEC_I_FRAME_INTERVAL_MS = 5;
+    public static final long VIDEO_CODEC_REPEAT_PREV_FRAME_AFTER_US = 1000000;
+    public static final int VIDEO_CODEC_I_FRAME_INTERVAL_SEC = 5;
     public static final int AUDIO_CODEC_DEFAULT_BITRATE = 64000;
     public static final int VIDEO_CODEC_DEFAULT_FRAME_RATE = 30;
     public static final long MEDIA_QUEUE_BUFFERING_DEFAULT_TIMEOUT_MS = 10000;

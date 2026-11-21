@@ -51,10 +51,10 @@ public class MediaCodecFactory {
                 MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface);
         encoderFormat.setInteger(MediaFormat.KEY_BIT_RATE, videoBitrate);
         encoderFormat.setInteger(MediaFormat.KEY_FRAME_RATE, videoFrameRate);
-        encoderFormat.setInteger(MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER,
-                RecorderConstant.AUDIO_CODEC_REPEAT_PREV_FRAME_AFTER_MS);
+        encoderFormat.setLong(MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER,
+                RecorderConstant.VIDEO_CODEC_REPEAT_PREV_FRAME_AFTER_US);
         encoderFormat.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL,
-                RecorderConstant.AUDIO_CODEC_I_FRAME_INTERVAL_MS);
+                RecorderConstant.VIDEO_CODEC_I_FRAME_INTERVAL_SEC);
         return encoderFormat;
     }
 
