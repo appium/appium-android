@@ -35,23 +35,15 @@ function getKnownChecksums(): Promise<Set<string>> {
   return knownChecksumsPromise;
 }
 
-const hashCache = new Map<string, {key: string; sha256: string}>();
 let trustWriteQueue: Promise<void> = Promise.resolve();
 
+// Always hashes the current content (~10-30 ms): size/mtime based caching could be defeated by a swapped file
 export async function sha256File(filePath: string): Promise<string> {
-  const {size, mtimeMs} = await fs.stat(filePath);
-  const key = `${size}:${mtimeMs}`;
-  const cached = hashCache.get(filePath);
-  if (cached?.key === key) {
-    return cached.sha256;
-  }
   const hash = createHash('sha256');
   for await (const chunk of createReadStream(filePath)) {
     hash.update(chunk);
   }
-  const sha256 = hash.digest('hex');
-  hashCache.set(filePath, {key, sha256});
-  return sha256;
+  return hash.digest('hex');
 }
 
 async function readTrustedChecksums(trustDir: string): Promise<Set<string>> {
