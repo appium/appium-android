@@ -19,6 +19,7 @@ package io.appium.uiautomator2.model.api;
 import androidx.test.uiautomator.Direction;
 
 import java.util.Arrays;
+import java.util.Locale;
 
 import io.appium.uiautomator2.model.RequiredField;
 
@@ -43,7 +44,7 @@ public class ScrollToModel extends BaseModel {
                 return null;
             }
             try {
-                return Direction.valueOf(direction.toUpperCase());
+                return Direction.valueOf(direction.toUpperCase(Locale.ROOT));
             } catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException(
                         String.format("Scroll direction must be one of %s", Arrays.toString(Direction.values())));

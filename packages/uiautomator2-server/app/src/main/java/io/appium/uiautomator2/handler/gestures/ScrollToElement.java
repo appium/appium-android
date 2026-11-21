@@ -16,11 +16,13 @@
 
 package io.appium.uiautomator2.handler.gestures;
 
+import androidx.annotation.Nullable;
 import androidx.test.uiautomator.StaleObjectException;
 import androidx.test.uiautomator.UiObject;
 import androidx.test.uiautomator.UiObjectNotFoundException;
 import androidx.test.uiautomator.UiSelector;
 
+import io.appium.uiautomator2.common.exceptions.StaleElementReferenceException;
 import io.appium.uiautomator2.common.exceptions.UiAutomator2Exception;
 import io.appium.uiautomator2.handler.request.SafeRequestHandler;
 import io.appium.uiautomator2.http.AppiumResponse;
@@ -46,11 +48,13 @@ public class ScrollToElement extends SafeRequestHandler {
         String[] elementIds = getElementIds(request);
         ElementsCache ke = AppiumUIA2Driver.getInstance().getSessionOrThrow().getElementsCache();
         AndroidElement element = ke.get(elementIds[0]);
-        AndroidElement scrollToElement = ke.get(elementIds[1]);
+        // A target detached by a virtualized list is resolved by gestures while the container scrolls
+        AndroidElement scrollToElement = getLiveElementOrNull(ke, elementIds[1]);
 
         // UiScrollable only works with UiObject instances, which are the result of
         // the '-android uiautomator' locator strategy. Everything else is scrolled by gestures.
-        if (!(element.getUiObject() instanceof UiObject) || !(scrollToElement.getUiObject() instanceof UiObject)) {
+        if (!(element.getUiObject() instanceof UiObject)
+                || scrollToElement == null || !(scrollToElement.getUiObject() instanceof UiObject)) {
             final boolean isVisible = scrollUntilVisible(element, () -> isDisplayed(ke, elementIds[1]),
                     defaultDirection(element), true, DEFAULT_MAX_SWIPES);
             if (!isVisible) {
@@ -71,6 +75,15 @@ public class ScrollToElement extends SafeRequestHandler {
                     requireNonNull(scrollElementUiObject).getSelector()));
         }
         return new AppiumResponse(getSessionId(request));
+    }
+
+    @Nullable
+    private static AndroidElement getLiveElementOrNull(ElementsCache cache, String elementId) {
+        try {
+            return cache.get(elementId);
+        } catch (StaleElementReferenceException e) {
+            return null;
+        }
     }
 
     private static boolean isDisplayed(ElementsCache cache, String elementId) {

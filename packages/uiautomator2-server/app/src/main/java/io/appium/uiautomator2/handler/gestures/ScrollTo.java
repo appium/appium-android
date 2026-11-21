@@ -27,6 +27,7 @@ import java.util.List;
 
 import io.appium.uiautomator2.common.exceptions.ElementNotFoundException;
 import io.appium.uiautomator2.common.exceptions.InvalidArgumentException;
+import io.appium.uiautomator2.core.AxNodeInfoHelper;
 import io.appium.uiautomator2.handler.request.SafeRequestHandler;
 import io.appium.uiautomator2.http.AppiumResponse;
 import io.appium.uiautomator2.http.IHttpRequest;
@@ -140,7 +141,9 @@ public class ScrollTo extends SafeRequestHandler {
     private static boolean isPresent(By by, AndroidElement container) {
         resetAccessibilityCache();
         try {
-            return findElement(by, container) != null;
+            // With allowInvisibleElements, XPath also matches off-screen nodes retained by the container
+            final AccessibleUiObject match = findElement(by, container);
+            return match != null && AxNodeInfoHelper.isVisible(match.getInfo());
         } catch (UiObjectNotFoundException | ElementNotFoundException e) {
             return false;
         }
