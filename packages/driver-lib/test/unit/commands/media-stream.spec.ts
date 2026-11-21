@@ -367,6 +367,50 @@ describe('MediaStream', function () {
     assert.equal(s.session.keyFrameRequests, 2, 'the stream has stopped');
   });
 
+  it('treats a subscriber that comes back before the next unit as a late joiner after a waiting request found nobody', async function (t) {
+    t.mock.timers.enable({apis: ['Date', 'setTimeout'], now: 1_000_000});
+    const s = setup('video');
+    await s.begin();
+    await leaveAndReturn(s, 1);
+    s.session.push(au('video', 3, {isKeyFrame: true}));
+    await s.tick();
+    s.emitter.emit('bidiBackpressure', {
+      method: 'appium:mediaStream.units',
+      chain: `${s.stream.streamId}:video`,
+      state: 'dropping',
+      dropped: 1,
+    });
+    s.state.subscribed = false;
+    t.mock.timers.tick(1000);
+    assert.equal(s.session.keyFrameRequests, 1, 'nobody is subscribed when the second has passed');
+    s.state.subscribed = true;
+    const before = unitEvents(s.events).length;
+    s.session.push(au('video', 4));
+    s.session.push(au('video', 5, {isKeyFrame: true}));
+    await s.tick();
+    assert.equal(s.session.keyFrameRequests, 2);
+    assert.deepEqual(
+      unitEvents(s.events)
+        .slice(before)
+        .flatMap((e) => e.params!.units.map((u: {seq: number}) => u.seq)),
+      [5],
+      'no delta frame before the keyframe',
+    );
+    await s.stream.stop();
+  });
+
+  it('does not hold a request back when the clock was set back', async function (t) {
+    t.mock.timers.enable({apis: ['Date', 'setTimeout'], now: 1_000_000});
+    const s = setup('video');
+    await s.begin();
+    await leaveAndReturn(s, 1);
+    assert.equal(s.session.keyFrameRequests, 1);
+    t.mock.timers.setTime(1_000_000 - 30_000);
+    await leaveAndReturn(s, 3);
+    assert.equal(s.session.keyFrameRequests, 2);
+    await s.stream.stop();
+  });
+
   const encoderDump = (...mimes: string[]) =>
     mimes
       .map((m) => `Media type '${m}':\n  Encoder "enc.${m}" supports\n    attributes: 0x1: [ software-only: 0 ]\n`)
