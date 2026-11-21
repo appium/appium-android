@@ -19,11 +19,14 @@ package io.appium.uiautomator2.model;
 import android.util.LruCache;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.VisibleForTesting;
 import androidx.annotation.Nullable;
 import androidx.test.uiautomator.UiObject;
 import androidx.test.uiautomator.UiObject2;
 
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 import io.appium.uiautomator2.common.exceptions.ElementNotFoundException;
 import io.appium.uiautomator2.common.exceptions.StaleElementReferenceException;
@@ -130,12 +133,28 @@ public class ElementsCache {
     }
 
     /**
-     * @return true if a stale element with this id can be looked up again by its locator
+     * @return true if a stale element with this id can be looked up again by its locator.
+     * The same must hold for the whole chain of its search contexts.
      */
     public boolean isRestorable(String id) {
         synchronized (cache) {
-            AndroidElement element = cache.get(id);
-            return element != null && element.getBy() != null && element.isSingleMatch();
+            final Set<String> visited = new HashSet<>();
+            String currentId = id;
+            while (currentId != null && visited.add(currentId)) {
+                AndroidElement element = cache.get(currentId);
+                if (element == null || element.getBy() == null || !element.isSingleMatch()) {
+                    return false;
+                }
+                currentId = element.getContextId();
+            }
+            return true;
+        }
+    }
+
+    @VisibleForTesting
+    void put(AndroidElement element) {
+        synchronized (cache) {
+            cache.put(element.getId(), element);
         }
     }
 
