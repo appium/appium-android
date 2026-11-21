@@ -18,6 +18,7 @@ package io.appium.uiautomator2.utils.predicate;
 
 import androidx.annotation.Nullable;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -44,6 +45,7 @@ import io.appium.uiautomator2.utils.predicate.PredicateNode.Operator;
  */
 public final class PredicateParser {
     private static final int MAX_DEPTH = 64;
+    private static final int MAX_SUGGESTIONS = 3;
 
     // Not scalar or too expensive to read for filtering
     private static final Set<Attribute> EXCLUDED_ATTRIBUTES = EnumSet.of(
@@ -335,15 +337,48 @@ public final class PredicateParser {
     }
 
     private static String unknownAttributeMessage(String key) {
-        List<String> similar = new ArrayList<>();
-        for (String name : ATTRIBUTE_NAMES) {
-            if (editDistance(name.toLowerCase(Locale.ROOT), key.toLowerCase(Locale.ROOT)) <= 2) {
-                similar.add(name);
-            }
-        }
+        List<String> similar = similarAttributeNames(key);
         return String.format("Unknown attribute '%s'. %s", key, similar.isEmpty()
                 ? "Supported attributes: " + ATTRIBUTE_NAMES
                 : "Did you mean: " + String.join(", ", similar) + "?");
+    }
+
+    /** Up to MAX_SUGGESTIONS names ranked by: case-only diff, prefix, substring, edit distance */
+    static List<String> similarAttributeNames(String key) {
+        String typed = key.toLowerCase(Locale.ROOT);
+        int maxDistance = Math.max(1, typed.length() / 3);
+        List<Map.Entry<Integer, String>> ranked = new ArrayList<>();
+        for (String name : ATTRIBUTE_NAMES) {
+            String candidate = name.toLowerCase(Locale.ROOT);
+            int distance = editDistance(candidate, typed);
+            int rank;
+            if (distance == 0) {
+                rank = 0;
+            } else if (typed.length() >= 2 && candidate.startsWith(typed)) {
+                rank = 1;
+            } else if (typed.length() >= 3 && candidate.contains(typed)) {
+                rank = 2;
+            } else if (distance <= maxDistance) {
+                rank = 2 + distance;
+            } else {
+                continue;
+            }
+            ranked.add(new AbstractMap.SimpleEntry<>(rank, name));
+        }
+        Collections.sort(ranked, (x, y) -> {
+            int byRank = Integer.compare(x.getKey(), y.getKey());
+            if (byRank != 0) {
+                return byRank;
+            }
+            int byLength = Integer.compare(x.getValue().length(), y.getValue().length());
+            return byLength != 0 ? byLength : x.getValue().compareTo(y.getValue());
+        });
+        List<String> result = new ArrayList<>();
+        for (Map.Entry<Integer, String> entry : ranked.subList(0,
+                Math.min(MAX_SUGGESTIONS, ranked.size()))) {
+            result.add(entry.getValue());
+        }
+        return result;
     }
 
     private static int editDistance(String a, String b) {

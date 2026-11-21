@@ -364,6 +364,58 @@ public class PredicateParserTests {
         assertInvalid("text == 'a' AND bar == 1", "Unknown attribute 'bar'");
     }
 
+    private static List<String> suggestions(String key) {
+        return PredicateParser.similarAttributeNames(key);
+    }
+
+    @Test
+    public void suggestsCloseAttributeNames() {
+        assertEquals(Arrays.asList("text"), suggestions("txt"));
+        assertEquals(Arrays.asList("text"), suggestions("Text").subList(0, 1));
+        assertEquals(Arrays.asList("resourceId"), suggestions("resourceID1"));
+        assertEquals(Arrays.asList("checked"), suggestions("chekced").subList(0, 1));
+        assertEquals("clickable", suggestions("clickble").get(0));
+    }
+
+    @Test
+    public void suggestsNamesByPrefixAndSubstring() {
+        assertEquals("contentDescription", suggestions("contentDesc").get(0));
+        assertEquals("contentDescription", suggestions("desc").get(0));
+        assertEquals("resourceId", suggestions("resource").get(0));
+        assertEquals("longClickable", suggestions("longClick").get(0));
+        assertEquals(Arrays.asList("selectionEnd", "selectionStart"),
+                suggestions("selection").subList(0, 2));
+    }
+
+    @Test
+    public void suggestionsAreRankedAndCapped() {
+        // A case-only difference wins over a prefix, which wins over a substring
+        assertEquals("text", suggestions("TEXT").get(0));
+        assertEquals(Arrays.asList("text", "textSize", "textUnit"), suggestions("tex"));
+        assertEquals("text", suggestions("text").get(0));
+        assertEquals(3, suggestions("text").size());
+        assertEquals("package", suggestions("pakage").get(0));
+    }
+
+    @Test
+    public void noSuggestionsForUnrelatedNames() {
+        assertTrue(suggestions("foo").isEmpty());
+        assertTrue(suggestions("zzzzzz").isEmpty());
+        assertTrue(suggestions("x").isEmpty());
+        PredicateSyntaxException e = assertInvalid("foo == 'a'", "Supported attributes:");
+        assertTrue(e.getReason().contains("resourceId"));
+    }
+
+    @Test
+    public void unknownAttributeMessageListsSuggestions() {
+        PredicateSyntaxException e = assertInvalid("contentDesc == 'a'",
+                "Did you mean: contentDescription");
+        assertEquals(0, e.getPosition());
+        assertInvalid("desc == 'a'", "Did you mean: contentDescription");
+        assertFalse(assertInvalid("tex == 'a'", "Did you mean: text, textSize, textUnit")
+                .getReason().contains("Supported attributes"));
+    }
+
     @Test
     public void attributeNamesAreCaseSensitive() {
         assertInvalid("RESOURCEID == 'a'", "Unknown attribute");
