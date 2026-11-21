@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.2.6](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.2.5...appium-uiautomator2-server@11.2.6) (2026-11-21)
+
+### Bug Fixes
+
+* **uiautomator2-server:** address post-merge review comments on scroll and gesture clamping ([#169](https://github.com/appium/appium-android/issues/169)) ([c5e10e2](https://github.com/appium/appium-android/commit/c5e10e28154c4693cc347d3b30e2404ed9a9040e))
+
+
 ## [11.2.5](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.2.4...appium-uiautomator2-server@11.2.5) (2026-11-20)
 
 ### Code Refactoring
