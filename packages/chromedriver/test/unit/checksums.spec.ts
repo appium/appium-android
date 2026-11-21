@@ -8,6 +8,7 @@ import {
   TRUSTED_CHECKSUMS_FILE,
   assertKnownChromedriver,
   getChromedriverChecksums,
+  getEdgeDriverChecksums,
   sha256File,
   trustChecksumOf,
 } from '../../lib/checksums.js';
@@ -27,23 +28,40 @@ describe('checksums', function () {
     await rm(dir, {recursive: true, force: true});
   });
 
-  describe('shipped allowlist', function () {
-    it('should only contain known versions and valid sha256 digests', async function () {
-      const checksums = await getChromedriverChecksums();
+  describe('shipped allowlists', function () {
+    const assertValid = (checksums: Record<string, Record<string, string>>) => {
       assert.ok(Object.keys(checksums).length > 0);
-      for (const [version, perPlatform] of Object.entries(checksums)) {
-        assert.ok(version in CHROMEDRIVER_CHROME_MAPPING, `${version} is missing in mapping.json`);
+      for (const perPlatform of Object.values(checksums)) {
         assert.ok(Object.keys(perPlatform).length > 0);
         for (const sha of Object.values(perPlatform)) {
           assert.match(sha, /^[0-9a-f]{64}$/);
         }
+      }
+    };
+
+    it('should only contain known Chromedriver versions and valid sha256 digests', async function () {
+      const checksums = await getChromedriverChecksums();
+      assertValid(checksums);
+      for (const version of Object.keys(checksums)) {
+        assert.ok(version in CHROMEDRIVER_CHROME_MAPPING, `${version} is missing in mapping.json`);
+      }
+    });
+
+    it('should contain valid Edge WebDriver versions and sha256 digests', async function () {
+      const checksums = await getEdgeDriverChecksums();
+      assertValid(checksums);
+      for (const version of Object.keys(checksums)) {
+        assert.match(version, /^\d+(\.\d+){3}$/);
       }
     });
   });
 
   describe('assertKnownChromedriver', function () {
     it('should reject an unknown executable', async function () {
-      await assert.rejects(assertKnownChromedriver(bin, dir), /does not match any known Chromedriver build/);
+      await assert.rejects(
+        assertKnownChromedriver(bin, dir),
+        /does not match any known Chromedriver or Edge WebDriver build/,
+      );
     });
 
     it('should reject a missing file', async function () {
@@ -98,7 +116,10 @@ describe('checksums', function () {
   describe('explicit executable', function () {
     it('should be rejected by default if it is not on the allowlist', async function () {
       const cd = new Chromedriver({executable: bin});
-      await assert.rejects((cd as any).initChromedriverPath(), /does not match any known Chromedriver build/);
+      await assert.rejects(
+        (cd as any).initChromedriverPath(),
+        /does not match any known Chromedriver or Edge WebDriver build/,
+      );
     });
 
     it('should be accepted when arbitrary executables are allowed', async function () {
@@ -147,7 +168,10 @@ describe('checksums', function () {
         assert.strictEqual(await (cd as any).initChromedriverPath(), exe);
 
         await writeFile(exe, 'malicious replacement');
-        await assert.rejects((cd as any).initChromedriverPath(), /does not match any known Chromedriver build/);
+        await assert.rejects(
+          (cd as any).initChromedriverPath(),
+          /does not match any known Chromedriver or Edge WebDriver build/,
+        );
       } finally {
         await rm(driversDir, {recursive: true, force: true});
       }
