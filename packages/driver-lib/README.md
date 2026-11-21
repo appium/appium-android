@@ -7,9 +7,14 @@ Appium Android Driver is the collection of common primitives used by other Andro
 
 ## ADB server host
 
-Set the string capability `appium:adbHost` to the host running the ADB server.
-The deprecated `appium:remoteAdbHost` remains supported. If both are set, the
-first nonempty value in `appium:adbHost`, then `appium:remoteAdbHost`, is used.
+Set the string capability `appium:adbHost` to the host running the ADB server and
+`appium:adbPort` to its port. The deprecated `appium:remoteAdbHost` remains
+supported. The first nonempty host is used, with `appium:adbHost` preferred over
+`appium:remoteAdbHost` and session capabilities preferred over driver defaults.
+
+Android driver subclasses can use `this.getAdbHost()` to resolve the same host
+for their downstream connections, including when they call `BaseDriver.createSession`
+directly. The resolver leaves the original session capabilities and options intact.
 
 ## Examples
 
