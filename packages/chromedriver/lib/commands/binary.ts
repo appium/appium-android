@@ -256,9 +256,15 @@ export async function initChromedriverPath(this: ChromedriverCommandContext): Pr
   return chromedriver;
 }
 
+const unverifiedModeLogged = new WeakSet<ChromedriverCommandContext>();
+
 async function assertExecutableAllowed(ctx: ChromedriverCommandContext, executable: string): Promise<void> {
   if (ctx.allowUnverifiedExecutable) {
-    ctx.log.debug(`Chromedriver checksum verification is disabled. Not verifying '${executable}'`);
+    // log once per instance, not for each file in the executables folder
+    if (!unverifiedModeLogged.has(ctx)) {
+      unverifiedModeLogged.add(ctx);
+      ctx.log.debug('Chromedriver checksum verification is disabled. Executables are not verified');
+    }
     return;
   }
   await assertKnownChromedriver(executable, ctx.executableDir);
