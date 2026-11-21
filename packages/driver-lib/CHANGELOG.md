@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [15.4.6](https://github.com/appium/appium-android/compare/appium-android-driver@15.4.5...appium-android-driver@15.4.6) (2026-11-21)
+
+### Bug Fixes
+
+* **driver-lib:** send a rate-limited media stream keyframe request once the limit allows ([#172](https://github.com/appium/appium-android/issues/172)) ([fd54881](https://github.com/appium/appium-android/commit/fd548812b9b555a86ddc52e71ee03d96aefcd87d))
+
+
 ## [15.4.5](https://github.com/appium/appium-android/compare/appium-android-driver@15.4.4...appium-android-driver@15.4.5) (2026-11-19)
 
 **Note:** Version bump only for package appium-android-driver
