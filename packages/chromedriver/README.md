@@ -27,8 +27,8 @@ more details on it.
 Before a Chromedriver executable is run, its SHA-256 checksum is compared to the allowlist in
 [checksums.json](https://github.com/appium/appium-android/blob/main/packages/chromedriver/config/checksums.json),
 which is updated together with `mapping.json` by the Chromedriver version bump workflow.
-Executables downloaded by the automatic download feature are trusted locally (checksums are
-stored in the `.trusted-checksums.json` file inside the download folder).
+The automatic download feature is an explicit opt-in, so the executables it downloads are trusted locally
+(their checksums are stored in the `.trusted-checksums.json` file inside the download folder).
 Any other executable, including the one set by `executable`/`executableDir`, is rejected.
 
 To restore the legacy behavior and run any executable without verification, set the

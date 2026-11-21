@@ -137,7 +137,9 @@ async function main() {
   // the latest version plus `--backfill N` most recent ones that still have no checksums
   const wanted = [latestVersion, ...Object.keys(mapping)].filter((v, i, arr) => arr.indexOf(v) === i);
   const missing = wanted.filter((v) => !(v in checksums));
-  const targets = new Set(missing.filter((v) => v === latestVersion).concat(missing.slice(0, backfill)));
+  // `--backfill N` does not count the latest version
+  const older = missing.filter((v) => v !== latestVersion).slice(0, backfill);
+  const targets = new Set(missing.includes(latestVersion) ? [latestVersion, ...older] : older);
   if (targets.size > 0) {
     const downloadsRes = await fetch(DOWNLOADS_URL);
     if (!downloadsRes.ok) {
