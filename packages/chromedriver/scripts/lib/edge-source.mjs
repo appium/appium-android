@@ -40,7 +40,7 @@ export class EdgeSource {
     return [...new Set(versions.filter(Boolean))];
   }
 
-  /** Lists the archives of the version: {platform: expected md5 (hex)} */
+  /** Lists the archives of the version: {platform: md5 (hex)} */
   async #listArchives(version) {
     const res = await fetch(`${EDGE_STORAGE_URL}/?restype=container&comp=list&prefix=${encodeURIComponent(version)}/`);
     if (!res.ok) {
@@ -54,7 +54,11 @@ export class EdgeSource {
         continue;
       }
       const md5Base64 = /<Content-MD5>([^<]+)<\/Content-MD5>/.exec(content)?.[1];
-      result[platform] = md5Base64 ? Buffer.from(md5Base64, 'base64').toString('hex') : undefined;
+      if (!md5Base64) {
+        // never generate a checksum for an archive that cannot be verified
+        throw new Error(`The listing has no Content-MD5 for ${version}/edgedriver_${platform}.zip`);
+      }
+      result[platform] = Buffer.from(md5Base64, 'base64').toString('hex');
     }
     return result;
   }

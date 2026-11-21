@@ -49,6 +49,10 @@ class LegacyStorageSource {
         continue;
       }
       const expectedMd5 = /<ETag>"?([0-9a-f]{32})"?<\/ETag>/.exec(content)?.[1];
+      if (!expectedMd5) {
+        // never generate a checksum for an archive that cannot be verified
+        throw new Error(`The listing has no valid MD5 ETag for ${key}`);
+      }
       result[platform] = await hasher.sha256OfMember(`${LEGACY_STORAGE_URL}/${key}`, exeName(platform), {expectedMd5});
     }
     return result;
