@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.3.0](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.2.6...appium-uiautomator2-server@11.3.0) (2026-11-21)
+
+### Features
+
+* **uiautomator2-server:** add a predicate string parser ([#170](https://github.com/appium/appium-android/issues/170)) ([b467ba1](https://github.com/appium/appium-android/commit/b467ba12be5b1ed3589a7dbab41614a881edc46d))
+
+
 ## [11.2.6](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.2.5...appium-uiautomator2-server@11.2.6) (2026-11-21)
 
 ### Bug Fixes
