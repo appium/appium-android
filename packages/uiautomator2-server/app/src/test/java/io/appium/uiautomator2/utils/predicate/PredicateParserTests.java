@@ -375,13 +375,28 @@ public class PredicateParserTests {
         assertInvalid("content-desc == 'a'", "use 'contentDescription' instead of 'content-desc'");
         assertInvalid("resource-id == 'a'", "use 'resourceId' instead of 'resource-id'");
         assertInvalid("foo-bar == 'a'", "Unknown attribute 'foo'");
-        assertInvalid("selection-start == 1", "Unknown attribute 'selection'");
+        assertInvalid("selection-start == 1", "use 'selectionStart' instead of 'selection-start'");
     }
 
     @Test
     public void nonScalarAttributesAreRejected() {
         assertInvalid("extras == 'a'", "Unknown attribute");
         assertInvalid("contentSize == 'a'", "Unknown attribute");
+    }
+
+    @Test
+    public void selectionRange() {
+        assertEquals(Attribute.SELECTION_START, comparison("selectionStart >= 0").getAttribute());
+        assertEquals(Attribute.SELECTION_END, comparison("selectionEnd == 3").getAttribute());
+        assertInvalid("selectionStart == 'a'", "cannot be compared");
+    }
+
+    @Test
+    public void everyAttributeHasAParseableName() {
+        for (Attribute attribute : Attribute.values()) {
+            String name = PredicateParser.keyName(attribute);
+            assertTrue(name, name.matches("[A-Za-z_][A-Za-z0-9_]*"));
+        }
     }
 
     @Test
