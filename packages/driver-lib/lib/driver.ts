@@ -343,6 +343,22 @@ class AndroidDriver<C extends AndroidDriverConstraints = AndroidDriverConstraint
     return true;
   }
 
+  override async createSession(w3cCapabilities: W3CDriverCaps<C>) {
+    const result = await super.createSession(w3cCapabilities);
+    const caps = result[1] as AndroidDriverCaps;
+    const opts = this.opts as AndroidDriverOpts;
+    if (caps.remoteAdbHost != null) {
+      this.log.warn("The 'remoteAdbHost' capability is deprecated. Use 'adbHost' instead.");
+    }
+    const host = caps.adbHost || caps.remoteAdbHost || opts.adbHost || opts.remoteAdbHost;
+    if (host) {
+      // Downstream drivers still read remoteAdbHost when connecting to the ADB server.
+      opts.remoteAdbHost = host;
+      opts.adbHost = host;
+    }
+    return result;
+  }
+
   override async getLogTypes(): Promise<string[]> {
     const nativeLogTypes = await super.getLogTypes();
     if (this.isWebContext() && this.chromedriver) {

@@ -403,6 +403,12 @@ describe('Device Helpers', function () {
       assert.strictEqual(curDeviceId, '111222');
       assert.strictEqual(emulatorPort, 111);
     });
+    it('should use adbHost from driver options without session capabilities', async function () {
+      driver.opts.adbHost = 'configured.example';
+      driver.opts.remoteAdbHost = 'legacy.example';
+      await driver.createADB();
+      assert.equal((ADB.createADB as sinon.SinonStub).lastCall.args[0].remoteAdbHost, 'configured.example');
+    });
     it('should not set emulator port if emPort is undefined', async function () {
       emulatorPort = 5555;
       await driver.createADB();
