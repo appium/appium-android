@@ -14,6 +14,13 @@ async function* hashChunks(source, hash) {
   }
 }
 
+/** Extracts the MD5 (hex) from a GCS `x-goog-hash` header like `crc32c=...,md5=<base64>` */
+function md5FromGoogHash(header) {
+  const b64 = /(?:^|,)\s*md5=([^,\s]+)/.exec(header ?? '')?.[1];
+  const hex = b64 ? Buffer.from(b64, 'base64').toString('hex') : undefined;
+  return hex?.length === 32 ? hex : undefined;
+}
+
 /**
  * Streams remote zip archives into a temporary folder (the archives themselves are never saved)
  * and hashes the executables inside. Use {@linkcode ArchiveHasher.withTempDir} to manage the folder.
@@ -42,7 +49,7 @@ export class ArchiveHasher {
   /**
    * @param {string} url - The archive URL
    * @param {string} member - Path of the executable inside the archive
-   * @param {{expectedMd5?: string}} [opts] - If `expectedMd5` is set, the archive must have this MD5 (hex)
+   * @param {{expectedMd5?: string}} [opts] - The archive MD5 (hex); defaults to the one in the `x-goog-hash` header
    * @returns {Promise<string>} SHA-256 of the executable
    */
   async sha256OfMember(url, member, {expectedMd5} = {}) {
@@ -50,11 +57,16 @@ export class ArchiveHasher {
     if (!res.ok) {
       throw new Error(`Cannot download ${url}: HTTP ${res.status}`);
     }
+    // never hash an archive that cannot be verified
+    const expected = expectedMd5 ?? md5FromGoogHash(res.headers.get('x-goog-hash'));
+    if (!expected) {
+      throw new Error(`No MD5 checksum is available to verify ${url}`);
+    }
     const extractDir = await mkdtemp(path.join(this.#tmpRoot, 'extract-'));
     try {
       const md5 = createHash('md5');
       await zip.extractStreamTo(hashChunks(res.body, md5), extractDir);
-      if (expectedMd5 && md5.digest('hex') !== expectedMd5) {
+      if (md5.digest('hex') !== expected) {
         throw new Error(`MD5 mismatch for ${url}`);
       }
       const sha256 = createHash('sha256');

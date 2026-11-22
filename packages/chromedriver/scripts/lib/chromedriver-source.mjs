@@ -4,7 +4,7 @@ const LEGACY_STORAGE_URL = 'https://chromedriver.storage.googleapis.com';
 
 const exeName = (platform) => (platform.startsWith('win') ? 'chromedriver.exe' : 'chromedriver');
 
-/** Chrome for Testing builds (115+) */
+/** Chrome for Testing builds (115+), the archives are checked against their `x-goog-hash` MD5 */
 class ChromeForTestingSource {
   #entries;
 
