@@ -5,6 +5,7 @@ import {system, fs, logger, tempDir, zip, util} from '@appium/support';
 import {asyncmap} from 'asyncbox';
 import * as semver from 'semver';
 
+import {sha256File, trustChecksum} from '../checksums.js';
 import {STORAGE_REQ_TIMEOUT_MS, GOOGLEAPIS_CDN, USER_AGENT, CHROMELABS_URL, ARCH, OS, CPU} from '../constants.js';
 import type {ChromedriverStorageClientOpts, SyncOptions, OSInfo, ChromedriverDetailsMapping} from '../types.js';
 import {getChromedriverDir, retrieveData, getOsInfo, convertToInt, getCpuType, compareVersions} from '../utils.js';
@@ -329,9 +330,12 @@ export class ChromedriverStorageClient {
     const targetPath = path.resolve(this.chromedriverDir, fileName);
     log.debug(`Retrieving '${url}' to '${targetPath}'`);
     try {
-      await this.downloadDriver(url, etag, driverKey, targetPath);
+      const sha256 = await this.downloadDriver(url, etag, driverKey, targetPath);
       await fs.chmod(targetPath, 0o755);
       log.debug(`Permissions of the file '${targetPath}' have been changed to 755`);
+      // downloading drivers is an explicit opt-in (autodownload), so what it fetches is trusted locally.
+      // The digest is of the bytes fetched from the source, not of the (possibly shared) destination
+      await trustChecksum(sha256);
     } catch (e) {
       if (isStrict) {
         throw e;
@@ -351,13 +355,14 @@ export class ChromedriverStorageClient {
    * @param etag - The expected MD5 checksum of the archive, if known
    * @param driverKey - The driver key in `this.mapping`
    * @param dst - The destination chromedriver path
+   * @returns SHA-256 of the executable as extracted in the private temporary folder
    */
   private async downloadDriver(
     url: string,
     etag: string | null | undefined,
     driverKey: string,
     dst: string,
-  ): Promise<void> {
+  ): Promise<string> {
     const tmpRoot = await tempDir.openDir();
     try {
       let body: AsyncIterable<Uint8Array>;
@@ -391,10 +396,12 @@ export class ChromedriverStorageClient {
       if (!chromedriverPath) {
         throw new Error('The archive was unzipped properly, but we could not find any chromedriver executable');
       }
+      const sha256 = await sha256File(chromedriverPath);
       log.debug(`Moving the extracted '${path.basename(chromedriverPath)}' to '${dst}'`);
       await fs.mv(chromedriverPath, dst, {
         mkdirp: true,
       });
+      return sha256;
     } finally {
       await fs.rimraf(tmpRoot);
     }

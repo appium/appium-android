@@ -4,6 +4,7 @@ import {describe, it} from 'node:test';
 import {fs, tempDir} from '@appium/support';
 
 import {ChromedriverStorageClient} from '../../lib/storage-client/storage-client.js';
+import {listFiles} from '../../lib/utils.js';
 
 describe('ChromedriverStorageClient', {timeout: 2000000}, function () {
   it('should retrieve chromedrivers mapping', async function () {
@@ -19,7 +20,8 @@ describe('ChromedriverStorageClient', {timeout: 2000000}, function () {
     });
     try {
       assert.ok((await client.syncDrivers({versions: ['2.35', '2.34']})).length > 0);
-      assert.strictEqual((await fs.readdir(tmpRoot)).length, 2);
+      // the dotfile with locally trusted checksums is not a driver
+      assert.strictEqual((await listFiles(tmpRoot)).length, 2);
     } finally {
       await fs.rimraf(tmpRoot);
     }
@@ -32,7 +34,8 @@ describe('ChromedriverStorageClient', {timeout: 2000000}, function () {
     });
     try {
       assert.ok((await client.syncDrivers({versions: ['115.0.5790.102', '116.0.5791.0']})).length > 0);
-      assert.strictEqual((await fs.readdir(tmpRoot)).length, 2);
+      // the dotfile with locally trusted checksums is not a driver
+      assert.strictEqual((await listFiles(tmpRoot)).length, 2);
     } finally {
       await fs.rimraf(tmpRoot);
     }

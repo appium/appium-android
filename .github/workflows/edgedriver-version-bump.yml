@@ -1,0 +1,42 @@
+name: Edge WebDriver Checksums Bump
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+env:
+  API_URL: https://msedgedriver.microsoft.com/LATEST_STABLE
+  EDGE_CHECKSUMS: packages/chromedriver/config/edge-checksums.json
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump_edge_checksums:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Use Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+      - name: Install dependencies
+        run: npm ci --ignore-scripts --workspace packages/chromedriver
+      - id: release_check
+        run: |
+          # the pointer is UTF-16 encoded
+          export latest_release=$(curl -sf ${{ env.API_URL }} | iconv -f UTF-16 -t UTF-8 | tr -d '\r\n\357\273\277')
+          did_update=$(node "packages/chromedriver/scripts/update_edge_checksums.mjs" "${{ env.EDGE_CHECKSUMS }}")
+
+          echo "did_update=${did_update}" >> "$GITHUB_OUTPUT"
+          echo "edge_release=${latest_release}" >> "$GITHUB_OUTPUT"
+      - name: pull-request
+        if: steps.release_check.outputs.did_update == '1'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          branch: edgedriver-checksums-bump
+          commit-message: 'chore(chromedriver): Edge WebDriver Checksums Bump to v${{ steps.release_check.outputs.edge_release }}'
+          title: 'chore(chromedriver): Edge WebDriver Checksums Bump to v${{ steps.release_check.outputs.edge_release }}'
+          body: ''
