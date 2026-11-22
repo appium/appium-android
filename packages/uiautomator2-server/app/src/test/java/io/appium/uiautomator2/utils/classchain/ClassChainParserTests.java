@@ -202,6 +202,23 @@ public class ClassChainParserTests {
     }
 
     @Test
+    public void canonicalFormRoundTripsAtThePredicateDepthLimit() {
+        StringBuilder nots = new StringBuilder();
+        for (int i = 0; i < 63; i++) {
+            nots.append("NOT ");
+        }
+        String query = "*[`TRUEPREDICATE AND " + nots + "TRUEPREDICATE`]";
+        String canonical = canonical(query);
+        assertEquals(canonical, canonical(canonical));
+        assertEquals("*[`TRUEPREDICATE AND " + nots + "TRUEPREDICATE`]", canonical);
+        // the root parentheses are only dropped at the root
+        assertEquals("*[`(text == 'a' OR text == 'b') AND enabled == TRUE`]",
+                canonical("*[`(text == 'a' OR text == 'b') AND enabled == true`]"));
+        assertEquals("*[`NOT (text == 'a' OR text == 'b')`]",
+                canonical("*[`NOT (text == 'a' OR text == 'b')`]"));
+    }
+
+    @Test
     public void axesRoundTrip() {
         String[] queries = {
                 "**/" + BUTTON + "[`text == 'OK'`]/..", "*/../*/../**/" + VIEW,

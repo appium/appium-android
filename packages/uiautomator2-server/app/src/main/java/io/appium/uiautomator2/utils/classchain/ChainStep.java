@@ -65,7 +65,12 @@ public final class ChainStep {
         @Override
         public String toString() {
             String marker = String.valueOf(scope.getMarker());
-            String escaped = predicate.toString().replace(marker, marker + marker);
+            String text = predicate.toString();
+            if (predicate instanceof PredicateNode.Logical) {
+                // the root needs no parentheses, and they would add a nesting level on reparse
+                text = text.substring(1, text.length() - 1);
+            }
+            String escaped = text.replace(marker, marker + marker);
             return "[" + marker + escaped + marker + "]";
         }
     }

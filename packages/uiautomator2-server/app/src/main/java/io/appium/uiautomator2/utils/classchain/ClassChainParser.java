@@ -170,9 +170,8 @@ public final class ClassChainParser {
         char marker = scope.getMarker();
         int open = pos;
         pos += 2; // "[" and the marker
+        int contentStart = pos;
         StringBuilder text = new StringBuilder();
-        // source index of each predicate character, so errors point into the query
-        int[] sourceIndex = new int[source.length() + 1];
         while (true) {
             if (pos >= source.length()) {
                 throw error(String.format("Cannot find the closing '%s' of the predicate", marker),
@@ -181,16 +180,13 @@ public final class ClassChainParser {
             char c = source.charAt(pos);
             if (c == marker) {
                 if (peek(1) == marker) {
-                    sourceIndex[text.length()] = pos;
                     text.append(c);
                     pos += 2;
                     continue;
                 }
-                sourceIndex[text.length()] = pos;
                 pos++;
                 break;
             }
-            sourceIndex[text.length()] = pos;
             text.append(c);
             pos++;
         }
@@ -201,10 +197,21 @@ public final class ClassChainParser {
         try {
             return new Filter(scope, PredicateParser.parse(text.toString()));
         } catch (PredicateSyntaxException e) {
-            int at = sourceIndex[Math.min(e.getPosition(), text.length())];
+            int at = sourceOffset(contentStart, marker, Math.min(e.getPosition(), text.length()));
             throw new ClassChainSyntaxException(
                     source, "Invalid predicate: " + e.getReason(), at, e);
         }
+    }
+
+    /** The query index of the {@code offset}-th predicate character, which skips doubled markers */
+    private int sourceOffset(int from, char marker, int offset) {
+        int index = from;
+        for (int n = 0; n < offset && index < source.length(); n++) {
+            boolean doubled = source.charAt(index) == marker
+                    && index + 1 < source.length() && source.charAt(index + 1) == marker;
+            index += doubled ? 2 : 1;
+        }
+        return index;
     }
 
     private int parsePosition() {
