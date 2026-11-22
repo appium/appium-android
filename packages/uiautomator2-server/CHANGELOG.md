@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.4.0](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.3.0...appium-uiautomator2-server@11.4.0) (2026-11-22)
+
+### Features
+
+* **uiautomator2-server:** add a class chain query parser ([#173](https://github.com/appium/appium-android/issues/173)) ([d081e05](https://github.com/appium/appium-android/commit/d081e05105c9902ce7140516509be07064c4c588))
+
+
 ## [11.3.0](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.2.6...appium-uiautomator2-server@11.3.0) (2026-11-21)
 
 ### Features
