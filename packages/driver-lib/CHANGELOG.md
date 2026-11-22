@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [16.0.0](https://github.com/appium/appium-android/compare/appium-android-driver@15.4.6...appium-android-driver@16.0.0) (2026-11-22)
+
+### ⚠ BREAKING CHANGES
+
+* **chromedriver:** custom or unlisted Chromedriver executables are
+rejected unless chromedriver_allow_any_executable is enabled.
+
+### Features
+
+* **chromedriver:** verify executables against a SHA-256 allowlist ([#171](https://github.com/appium/appium-android/issues/171)) ([7e44e17](https://github.com/appium/appium-android/commit/7e44e17f1c0f470d7db7d80044bd9a8b6a99c33d))
+
+
 ## [15.4.6](https://github.com/appium/appium-android/compare/appium-android-driver@15.4.5...appium-android-driver@15.4.6) (2026-11-21)
 
 ### Bug Fixes
