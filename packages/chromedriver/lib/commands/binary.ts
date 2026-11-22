@@ -275,7 +275,7 @@ async function assertExecutableAllowed(ctx: ChromedriverCommandContext, executab
     }
     return;
   }
-  await assertKnownChromedriver(executable, ctx.executableDir);
+  await assertKnownChromedriver(executable);
 }
 
 function usesDesktopChromedriverDefault(ctx: ChromedriverCommandContext): boolean {

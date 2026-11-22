@@ -28,7 +28,7 @@ jobs:
         run: |
           # the pointer is UTF-16 encoded
           export latest_release=$(curl -sf ${{ env.API_URL }} | iconv -f UTF-16 -t UTF-8 | tr -d '\r\n\357\273\277')
-          export did_update=$(node "packages/chromedriver/scripts/update_edge_checksums.mjs" "${{ env.EDGE_CHECKSUMS }}")
+          did_update=$(node "packages/chromedriver/scripts/update_edge_checksums.mjs" "${{ env.EDGE_CHECKSUMS }}")
 
           echo "did_update=${did_update}" >> "$GITHUB_OUTPUT"
           echo "edge_release=${latest_release}" >> "$GITHUB_OUTPUT"

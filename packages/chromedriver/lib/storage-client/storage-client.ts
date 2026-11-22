@@ -334,7 +334,7 @@ export class ChromedriverStorageClient {
       await fs.chmod(targetPath, 0o755);
       log.debug(`Permissions of the file '${targetPath}' have been changed to 755`);
       // downloading drivers is an explicit opt-in (autodownload), so what it fetches is trusted locally
-      await trustChecksumOf(targetPath, this.chromedriverDir);
+      await trustChecksumOf(targetPath);
     } catch (e) {
       if (isStrict) {
         throw e;

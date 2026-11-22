@@ -4,15 +4,20 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import {util} from '@appium/support';
-import {AsyncLock} from 'asyncbox';
 
-import {getModuleRoot} from './utils.js';
+import {CD_BASE_DIR, getModuleRoot} from './utils.js';
 
 /** Driver version -> platform -> SHA-256 of the executable */
 export type ChecksumsMapping = Record<string, Record<string, string>>;
 
-// Local trust store for binaries downloaded by this module (dotfile, so it is never listed as a driver)
-export const TRUSTED_CHECKSUMS_FILE = '.trusted-checksums.json';
+export const TRUST_STORE_DIR_ENV = 'APPIUM_CHROMEDRIVER_TRUST_STORE_DIR';
+
+/**
+ * Server-side folder with the checksums of the drivers downloaded by this module.
+ * It is deliberately independent of the (session-provided) executable folder.
+ */
+export const getTrustStoreDir = (): string =>
+  process.env[TRUST_STORE_DIR_ENV] || path.join(CD_BASE_DIR, '.trusted-checksums');
 
 const readChecksumsFile = util.memoize(async function readChecksumsFile(fileName: string): Promise<ChecksumsMapping> {
   const content = await fs.readFile(path.join(getModuleRoot(), 'config', fileName), 'utf8');
@@ -32,8 +37,6 @@ const getKnownChecksums = util.memoize(async function getKnownChecksums(): Promi
   );
 });
 
-const TRUST_STORE_GUARD = new AsyncLock();
-
 // Always hashes the current content (~10-30 ms): size/mtime based caching could be defeated by a swapped file
 export async function sha256File(filePath: string): Promise<string> {
   const hash = createHash('sha256');
@@ -43,12 +46,13 @@ export async function sha256File(filePath: string): Promise<string> {
   return hash.digest('hex');
 }
 
-async function readTrustedChecksums(trustDir: string): Promise<Set<string>> {
+// One empty file per checksum: adding is idempotent and needs no locking, even across processes
+async function isTrusted(sha256: string, trustDir: string): Promise<boolean> {
   try {
-    const parsed: unknown = JSON.parse(await fs.readFile(path.join(trustDir, TRUSTED_CHECKSUMS_FILE), 'utf8'));
-    return new Set(Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : []);
+    await fs.access(path.join(trustDir, sha256));
+    return true;
   } catch {
-    return new Set();
+    return false;
   }
 }
 
@@ -56,31 +60,21 @@ async function readTrustedChecksums(trustDir: string): Promise<Set<string>> {
  * Remembers the checksum of a binary this module has downloaded and verified itself,
  * so it passes {@linkcode assertKnownChromedriver} even if it is newer than the shipped allowlist.
  */
-export async function trustChecksumOf(binPath: string, trustDir: string): Promise<void> {
+export async function trustChecksumOf(binPath: string, trustDir: string = getTrustStoreDir()): Promise<void> {
   const sha256 = await sha256File(binPath);
-  // drivers are downloaded in parallel, so serialize read-modify-write cycles of the trust file
-  await TRUST_STORE_GUARD.acquire(path.resolve(trustDir), async () => {
-    const trusted = await readTrustedChecksums(trustDir);
-    if (trusted.has(sha256)) {
-      return;
-    }
-    trusted.add(sha256);
-    const dst = path.join(trustDir, TRUSTED_CHECKSUMS_FILE);
-    const tmp = `${dst}.${process.pid}.tmp`;
-    await fs.writeFile(tmp, JSON.stringify([...trusted].sort(), null, 2), 'utf8');
-    await fs.rename(tmp, dst);
-  });
+  await fs.mkdir(trustDir, {recursive: true});
+  await fs.writeFile(path.join(trustDir, sha256), '', {flag: 'a'});
 }
 
 /**
  * Makes sure the file is a known Chromedriver or Microsoft Edge WebDriver build without executing it.
  * @param binPath - Path to the executable
- * @param trustDir - Folder with locally trusted checksums (the chromedriver download folder)
+ * @param trustDir - Folder with locally trusted checksums (the server-side trust store by default)
  * @throws {Error} If the SHA-256 of the file is not on the allowlist
  */
-export async function assertKnownChromedriver(binPath: string, trustDir?: string): Promise<void> {
+export async function assertKnownChromedriver(binPath: string, trustDir: string = getTrustStoreDir()): Promise<void> {
   const sha256 = await sha256File(binPath);
-  if ((await getKnownChecksums()).has(sha256) || (trustDir && (await readTrustedChecksums(trustDir)).has(sha256))) {
+  if ((await getKnownChecksums()).has(sha256) || (await isTrusted(sha256, trustDir))) {
     return;
   }
   throw new Error(

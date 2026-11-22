@@ -1,11 +1,13 @@
 import assert from 'node:assert/strict';
-import {mkdtemp, readFile, writeFile, rm} from 'node:fs/promises';
+import {execFile} from 'node:child_process';
+import {access, mkdtemp, writeFile, rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import {promisify} from 'node:util';
 import {describe, it, before, after} from 'node:test';
 
 import {
-  TRUSTED_CHECKSUMS_FILE,
+  TRUST_STORE_DIR_ENV,
   assertKnownChromedriver,
   getChromedriverChecksums,
   getEdgeDriverChecksums,
@@ -13,7 +15,7 @@ import {
   trustChecksumOf,
 } from '../../lib/checksums.js';
 import {Chromedriver} from '../../lib/chromedriver.js';
-import {CHROMEDRIVER_CHROME_MAPPING, listFiles} from '../../lib/utils.js';
+import {CHROMEDRIVER_CHROME_MAPPING} from '../../lib/utils.js';
 
 describe('checksums', function () {
   let dir: string;
@@ -23,8 +25,10 @@ describe('checksums', function () {
     dir = await mkdtemp(path.join(os.tmpdir(), 'cd-checksums-'));
     bin = path.join(dir, 'chromedriver');
     await writeFile(bin, 'definitely not chromedriver');
+    process.env[TRUST_STORE_DIR_ENV] = path.join(dir, 'trust-store');
   });
   after(async function () {
+    delete process.env[TRUST_STORE_DIR_ENV];
     await rm(dir, {recursive: true, force: true});
   });
 
@@ -58,39 +62,56 @@ describe('checksums', function () {
 
   describe('assertKnownChromedriver', function () {
     it('should reject an unknown executable', async function () {
-      await assert.rejects(
-        assertKnownChromedriver(bin, dir),
-        /does not match any known Chromedriver or Edge WebDriver build/,
-      );
+      await assert.rejects(assertKnownChromedriver(bin), /does not match any known Chromedriver or Edge WebDriver build/);
     });
 
     it('should reject a missing file', async function () {
-      await assert.rejects(assertKnownChromedriver(path.join(dir, 'nope'), dir), /ENOENT/);
+      await assert.rejects(assertKnownChromedriver(path.join(dir, 'nope')), /ENOENT/);
     });
 
     it('should accept an executable whose checksum was trusted locally', async function () {
-      await trustChecksumOf(bin, dir);
-      await assertKnownChromedriver(bin, dir);
-      const stored: string[] = JSON.parse(await readFile(path.join(dir, TRUSTED_CHECKSUMS_FILE), 'utf8'));
-      assert.ok(stored.includes(await sha256File(bin)));
+      const sha256 = await sha256File(bin);
+      await assert.rejects(assertKnownChromedriver(bin), /does not match/);
+      await trustChecksumOf(bin);
+      await assertKnownChromedriver(bin);
+      await access(path.join(dir, 'trust-store', sha256));
     });
 
     it('should keep all checksums trusted in parallel', async function () {
-      const parallelDir = await mkdtemp(path.join(os.tmpdir(), 'cd-checksums-parallel-'));
-      try {
-        const files = await Promise.all(
-          Array.from({length: 20}, async (_, i) => {
-            const f = path.join(parallelDir, `chromedriver-${i}`);
-            await writeFile(f, `driver ${i}`);
-            return f;
-          }),
-        );
-        await Promise.all(files.map((f) => trustChecksumOf(f, parallelDir)));
-        for (const f of files) {
-          await assertKnownChromedriver(f, parallelDir);
+      const files = await Promise.all(
+        Array.from({length: 20}, async (_, i) => {
+          const f = path.join(dir, `parallel-${i}`);
+          await writeFile(f, `driver ${i}`);
+          return f;
+        }),
+      );
+      await Promise.all(files.map((f) => trustChecksumOf(f)));
+      for (const f of files) {
+        await assertKnownChromedriver(f);
+      }
+    });
+
+    it('should keep all checksums trusted when written by multiple processes', async function () {
+      const store = path.join(dir, 'shared-store');
+      const lib = new URL('../../lib/checksums.js', import.meta.url).href;
+      const script = `
+        import {writeFile} from 'node:fs/promises';
+        import path from 'node:path';
+        const {trustChecksumOf} = await import(${JSON.stringify(lib)});
+        const [prefix, dir] = process.argv.slice(1);
+        await Promise.all(Array.from({length: 30}, async (_, i) => {
+          const f = path.join(dir, prefix + i);
+          await writeFile(f, prefix + i);
+          await trustChecksumOf(f);
+        }));`;
+      const env = {...process.env, [TRUST_STORE_DIR_ENV]: store};
+      const run = (prefix: string) =>
+        promisify(execFile)(process.execPath, ['--input-type=module', '-e', script, prefix, dir], {env});
+      await Promise.all([run('a-'), run('b-'), run('c-')]);
+      for (const prefix of ['a-', 'b-', 'c-']) {
+        for (let i = 0; i < 30; i++) {
+          await assertKnownChromedriver(path.join(dir, `${prefix}${i}`), store);
         }
-      } finally {
-        await rm(parallelDir, {recursive: true, force: true});
       }
     });
 
@@ -105,11 +126,22 @@ describe('checksums', function () {
 
     it('should detect a modified binary', async function () {
       await writeFile(bin, 'definitely not chromedriver, modified');
-      await assert.rejects(assertKnownChromedriver(bin, dir), /does not match/);
+      await assert.rejects(assertKnownChromedriver(bin), /does not match/);
     });
 
-    it('should keep the trust store out of the listed drivers', async function () {
-      assert.ok(!(await listFiles(dir)).some((p) => path.basename(p) === TRUSTED_CHECKSUMS_FILE));
+    it('should not take trusted checksums from the executable folder', async function () {
+      const driversDir = await mkdtemp(path.join(os.tmpdir(), 'cd-checksums-session-'));
+      try {
+        const exe = path.join(driversDir, 'chromedriver');
+        await writeFile(exe, 'client-provided driver');
+        // a client could prepare any trust data in the folder passed with the capability
+        await writeFile(path.join(driversDir, await sha256File(exe)), '');
+        await writeFile(path.join(driversDir, '.trusted-checksums.json'), JSON.stringify([await sha256File(exe)]));
+        const cd = new Chromedriver({executable: exe, executableDir: driversDir});
+        await assert.rejects((cd as any).initChromedriverPath(), /does not match/);
+      } finally {
+        await rm(driversDir, {recursive: true, force: true});
+      }
     });
   });
 
@@ -136,7 +168,7 @@ describe('checksums', function () {
         const unknown = path.join(driversDir, 'chromedriver_unknown');
         for (const f of known) {
           await writeFile(f, `driver ${f}`);
-          await trustChecksumOf(f, driversDir);
+          await trustChecksumOf(f);
         }
         await writeFile(unknown, 'unknown driver');
 
@@ -163,7 +195,7 @@ describe('checksums', function () {
       try {
         const exe = path.join(driversDir, 'chromedriver');
         await writeFile(exe, 'trusted driver');
-        await trustChecksumOf(exe, driversDir);
+        await trustChecksumOf(exe);
         const cd = new Chromedriver({executable: exe, executableDir: driversDir});
         assert.strictEqual(await (cd as any).initChromedriverPath(), exe);
 
