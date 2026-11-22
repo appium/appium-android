@@ -65,6 +65,14 @@ public abstract class PredicateNode {
         }
     }
 
+    /**
+     * Canonical text without the parentheses that precedence makes redundant (at the root and
+     * around an AND inside an OR), so reparsing it does not nest deeper than the original.
+     */
+    public String toExpression() {
+        return toString();
+    }
+
     /** TRUEPREDICATE / FALSEPREDICATE */
     public static final class Constant extends PredicateNode {
         private final boolean value;
@@ -98,6 +106,13 @@ public abstract class PredicateNode {
         public String toString() {
             return "NOT " + operand;
         }
+
+        @Override
+        public String toExpression() {
+            return operand instanceof Logical
+                    ? "NOT (" + operand.toExpression() + ")"
+                    : "NOT " + operand.toExpression();
+        }
     }
 
     /** N-ary AND/OR. Operands are kept in source order, so evaluation can short-circuit. */
@@ -128,6 +143,22 @@ public abstract class PredicateNode {
                 sb.append(operands.get(i));
             }
             return sb.append(')').toString();
+        }
+
+        @Override
+        public String toExpression() {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < operands.size(); i++) {
+                if (i > 0) {
+                    sb.append(isAnd ? " AND " : " OR ");
+                }
+                PredicateNode operand = operands.get(i);
+                // an AND inside an OR binds tighter anyway, anything else nested needs parentheses
+                boolean wrapped = operand instanceof Logical
+                        && (isAnd || !((Logical) operand).isAnd);
+                sb.append(wrapped ? "(" + operand.toExpression() + ")" : operand.toExpression());
+            }
+            return sb.toString();
         }
     }
 
