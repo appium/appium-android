@@ -69,7 +69,11 @@ export async function trustChecksum(sha256: string): Promise<void> {
   await fs.writeFile(path.join(trustDir, sha256), '', {flag: 'a'});
 }
 
-/** Same as {@linkcode trustChecksum}, for the current content of a file */
+/**
+ * Registers the checksum of a driver executable freshly downloaded from a trusted source.
+ * Call this on the private staging file before placing it in a session-configurable directory.
+ * @param binPath - Path to the freshly extracted executable.
+ */
 export async function trustChecksumOf(binPath: string): Promise<void> {
   await trustChecksum(await sha256File(binPath));
 }
