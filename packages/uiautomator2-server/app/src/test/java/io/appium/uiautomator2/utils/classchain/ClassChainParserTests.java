@@ -211,7 +211,13 @@ public class ClassChainParserTests {
         String canonical = canonical(query);
         assertEquals(canonical, canonical(canonical));
         assertEquals("*[`TRUEPREDICATE AND " + nots + "TRUEPREDICATE`]", canonical);
-        // the root parentheses are only dropped at the root
+        // an AND nested under an OR
+        query = "*[`TRUEPREDICATE OR FALSEPREDICATE AND " + nots + "TRUEPREDICATE`]";
+        canonical = canonical(query);
+        assertEquals(canonical, canonical(canonical));
+        assertEquals("*[`TRUEPREDICATE OR FALSEPREDICATE AND " + nots + "TRUEPREDICATE`]",
+                canonical);
+        // parentheses stay where they change the meaning
         assertEquals("*[`(text == 'a' OR text == 'b') AND enabled == TRUE`]",
                 canonical("*[`(text == 'a' OR text == 'b') AND enabled == true`]"));
         assertEquals("*[`NOT (text == 'a' OR text == 'b')`]",

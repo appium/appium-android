@@ -53,6 +53,38 @@ public class PredicateParserTests {
     }
 
     @Test
+    public void expressionOmitsOnlyRedundantParentheses() {
+        assertEquals("text == 'a' OR text == 'b' AND text == 'c'",
+                PredicateParser.parse("text == 'a' OR (text == 'b' AND text == 'c')").toExpression());
+        assertEquals("(text == 'a' OR text == 'b') AND text == 'c'",
+                PredicateParser.parse("(text == 'a' OR text == 'b') AND text == 'c'").toExpression());
+        assertEquals("NOT (text == 'a' OR text == 'b')",
+                PredicateParser.parse("NOT (text == 'a' OR text == 'b')").toExpression());
+        assertEquals("NOT NOT text == 'a'", PredicateParser.parse("!!text == 'a'").toExpression());
+        // same-operator groups keep the tree shape
+        assertEquals("text == 'a' AND (text == 'b' AND text == 'c')",
+                PredicateParser.parse("text == 'a' AND (text == 'b' AND text == 'c')")
+                        .toExpression());
+        assertEquals("text == 'a' OR (text == 'b' OR text == 'c')",
+                PredicateParser.parse("text == 'a' OR (text == 'b' OR text == 'c')")
+                        .toExpression());
+    }
+
+    @Test
+    public void expressionReparsesToTheSameTree() {
+        String[] predicates = {
+                "text == 'a' OR text == 'b' AND NOT (enabled == true OR checked == true)",
+                "(text == 'a' OR text == 'b') AND (checked == true OR enabled == true)",
+                "NOT (text == 'a' AND (text == 'b' OR text == 'c')) OR text == 'd'",
+                "text == 'a' AND (text == 'b' AND text == 'c') OR TRUEPREDICATE",
+        };
+        for (String predicate : predicates) {
+            PredicateNode node = PredicateParser.parse(predicate);
+            assertEquals(node.toString(), PredicateParser.parse(node.toExpression()).toString());
+        }
+    }
+
+    @Test
     public void precedenceNotAndOr() {
         assertEquals("(text == 'a' OR (text == 'b' AND text == 'c'))",
                 canonical("text == 'a' OR text == 'b' AND text == 'c'"));
