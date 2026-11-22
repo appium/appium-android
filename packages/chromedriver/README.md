@@ -33,8 +33,8 @@ workflow, the second one is updated by the Edge WebDriver checksums bump workflo
 contains the latest stable and extended stable releases and the latest release of every major version
 (Edge WebDriver builds older than major version 118 are not available for download anymore).
 The automatic download feature is an explicit opt-in, so the executables it downloads are trusted locally
-(their checksums are stored, one file per checksum, in the server-side `chromedriver/.trusted-checksums` folder
-of this package; set the `APPIUM_CHROMEDRIVER_TRUST_STORE_DIR` environment variable to use another folder).
+(their checksums are stored, one file per checksum, in the per-user writable
+[Strongbox](https://github.com/appium/appium/tree/master/packages/strongbox) folder of the `appium-chromedriver` package).
 The trust store is never read from `executableDir`, since that folder may be provided by the client.
 Any other executable, including custom or self-built builds, drivers that are not on the allowlists
 and the ones set by `executable`/`executableDir`, is rejected.

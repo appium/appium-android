@@ -3,21 +3,23 @@ import {createReadStream} from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import {strongbox} from '@appium/strongbox';
 import {util} from '@appium/support';
 
-import {CD_BASE_DIR, getModuleRoot} from './utils.js';
+import {getModuleRoot} from './utils.js';
 
 /** Driver version -> platform -> SHA-256 of the executable */
 export type ChecksumsMapping = Record<string, Record<string, string>>;
 
-export const TRUST_STORE_DIR_ENV = 'APPIUM_CHROMEDRIVER_TRUST_STORE_DIR';
+// Overrides the Strongbox folder suffix, used by tests to avoid touching the real trust store
+export const TRUST_STORE_SUFFIX_ENV = 'APPIUM_CHROMEDRIVER_TRUST_STORE_SUFFIX';
 
 /**
- * Server-side folder with the checksums of the drivers downloaded by this module.
- * It is deliberately independent of the (session-provided) executable folder.
+ * Server-side (per-user, writable) folder with the checksums of the drivers downloaded by this module.
+ * It is deliberately independent of the (session-provided) executable folder and of the package folder.
  */
 export const getTrustStoreDir = (): string =>
-  process.env[TRUST_STORE_DIR_ENV] || path.join(CD_BASE_DIR, '.trusted-checksums');
+  strongbox('appium-chromedriver', {suffix: process.env[TRUST_STORE_SUFFIX_ENV] || 'trusted-checksums'}).container;
 
 const readChecksumsFile = util.memoize(async function readChecksumsFile(fileName: string): Promise<ChecksumsMapping> {
   const content = await fs.readFile(path.join(getModuleRoot(), 'config', fileName), 'utf8');
@@ -47,9 +49,9 @@ export async function sha256File(filePath: string): Promise<string> {
 }
 
 // One empty file per checksum: adding is idempotent and needs no locking, even across processes
-async function isTrusted(sha256: string, trustDir: string): Promise<boolean> {
+async function isTrusted(sha256: string): Promise<boolean> {
   try {
-    await fs.access(path.join(trustDir, sha256));
+    await fs.access(path.join(getTrustStoreDir(), sha256));
     return true;
   } catch {
     return false;
@@ -60,8 +62,9 @@ async function isTrusted(sha256: string, trustDir: string): Promise<boolean> {
  * Remembers the checksum of a binary this module has downloaded and verified itself,
  * so it passes {@linkcode assertKnownChromedriver} even if it is newer than the shipped allowlist.
  */
-export async function trustChecksumOf(binPath: string, trustDir: string = getTrustStoreDir()): Promise<void> {
+export async function trustChecksumOf(binPath: string): Promise<void> {
   const sha256 = await sha256File(binPath);
+  const trustDir = getTrustStoreDir();
   await fs.mkdir(trustDir, {recursive: true});
   await fs.writeFile(path.join(trustDir, sha256), '', {flag: 'a'});
 }
@@ -69,12 +72,11 @@ export async function trustChecksumOf(binPath: string, trustDir: string = getTru
 /**
  * Makes sure the file is a known Chromedriver or Microsoft Edge WebDriver build without executing it.
  * @param binPath - Path to the executable
- * @param trustDir - Folder with locally trusted checksums (the server-side trust store by default)
  * @throws {Error} If the SHA-256 of the file is not on the allowlist
  */
-export async function assertKnownChromedriver(binPath: string, trustDir: string = getTrustStoreDir()): Promise<void> {
+export async function assertKnownChromedriver(binPath: string): Promise<void> {
   const sha256 = await sha256File(binPath);
-  if ((await getKnownChecksums()).has(sha256) || (await isTrusted(sha256, trustDir))) {
+  if ((await getKnownChecksums()).has(sha256) || (await isTrusted(sha256))) {
     return;
   }
   throw new Error(

@@ -47,6 +47,7 @@
   },
   "dependencies": {
     "@appium/base-driver": "^11.0.0-beta.7",
+    "@appium/strongbox": "^3.0.0",
     "@appium/support": "^8.0.0-beta.7",
     "@xmldom/xmldom": "^0.x",
     "asyncbox": "^7.0.0",

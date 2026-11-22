@@ -9,7 +9,7 @@ import {describe, it, before, after, beforeEach, afterEach} from 'node:test';
 
 import {fs, system, zip} from '@appium/support';
 
-import {TRUST_STORE_DIR_ENV, assertKnownChromedriver} from '../../lib/checksums.js';
+import {TRUST_STORE_SUFFIX_ENV, assertKnownChromedriver, getTrustStoreDir} from '../../lib/checksums.js';
 import {ChromedriverStorageClient} from '../../lib/storage-client/storage-client.js';
 
 const IS_WIN = system.isWindows();
@@ -25,7 +25,7 @@ describe('ChromedriverStorageClient driver retrieval', function () {
 
   before(async function () {
     workDir = await mkdtemp(path.join(os.tmpdir(), 'cd-storage-'));
-    process.env[TRUST_STORE_DIR_ENV] = path.join(workDir, 'trust-store');
+    process.env[TRUST_STORE_SUFFIX_ENV] = `test-${path.basename(workDir)}`;
     const srcDir = path.join(workDir, 'src');
     await fs.mkdir(path.join(srcDir, 'chromedriver-linux64'), {recursive: true});
     await fs.writeFile(
@@ -59,7 +59,8 @@ describe('ChromedriverStorageClient driver retrieval', function () {
   after(async function () {
     server.closeAllConnections();
     await new Promise((resolve) => server.close(resolve));
-    delete process.env[TRUST_STORE_DIR_ENV];
+    await fs.rimraf(getTrustStoreDir());
+    delete process.env[TRUST_STORE_SUFFIX_ENV];
     await fs.rimraf(workDir);
   });
 

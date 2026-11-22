@@ -7,10 +7,11 @@ import {promisify} from 'node:util';
 import {describe, it, before, after} from 'node:test';
 
 import {
-  TRUST_STORE_DIR_ENV,
+  TRUST_STORE_SUFFIX_ENV,
   assertKnownChromedriver,
   getChromedriverChecksums,
   getEdgeDriverChecksums,
+  getTrustStoreDir,
   sha256File,
   trustChecksumOf,
 } from '../../lib/checksums.js';
@@ -25,10 +26,11 @@ describe('checksums', function () {
     dir = await mkdtemp(path.join(os.tmpdir(), 'cd-checksums-'));
     bin = path.join(dir, 'chromedriver');
     await writeFile(bin, 'definitely not chromedriver');
-    process.env[TRUST_STORE_DIR_ENV] = path.join(dir, 'trust-store');
+    process.env[TRUST_STORE_SUFFIX_ENV] = `test-${path.basename(dir)}`;
   });
   after(async function () {
-    delete process.env[TRUST_STORE_DIR_ENV];
+    await rm(getTrustStoreDir(), {recursive: true, force: true});
+    delete process.env[TRUST_STORE_SUFFIX_ENV];
     await rm(dir, {recursive: true, force: true});
   });
 
@@ -74,7 +76,7 @@ describe('checksums', function () {
       await assert.rejects(assertKnownChromedriver(bin), /does not match/);
       await trustChecksumOf(bin);
       await assertKnownChromedriver(bin);
-      await access(path.join(dir, 'trust-store', sha256));
+      await access(path.join(getTrustStoreDir(), sha256));
     });
 
     it('should keep all checksums trusted in parallel', async function () {
@@ -92,7 +94,6 @@ describe('checksums', function () {
     });
 
     it('should keep all checksums trusted when written by multiple processes', async function () {
-      const store = path.join(dir, 'shared-store');
       const lib = new URL('../../lib/checksums.js', import.meta.url).href;
       const script = `
         import {writeFile} from 'node:fs/promises';
@@ -104,23 +105,26 @@ describe('checksums', function () {
           await writeFile(f, prefix + i);
           await trustChecksumOf(f);
         }));`;
-      const env = {...process.env, [TRUST_STORE_DIR_ENV]: store};
       const run = (prefix: string) =>
-        promisify(execFile)(process.execPath, ['--input-type=module', '-e', script, prefix, dir], {env});
+        promisify(execFile)(process.execPath, ['--input-type=module', '-e', script, prefix, dir], {
+          env: process.env,
+        });
       await Promise.all([run('a-'), run('b-'), run('c-')]);
       for (const prefix of ['a-', 'b-', 'c-']) {
         for (let i = 0; i < 30; i++) {
-          await assertKnownChromedriver(path.join(dir, `${prefix}${i}`), store);
+          await assertKnownChromedriver(path.join(dir, `${prefix}${i}`));
         }
       }
     });
 
-    it('should not accept the locally trusted checksum from another folder', async function () {
-      const other = await mkdtemp(path.join(os.tmpdir(), 'cd-checksums-other-'));
+    it('should not accept the locally trusted checksum from another trust store', async function () {
+      await trustChecksumOf(bin);
+      const suffix = process.env[TRUST_STORE_SUFFIX_ENV];
+      process.env[TRUST_STORE_SUFFIX_ENV] = `${suffix}-other`;
       try {
-        await assert.rejects(assertKnownChromedriver(bin, other), /does not match/);
+        await assert.rejects(assertKnownChromedriver(bin), /does not match/);
       } finally {
-        await rm(other, {recursive: true, force: true});
+        process.env[TRUST_STORE_SUFFIX_ENV] = suffix;
       }
     });
 
