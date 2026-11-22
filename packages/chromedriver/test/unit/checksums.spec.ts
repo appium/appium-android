@@ -3,8 +3,8 @@ import {execFile} from 'node:child_process';
 import {access, mkdtemp, writeFile, rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import {promisify} from 'node:util';
 import {describe, it, before, after} from 'node:test';
+import {promisify} from 'node:util';
 
 import {
   TRUST_STORE_SUFFIX_ENV,
@@ -64,7 +64,10 @@ describe('checksums', function () {
 
   describe('assertKnownChromedriver', function () {
     it('should reject an unknown executable', async function () {
-      await assert.rejects(assertKnownChromedriver(bin), /does not match any known Chromedriver or Edge WebDriver build/);
+      await assert.rejects(
+        assertKnownChromedriver(bin),
+        /does not match any known Chromedriver or Edge WebDriver build/,
+      );
     });
 
     it('should reject a missing file', async function () {
