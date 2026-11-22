@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -34,24 +35,14 @@ import io.appium.uiautomator2.utils.Attribute;
 import io.appium.uiautomator2.utils.classchain.ChainStep.Filter;
 import io.appium.uiautomator2.utils.predicate.PredicateNode.BoundsField;
 
-/**
- * Runs a {@link ClassChain} over a tree. Each step is applied to all nodes that the previous
- * step returned (without duplicates, in order):
- * <ul>
- * <li>{@code CHILD} and {@code DESCENDANT} steps collect the candidates of all these nodes, keep
- * the ones matching the class and filters and then pick the position among all of them, like
- * WebDriverAgent. A step with a position therefore returns a single node.</li>
- * <li>Axis steps pick the position along the axis of each node separately.</li>
- * <li>A {@code [$...$]} filter keeps the candidates with a descendant matching the predicate.</li>
- * </ul>
- * The tree is walked lazily, so a lookup of a single node stops at the first match where the
- * chain allows it.
- */
+/** Runs a {@link ClassChain} over a tree lazily, with the step semantics of WebDriverAgent. */
 public final class ClassChainEvaluator<N> {
     private static final int UNLIMITED = Integer.MAX_VALUE;
 
     private final TreeAccess<N> tree;
     private final PredicateEvaluator predicates = new PredicateEvaluator();
+    // per descendant filter: nodes whose subtree, including themselves, has no match
+    private final Map<Filter, Set<N>> noMatches = new IdentityHashMap<>();
 
     public ClassChainEvaluator(TreeAccess<N> tree) {
         this.tree = tree;
@@ -224,16 +215,40 @@ public final class ClassChainEvaluator<N> {
     }
 
     private boolean hasMatchingDescendant(Filter filter, N node) {
-        Deque<N> pending = new ArrayDeque<>();
-        pushChildren(pending, node);
-        while (!pending.isEmpty()) {
-            N descendant = pending.pop();
-            if (predicates.evaluate(filter.getPredicate(), new NodeValues(descendant))) {
+        Set<N> dead = noMatches.computeIfAbsent(filter, f -> new HashSet<>());
+        Deque<Frame<N>> path = new ArrayDeque<>();
+        path.push(new Frame<>(node, tree.getChildren(node)));
+        while (!path.isEmpty()) {
+            Frame<N> frame = path.peek();
+            if (frame.next == frame.children.size()) {
+                path.pop();
+                if (!path.isEmpty()) {
+                    // the node itself did not match either, or the walk would have stopped
+                    dead.add(frame.node);
+                }
+                continue;
+            }
+            N child = frame.children.get(frame.next++);
+            if (dead.contains(child)) {
+                continue;
+            }
+            if (predicates.evaluate(filter.getPredicate(), new NodeValues(child))) {
                 return true;
             }
-            pushChildren(pending, descendant);
+            path.push(new Frame<>(child, tree.getChildren(child)));
         }
         return false;
+    }
+
+    private static final class Frame<N> {
+        final N node;
+        final List<N> children;
+        int next;
+
+        Frame(N node, List<N> children) {
+            this.node = node;
+            this.children = children;
+        }
     }
 
     /** 1-based, negative counts from the end; at most one element. */

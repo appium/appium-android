@@ -215,6 +215,20 @@ public class ClassChainEvaluatorTests {
         assertEquals(list(), all("**/" + TEXT + "[$text == 'Wi-Fi'$]"));
     }
 
+    @Test
+    public void descendantPredicatesDoNotWalkTheSameSubtreeTwice() {
+        assertEquals(list(), all("**/*[$text == 'zzz'$]"));
+        // the frame walks its 12 descendants once, the nested candidates reuse that
+        assertEquals(12, tree.attributeReads);
+    }
+
+    @Test
+    public void descendantPredicateResultsAreCorrectWithTheMemo() {
+        assertEquals(list("frame", "list", "row2"), all("**/*[$checked == false$]"));
+        assertEquals(list("row1"), all("**/*[$checked == true$][`clickable == true`]"));
+        assertEquals(list("frame", "list", "row3"), all("**/*[$text == '9.99'$]"));
+    }
+
     // ---- positions ----
 
     @Test

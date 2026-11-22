@@ -150,11 +150,7 @@ public class ElementLocationHelpers {
         } else if (by instanceof By.ByClass) {
             return CustomUiDevice.getInstance().findObject(androidx.test.uiautomator.By.clazz(by.getElementLocator()));
         } else if (by instanceof By.ByXPath) {
-            final NodeInfoList matchedNodes = getXPathNodeMatch(by.getElementLocator(), null, false);
-            if (matchedNodes.isEmpty()) {
-                throw new ElementNotFoundException();
-            }
-            return CustomUiDevice.getInstance().findObject(matchedNodes);
+            return toSingleMatch(getXPathNodeMatch(by.getElementLocator(), null, false));
         } else if (by instanceof By.ByAndroidUiAutomator) {
             return new ByUiAutomatorFinder().findOne((By.ByAndroidUiAutomator) by);
         } else if (by instanceof By.ByAndroidClassChain) {
@@ -175,11 +171,7 @@ public class ElementLocationHelpers {
         } else if (by instanceof By.ByClass) {
             return context.getChild(androidx.test.uiautomator.By.clazz(by.getElementLocator()));
         } else if (by instanceof By.ByXPath) {
-            final NodeInfoList matchedNodes = getXPathNodeMatch(by.getElementLocator(), context, false);
-            if (matchedNodes.isEmpty()) {
-                throw new ElementNotFoundException();
-            }
-            return CustomUiDevice.getInstance().findObject(matchedNodes);
+            return toSingleMatch(getXPathNodeMatch(by.getElementLocator(), context, false));
         } else if (by instanceof By.ByAndroidUiAutomator) {
             return new ByUiAutomatorFinder().findOne((By.ByAndroidUiAutomator) by, context);
         } else if (by instanceof By.ByAndroidClassChain) {
@@ -201,10 +193,7 @@ public class ElementLocationHelpers {
         } else if (by instanceof By.ByClass) {
             return CustomUiDevice.getInstance().findObjects(androidx.test.uiautomator.By.clazz(by.getElementLocator()));
         } else if (by instanceof By.ByXPath) {
-            final NodeInfoList matchedNodes = getXPathNodeMatch(by.getElementLocator(), null, true);
-            return matchedNodes.isEmpty()
-                    ? Collections.<AccessibleUiObject>emptyList()
-                    : CustomUiDevice.getInstance().findObjects(matchedNodes);
+            return toMatches(getXPathNodeMatch(by.getElementLocator(), null, true));
         } else if (by instanceof By.ByAndroidUiAutomator) {
             return new ByUiAutomatorFinder().findMany((By.ByAndroidUiAutomator) by);
         } else if (by instanceof By.ByAndroidClassChain) {
@@ -224,10 +213,7 @@ public class ElementLocationHelpers {
         } else if (by instanceof By.ByClass) {
             return context.getChildren(androidx.test.uiautomator.By.clazz(by.getElementLocator()), by);
         } else if (by instanceof By.ByXPath) {
-            final NodeInfoList matchedNodes = getXPathNodeMatch(by.getElementLocator(), context, true);
-            return matchedNodes.isEmpty()
-                    ? Collections.<AccessibleUiObject>emptyList()
-                    : CustomUiDevice.getInstance().findObjects(matchedNodes);
+            return toMatches(getXPathNodeMatch(by.getElementLocator(), context, true));
         } else if (by instanceof By.ByAndroidUiAutomator) {
             return new ByUiAutomatorFinder().findMany((By.ByAndroidUiAutomator) by, context);
         } else if (by instanceof By.ByAndroidClassChain) {
@@ -265,12 +251,8 @@ public class ElementLocationHelpers {
             By.ById by, @Nullable AndroidElement context) throws UiObjectNotFoundException {
         String locator = rewriteIdLocator(by);
         if (Settings.get(MapTestTagToResourceId.class).getValue()) {
-            final NodeInfoList matchedNodes = getXPathNodeMatch(
-                    resourceIdXPath(by.getElementLocator(), locator), context, false);
-            if (matchedNodes.isEmpty()) {
-                throw new ElementNotFoundException();
-            }
-            return CustomUiDevice.getInstance().findObject(matchedNodes);
+            return toSingleMatch(getXPathNodeMatch(
+                    resourceIdXPath(by.getElementLocator(), locator), context, false));
         }
         return context == null
                 ? CustomUiDevice.getInstance().findObject(androidx.test.uiautomator.By.res(locator))
@@ -355,11 +337,8 @@ public class ElementLocationHelpers {
     private static List<AccessibleUiObject> findElementsById(By.ById by, @Nullable AndroidElement context) {
         String locator = rewriteIdLocator(by);
         if (Settings.get(MapTestTagToResourceId.class).getValue()) {
-            final NodeInfoList matchedNodes = getXPathNodeMatch(
-                    resourceIdXPath(by.getElementLocator(), locator), context, true);
-            return matchedNodes.isEmpty()
-                    ? Collections.<AccessibleUiObject>emptyList()
-                    : CustomUiDevice.getInstance().findObjects(matchedNodes);
+            return toMatches(getXPathNodeMatch(
+                    resourceIdXPath(by.getElementLocator(), locator), context, true));
         }
         return context == null
                 ? CustomUiDevice.getInstance().findObjects(androidx.test.uiautomator.By.res(locator))

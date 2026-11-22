@@ -20,6 +20,7 @@ package io.appium.uiautomator2.utils.classchain;
 import androidx.annotation.Nullable;
 
 import java.text.Normalizer;
+import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -34,12 +35,7 @@ import io.appium.uiautomator2.utils.predicate.PredicateNode.Comparison;
 import io.appium.uiautomator2.utils.predicate.PredicateNode.Logical;
 import io.appium.uiautomator2.utils.predicate.PredicateNode.Not;
 
-/**
- * Evaluates a parsed predicate against one node. Numbers are compared by value after promotion
- * to double, strings exactly (or folded by the {@code [c]} and {@code [d]} modifiers). A null
- * attribute only satisfies {@code == nil}, {@code != <value>} and {@code IN {..., nil}}.
- * An instance caches compiled patterns, so use one per lookup.
- */
+/** Evaluates a parsed predicate against a node. Use one instance per lookup, it caches patterns. */
 public final class PredicateEvaluator {
 
     /** The values of a single node, read on demand. */
@@ -51,7 +47,11 @@ public final class PredicateEvaluator {
         Long getBound(BoundsField field);
     }
 
+    private static final Pattern DIACRITICS = Pattern.compile("\\p{M}+");
+
     private final Map<Comparison, Pattern> patterns = new IdentityHashMap<>();
+    // the expected values with the modifiers of their comparison applied
+    private final Map<Comparison, List<Object>> expectedValues = new IdentityHashMap<>();
 
     public boolean evaluate(PredicateNode predicate, Values values) {
         if (predicate instanceof PredicateNode.Constant) {
@@ -77,7 +77,7 @@ public final class PredicateEvaluator {
         Object actual = field == null
                 ? values.get(comparison.getAttribute())
                 : values.getBound(field);
-        List<Object> expected = comparison.getValues();
+        List<Object> expected = expectedValues(comparison);
         switch (comparison.getOperator()) {
             case EQ:
                 return isEqual(actual, expected.get(0), comparison);
@@ -103,6 +103,21 @@ public final class PredicateEvaluator {
             default:
                 return matchesString(comparison, actual, (String) expected.get(0));
         }
+    }
+
+    private List<Object> expectedValues(Comparison comparison) {
+        List<Object> values = expectedValues.get(comparison);
+        if (values == null) {
+            values = new ArrayList<>(comparison.getValues().size());
+            for (Object value : comparison.getValues()) {
+                // a regex keeps its escapes
+                boolean fold = value instanceof String
+                        && comparison.getOperator() != PredicateNode.Operator.MATCHES;
+                values.add(fold ? fold((String) value, comparison) : value);
+            }
+            expectedValues.put(comparison, values);
+        }
+        return values;
     }
 
     private static boolean matchesOrder(PredicateNode.Operator operator, int order) {
@@ -144,7 +159,7 @@ public final class PredicateEvaluator {
             return actual.equals(expected);
         }
         if (expected instanceof String) {
-            return fold(actual.toString(), comparison).equals(fold((String) expected, comparison));
+            return fold(actual.toString(), comparison).equals(expected);
         }
         return false;
     }
@@ -156,14 +171,14 @@ public final class PredicateEvaluator {
         String text = fold(actual.toString(), comparison);
         switch (comparison.getOperator()) {
             case BEGINSWITH:
-                return text.startsWith(fold(expected, comparison));
+                return text.startsWith(expected);
             case ENDSWITH:
-                return text.endsWith(fold(expected, comparison));
+                return text.endsWith(expected);
             case CONTAINS:
                 return comparison.getAttribute() == Attribute.ACTIONS
                         && comparison.getBoundsField() == null
-                        ? hasEntry(text, fold(expected, comparison))
-                        : text.contains(fold(expected, comparison));
+                        ? hasEntry(text, expected)
+                        : text.contains(expected);
             default:
                 return pattern(comparison, expected).matcher(text).matches();
         }
@@ -183,13 +198,12 @@ public final class PredicateEvaluator {
         Pattern pattern = patterns.get(comparison);
         if (pattern == null) {
             boolean like = comparison.getOperator() == PredicateNode.Operator.LIKE;
-            // LIKE is already folded, so the pattern text is too; MATCHES keeps its escapes
+            // the LIKE glob is already folded, a regex gets flags instead
             int flags = like ? Pattern.DOTALL : 0;
             if (!like && comparison.isCaseInsensitive()) {
                 flags |= Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
             }
-            pattern = Pattern.compile(
-                    like ? GlobMatcher.globToRegex(fold(source, comparison)) : source, flags);
+            pattern = Pattern.compile(like ? GlobMatcher.globToRegex(source) : source, flags);
             patterns.put(comparison, pattern);
         }
         return pattern;
@@ -198,7 +212,8 @@ public final class PredicateEvaluator {
     private static String fold(String value, Comparison comparison) {
         String result = value;
         if (comparison.isDiacriticInsensitive()) {
-            result = Normalizer.normalize(result, Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+            result = DIACRITICS.matcher(Normalizer.normalize(result, Normalizer.Form.NFD))
+                    .replaceAll("");
         }
         if (comparison.isCaseInsensitive()
                 && comparison.getOperator() != PredicateNode.Operator.MATCHES) {

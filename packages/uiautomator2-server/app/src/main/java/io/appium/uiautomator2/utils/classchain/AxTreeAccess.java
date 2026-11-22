@@ -26,8 +26,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -35,24 +37,28 @@ import io.appium.uiautomator2.core.AxNodeInfoHelper;
 import io.appium.uiautomator2.model.UiElementSnapshot;
 import io.appium.uiautomator2.model.settings.AllowInvisibleElements;
 import io.appium.uiautomator2.model.settings.Settings;
+import io.appium.uiautomator2.model.settings.SnapshotMaxDepth;
 import io.appium.uiautomator2.utils.Attribute;
 import io.appium.uiautomator2.utils.StringHelpers;
 
 import static io.appium.uiautomator2.utils.AXWindowHelpers.getCachedWindowRoots;
 
-/**
- * Walks the live accessibility tree with the visibility rules of the page source. The nodes
- * that were fetched on the way are recycled by {@link #release}.
- */
+/** The live accessibility tree with the visibility and depth rules of the page source. */
 public final class AxTreeAccess implements TreeAccess<AxTreeAccess.Node> {
 
     /** A node of the tree, the root above all windows has no accessibility node. */
     public static final class Node {
         @Nullable
         private final AccessibilityNodeInfo info;
+        // the position among the parent's children like in the page source, -1 if unknown
+        private final int index;
+        // the root above all windows is at depth 0, like in the page source
+        private final int depth;
 
-        private Node(@Nullable AccessibilityNodeInfo info) {
+        private Node(@Nullable AccessibilityNodeInfo info, int index, int depth) {
             this.info = info;
+            this.index = index;
+            this.depth = depth;
         }
 
         @Nullable
@@ -73,23 +79,27 @@ public final class AxTreeAccess implements TreeAccess<AxTreeAccess.Node> {
 
     private final boolean areInvisibleElementsAllowed =
             Settings.get(AllowInvisibleElements.class).getValue();
-    private final Node start;
+    private final int maxDepth = Settings.get(SnapshotMaxDepth.class).getValue();
     private final AccessibilityNodeInfo[] windowRoots;
     // owned by somebody else, so they must not be recycled
     private final Set<AccessibilityNodeInfo> owned =
             Collections.newSetFromMap(new IdentityHashMap<>());
     private final List<AccessibilityNodeInfo> fetched = new ArrayList<>();
+    // siblings and repeated walks would otherwise fetch the same children again
+    private final Map<Node, List<Node>> childrenCache = new HashMap<>();
+    private final Node start;
 
     /** @param context the node to search below, or null to search all windows */
     public AxTreeAccess(@Nullable AccessibilityNodeInfo context) {
         if (context == null) {
             windowRoots = getCachedWindowRoots();
             owned.addAll(Arrays.asList(windowRoots));
+            start = new Node(null, -1, 0);
         } else {
             windowRoots = new AccessibilityNodeInfo[0];
             owned.add(context);
+            start = new Node(context, -1, depthOf(context));
         }
-        start = new Node(context);
     }
 
     /** The node the first step of a chain is relative to. */
@@ -97,13 +107,36 @@ public final class AxTreeAccess implements TreeAccess<AxTreeAccess.Node> {
         return start;
     }
 
+    /** The window roots are at depth 1. */
+    private int depthOf(AccessibilityNodeInfo node) {
+        int depth = 1;
+        for (AccessibilityNodeInfo parent = node.getParent(); parent != null;
+             parent = parent.getParent()) {
+            fetched.add(parent);
+            depth++;
+        }
+        return depth;
+    }
+
     @Override
     public List<Node> getChildren(Node node) {
+        List<Node> children = childrenCache.get(node);
+        if (children == null) {
+            children = fetchChildren(node);
+            childrenCache.put(node, children);
+        }
+        return children;
+    }
+
+    private List<Node> fetchChildren(Node node) {
         AccessibilityNodeInfo info = node.info;
+        if (node.depth >= maxDepth) {
+            return Collections.emptyList();
+        }
         if (info == null) {
             List<Node> roots = new ArrayList<>(windowRoots.length);
-            for (AccessibilityNodeInfo root : windowRoots) {
-                roots.add(new Node(root));
+            for (int i = 0; i < windowRoots.length; i++) {
+                roots.add(new Node(windowRoots[i], i, node.depth + 1));
             }
             return roots;
         }
@@ -118,7 +151,7 @@ public final class AxTreeAccess implements TreeAccess<AxTreeAccess.Node> {
                     || child.isVisibleToUser()
                     || UiElementSnapshot.shouldTraverseIfRequested(child)) {
                 fetched.add(child);
-                children.add(new Node(child));
+                children.add(new Node(child, i, node.depth + 1));
             } else {
                 AxNodeInfoHelper.recycleSafely(child);
             }
@@ -134,7 +167,7 @@ public final class AxTreeAccess implements TreeAccess<AxTreeAccess.Node> {
             return null;
         }
         fetched.add(parent);
-        return new Node(parent);
+        return new Node(parent, -1, Math.max(0, node.depth - 1));
     }
 
     @Nullable
@@ -148,7 +181,14 @@ public final class AxTreeAccess implements TreeAccess<AxTreeAccess.Node> {
     @Nullable
     @Override
     public Object getAttribute(Node node, Attribute attribute) {
-        return node.info == null ? null : UiElementSnapshot.getAttributeValue(node.info, attribute);
+        if (node.info == null) {
+            return null;
+        }
+        // known from the walk, whereas reading it scans the siblings of the node
+        if (attribute == Attribute.INDEX && node.index >= 0) {
+            return node.index;
+        }
+        return UiElementSnapshot.getAttributeValue(node.info, attribute);
     }
 
     @Nullable
@@ -174,5 +214,6 @@ public final class AxTreeAccess implements TreeAccess<AxTreeAccess.Node> {
             }
         }
         fetched.clear();
+        childrenCache.clear();
     }
 }
