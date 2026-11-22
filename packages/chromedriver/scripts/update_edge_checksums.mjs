@@ -40,8 +40,12 @@ async function main() {
     process.stdout.write('0');
     return;
   }
-  await new ChecksumsUpdater({store, source}).update(targets, {required: stable});
-  process.stdout.write('1');
+  const {computed, failed} = await new ChecksumsUpdater({store, source}).update(targets, {required: stable});
+  process.stdout.write(computed.length > 0 ? '1' : '0');
+  if (failed.length > 0) {
+    // the checksums that were computed are kept, but the scheduled run must not look healthy
+    throw new Error(`Cannot verify the targeted Edge WebDriver releases: ${failed.join(', ')}`);
+  }
 }
 
 await main();

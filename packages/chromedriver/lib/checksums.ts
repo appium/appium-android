@@ -61,12 +61,17 @@ async function isTrusted(sha256: string): Promise<boolean> {
 /**
  * Remembers the checksum of a binary this module has downloaded and verified itself,
  * so it passes {@linkcode assertKnownChromedriver} even if it is newer than the shipped allowlist.
+ * @param sha256 - SHA-256 of the executable, as it was fetched from the configured source
  */
-export async function trustChecksumOf(binPath: string): Promise<void> {
-  const sha256 = await sha256File(binPath);
+export async function trustChecksum(sha256: string): Promise<void> {
   const trustDir = getTrustStoreDir();
   await fs.mkdir(trustDir, {recursive: true});
   await fs.writeFile(path.join(trustDir, sha256), '', {flag: 'a'});
+}
+
+/** Same as {@linkcode trustChecksum}, for the current content of a file */
+export async function trustChecksumOf(binPath: string): Promise<void> {
+  await trustChecksum(await sha256File(binPath));
 }
 
 /**
