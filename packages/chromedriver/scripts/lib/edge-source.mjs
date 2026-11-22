@@ -10,18 +10,24 @@ const exeName = (platform) =>
 
 /** Microsoft Edge WebDriver builds */
 export class EdgeSource {
-  /** Reads a `LATEST_*` pointer. Returns `null` if it does not exist */
+  /** Reads a `LATEST_*` pointer. Returns `null` if it does not exist (404), any other failure is thrown */
   async getLatest(name) {
     const res = await fetch(`${EDGE_STORAGE_URL}/${name}`);
-    if (!res.ok) {
+    if (res.status === 404) {
       return null;
     }
+    if (!res.ok) {
+      throw new Error(`Cannot read ${name}: HTTP ${res.status}`);
+    }
     const buf = Buffer.from(await res.arrayBuffer());
-    // the pointers are UTF-16LE with BOM, errors are XML
+    // the pointers are UTF-16LE with BOM
     const text = (buf[0] === 0xff && buf[1] === 0xfe ? buf.toString('utf16le') : buf.toString('utf8'))
       .replace(/^﻿/, '')
       .trim();
-    return VERSION_PATTERN.test(text) ? text : null;
+    if (!VERSION_PATTERN.test(text)) {
+      throw new Error(`${name} has an unexpected content: '${text.slice(0, 100)}'`);
+    }
+    return text;
   }
 
   /**
