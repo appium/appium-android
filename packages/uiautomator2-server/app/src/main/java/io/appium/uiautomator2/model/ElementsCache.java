@@ -37,6 +37,7 @@ import io.appium.uiautomator2.utils.Logger;
 import io.appium.uiautomator2.utils.NodeInfoList;
 
 import static io.appium.uiautomator2.utils.ElementLocationHelpers.findElementById;
+import static io.appium.uiautomator2.utils.ElementLocationHelpers.getClassChainNodeMatch;
 import static io.appium.uiautomator2.utils.ElementLocationHelpers.getXPathNodeMatch;
 
 public class ElementsCache {
@@ -110,6 +111,12 @@ public class ElementsCache {
                 }
             } else if (by instanceof By.ByAndroidUiAutomator) {
                 accessibleUiObject = new ByUiAutomatorFinder().findOne((By.ByAndroidUiAutomator) by, searchRoot);
+            } else if (by instanceof By.ByAndroidClassChain) {
+                final NodeInfoList matchedNodes = getClassChainNodeMatch(
+                        (By.ByAndroidClassChain) by, searchRoot, false);
+                if (!matchedNodes.isEmpty()) {
+                    accessibleUiObject = CustomUiDevice.getInstance().findObject(matchedNodes);
+                }
             }
         } catch (Exception e) {
             Logger.warn(String.format(

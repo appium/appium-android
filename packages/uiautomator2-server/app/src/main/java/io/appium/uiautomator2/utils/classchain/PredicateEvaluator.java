@@ -1,0 +1,209 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+
+package io.appium.uiautomator2.utils.classchain;
+
+import androidx.annotation.Nullable;
+
+import java.text.Normalizer;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.regex.Pattern;
+
+import io.appium.uiautomator2.utils.Attribute;
+import io.appium.uiautomator2.utils.GlobMatcher;
+import io.appium.uiautomator2.utils.predicate.PredicateNode;
+import io.appium.uiautomator2.utils.predicate.PredicateNode.BoundsField;
+import io.appium.uiautomator2.utils.predicate.PredicateNode.Comparison;
+import io.appium.uiautomator2.utils.predicate.PredicateNode.Logical;
+import io.appium.uiautomator2.utils.predicate.PredicateNode.Not;
+
+/**
+ * Evaluates a parsed predicate against one node. Numbers are compared by value after promotion
+ * to double, strings exactly (or folded by the {@code [c]} and {@code [d]} modifiers). A null
+ * attribute only satisfies {@code == nil}, {@code != <value>} and {@code IN {..., nil}}.
+ * An instance caches compiled patterns, so use one per lookup.
+ */
+public final class PredicateEvaluator {
+
+    /** The values of a single node, read on demand. */
+    public interface Values {
+        @Nullable
+        Object get(Attribute attribute);
+
+        @Nullable
+        Long getBound(BoundsField field);
+    }
+
+    private final Map<Comparison, Pattern> patterns = new IdentityHashMap<>();
+
+    public boolean evaluate(PredicateNode predicate, Values values) {
+        if (predicate instanceof PredicateNode.Constant) {
+            return ((PredicateNode.Constant) predicate).getValue();
+        }
+        if (predicate instanceof Not) {
+            return !evaluate(((Not) predicate).getOperand(), values);
+        }
+        if (predicate instanceof Logical) {
+            Logical logical = (Logical) predicate;
+            for (PredicateNode operand : logical.getOperands()) {
+                if (evaluate(operand, values) != logical.isAnd()) {
+                    return !logical.isAnd();
+                }
+            }
+            return logical.isAnd();
+        }
+        return compare((Comparison) predicate, values);
+    }
+
+    private boolean compare(Comparison comparison, Values values) {
+        BoundsField field = comparison.getBoundsField();
+        Object actual = field == null
+                ? values.get(comparison.getAttribute())
+                : values.getBound(field);
+        List<Object> expected = comparison.getValues();
+        switch (comparison.getOperator()) {
+            case EQ:
+                return isEqual(actual, expected.get(0), comparison);
+            case NE:
+                return !isEqual(actual, expected.get(0), comparison);
+            case IN:
+                for (Object value : expected) {
+                    if (isEqual(actual, value, comparison)) {
+                        return true;
+                    }
+                }
+                return false;
+            case LT:
+            case LE:
+            case GT:
+            case GE:
+                Integer order = compareOrder(actual, expected.get(0));
+                return order != null && matchesOrder(comparison.getOperator(), order);
+            case BETWEEN:
+                Integer low = compareOrder(actual, expected.get(0));
+                Integer high = compareOrder(actual, expected.get(1));
+                return low != null && high != null && low >= 0 && high <= 0;
+            default:
+                return matchesString(comparison, actual, (String) expected.get(0));
+        }
+    }
+
+    private static boolean matchesOrder(PredicateNode.Operator operator, int order) {
+        switch (operator) {
+            case LT:
+                return order < 0;
+            case LE:
+                return order <= 0;
+            case GT:
+                return order > 0;
+            default:
+                return order >= 0;
+        }
+    }
+
+    /** The sign of {@code actual - expected}, or null if they cannot be ordered. */
+    @Nullable
+    private static Integer compareOrder(@Nullable Object actual, @Nullable Object expected) {
+        if (actual instanceof Number && expected instanceof Number) {
+            double left = ((Number) actual).doubleValue();
+            double right = ((Number) expected).doubleValue();
+            return Double.isNaN(left) || Double.isNaN(right) ? null : Double.compare(left, right);
+        }
+        if (actual instanceof String && expected instanceof String) {
+            return ((String) actual).compareTo((String) expected);
+        }
+        return null;
+    }
+
+    private static boolean isEqual(@Nullable Object actual, @Nullable Object expected,
+                                   Comparison comparison) {
+        if (actual == null || expected == null) {
+            return actual == expected;
+        }
+        if (actual instanceof Number && expected instanceof Number) {
+            return ((Number) actual).doubleValue() == ((Number) expected).doubleValue();
+        }
+        if (actual instanceof Boolean || expected instanceof Boolean) {
+            return actual.equals(expected);
+        }
+        if (expected instanceof String) {
+            return fold(actual.toString(), comparison).equals(fold((String) expected, comparison));
+        }
+        return false;
+    }
+
+    private boolean matchesString(Comparison comparison, @Nullable Object actual, String expected) {
+        if (actual == null) {
+            return false;
+        }
+        String text = fold(actual.toString(), comparison);
+        switch (comparison.getOperator()) {
+            case BEGINSWITH:
+                return text.startsWith(fold(expected, comparison));
+            case ENDSWITH:
+                return text.endsWith(fold(expected, comparison));
+            case CONTAINS:
+                return comparison.getAttribute() == Attribute.ACTIONS
+                        && comparison.getBoundsField() == null
+                        ? hasEntry(text, fold(expected, comparison))
+                        : text.contains(fold(expected, comparison));
+            default:
+                return pattern(comparison, expected).matcher(text).matches();
+        }
+    }
+
+    /** The actions are a comma separated list, so a whole entry has to match. */
+    private static boolean hasEntry(String list, String entry) {
+        for (String item : list.split(",")) {
+            if (item.trim().equals(entry)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private Pattern pattern(Comparison comparison, String source) {
+        Pattern pattern = patterns.get(comparison);
+        if (pattern == null) {
+            boolean like = comparison.getOperator() == PredicateNode.Operator.LIKE;
+            // LIKE is already folded, so the pattern text is too; MATCHES keeps its escapes
+            int flags = like ? Pattern.DOTALL : 0;
+            if (!like && comparison.isCaseInsensitive()) {
+                flags |= Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
+            }
+            pattern = Pattern.compile(
+                    like ? GlobMatcher.globToRegex(fold(source, comparison)) : source, flags);
+            patterns.put(comparison, pattern);
+        }
+        return pattern;
+    }
+
+    private static String fold(String value, Comparison comparison) {
+        String result = value;
+        if (comparison.isDiacriticInsensitive()) {
+            result = Normalizer.normalize(result, Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+        }
+        if (comparison.isCaseInsensitive()
+                && comparison.getOperator() != PredicateNode.Operator.MATCHES) {
+            result = result.toLowerCase(Locale.ROOT);
+        }
+        return result;
+    }
+}
