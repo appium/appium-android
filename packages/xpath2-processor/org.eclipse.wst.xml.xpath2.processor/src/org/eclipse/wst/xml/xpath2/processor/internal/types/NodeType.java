@@ -27,6 +27,7 @@
 package org.eclipse.wst.xml.xpath2.processor.internal.types;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Hashtable;
 import java.util.Iterator;
@@ -413,7 +414,17 @@ public abstract class NodeType extends AnyType {
 	}
 
 	public static ResultBuffer linarize(ResultBuffer rs) {
-		TreeSet all = new TreeSet(NODE_COMPARATOR);
+		return linarize(rs, false);
+	}
+
+	/**
+	 * @param reverse
+	 *            true for reverse document order, false for document order
+	 * @return the nodes without duplicates in the requested order
+	 */
+	public static ResultBuffer linarize(ResultBuffer rs, boolean reverse) {
+		TreeSet all = new TreeSet(reverse ? Collections.reverseOrder(NODE_COMPARATOR)
+				: NODE_COMPARATOR);
 		all.addAll(rs.getCollection());
 		return new ResultBuffer().concat(all);
 	}

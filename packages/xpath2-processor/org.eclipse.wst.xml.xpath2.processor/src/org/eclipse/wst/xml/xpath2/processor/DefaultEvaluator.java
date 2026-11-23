@@ -2076,8 +2076,18 @@ public class DefaultEvaluator implements XPathVisitor, Evaluator {
 	public Object visit(AxisStep e) {
 		ResultSequence rs = (ResultSequence) e.step().accept(this);
 
-		if (e.predicate_count() == 0)
-			return rs;
+		// the context positions of a reverse axis step count in reverse
+		// document order, and the result of the step is in document order
+		// (XPath 2.0, section 3.2.2)
+		boolean reverse = e.step() instanceof ReverseStep;
+		if (e.predicate_count() == 0) {
+			return reverse
+					? NodeType.linarize(new ResultBuffer().concat(rs)).getSequence()
+					: rs;
+		}
+		if (reverse) {
+			rs = NodeType.linarize(new ResultBuffer().concat(rs), true).getSequence();
+		}
 
 		// I take it predicates are logical ANDS...
 		Focus original_focus = focus();
@@ -2095,6 +2105,9 @@ public class DefaultEvaluator implements XPathVisitor, Evaluator {
 
 		// restore focus [context switching ;D ]
 		set_focus(original_focus);
+		if (reverse) {
+			rs = NodeType.linarize(new ResultBuffer().concat(rs)).getSequence();
+		}
 		return rs;
 	}
 

@@ -55,6 +55,7 @@ Local changes to re-apply when re-vendoring:
 - `io.appium.xpath2.DocumentLoader` and `io.appium.xpath2.JaxpFactories` are added (not part of upstream).
 - `DynamicContextBuilder` and `DefaultDynamicContext` do not load documents for `fn:doc` unless `withDocumentLoading(true)` is called (the upstream test harness, `AbstractPsychoPathTest`, opts in), so an expression cannot make the host process read arbitrary files or URIs.
 - `DocumentBuilderFactory.newInstance()` and `DatatypeFactory.newInstance()` are replaced by `JaxpFactories` in `DOMBuilder`, `XercesLoader`, `DynamicContextAdapter`, `DynamicContextBuilder`, `Function` and `AnyType`. Android has no `DatatypeFactory` implementation, and a lookup could pick up the one of the host process.
+- `DefaultEvaluator.visit(AxisStep)` applies the predicates of a reverse axis step (`preceding-sibling`, `preceding`, `ancestor-or-self`, ...) to the nodes in reverse document order, and returns the step in document order, with `NodeType.linarize(rs, reverse)`. Upstream applies them in the order of the axis iterator, which is document order for `preceding-sibling`, so `preceding-sibling::*[1]` selected the farthest sibling instead of the nearest one (XPath 2.0, section 3.2.2). Covered by `ReverseAxisPositionTest` in the shaded tests.
 
 ### License and notice
 
