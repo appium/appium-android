@@ -21,7 +21,9 @@ export async function installDriverFromArchive(opts: {
   destination: string;
 }): Promise<string> {
   const {archive, executableName, destination} = opts;
-  const staging = await mkdtemp(path.join(os.tmpdir(), 'driver-archive-'));
+  const temporaryRoot = process.env.APPIUM_TMP_DIR || os.tmpdir();
+  await fs.mkdirp(temporaryRoot);
+  const staging = await mkdtemp(path.resolve(temporaryRoot, 'driver-archive-'));
   try {
     await zip.extractStreamTo(archive, staging);
     const entries = await fs.readdir(staging, {recursive: true, withFileTypes: true});

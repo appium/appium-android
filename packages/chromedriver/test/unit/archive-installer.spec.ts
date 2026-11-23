@@ -52,3 +52,35 @@ it('installs and trusts only the executable extracted from the archive', async (
   assert.equal(await fs.readFile(target, 'utf8'), 'replacement');
   await assert.rejects(assertKnownChromedriver(path.join(source, name)), /does not match/);
 });
+
+it('stages the archive under APPIUM_TMP_DIR and removes staging on failure', async (t) => {
+  const root = await tempDir.openDir();
+  const previous = process.env.APPIUM_TMP_DIR;
+  const temporaryRoot = path.join(root, 'custom-temp');
+  process.env.APPIUM_TMP_DIR = temporaryRoot;
+  t.after(async () => {
+    if (previous === undefined) {
+      delete process.env.APPIUM_TMP_DIR;
+    } else {
+      process.env.APPIUM_TMP_DIR = previous;
+    }
+    await fs.rimraf(root);
+  });
+
+  async function* truncatedArchive() {
+    const entries = await fs.readdir(temporaryRoot, {withFileTypes: true});
+    assert.equal(entries.length, 1);
+    assert.ok(entries[0].isDirectory());
+    yield Buffer.from([0x50]);
+    throw new Error('archive interrupted');
+  }
+  await assert.rejects(
+    installDriverFromArchive({
+      archive: truncatedArchive(),
+      executableName: 'driver',
+      destination: path.join(root, 'driver'),
+    }),
+    /archive interrupted/,
+  );
+  assert.deepEqual(await fs.readdir(temporaryRoot), []);
+});
