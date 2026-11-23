@@ -255,4 +255,23 @@ public class AxTreeAccessTests {
         assertEquals(1, preceding.size());
         assertSame(first, preceding.get(0).getInfo());
     }
+
+    @Test
+    public void aWindowRootKeepsItsIndexWhenReachedFromItsChild() {
+        AccessibilityNodeInfo child = node("c", true);
+        AccessibilityNodeInfo first = node("w1", true);
+        AccessibilityNodeInfo second = node("w2", true, child);
+        AccessibilityNodeInfo[] roots = {first, second};
+
+        AxTreeAccess tree = new AxTreeAccess(null, () -> roots);
+        List<AxTreeAccess.Node> found = new ClassChainEvaluator<>(tree).evaluate(
+                ClassChainParser.parse("*[2]/*[1]/^*[`index == 1`]"), tree.getStart(), true);
+        assertEquals(1, found.size());
+        assertSame(second, found.get(0).getInfo());
+
+        // the same when the parent is read directly
+        AxTreeAccess.Node parent = tree.getParent(tree.getChildren(
+                tree.getChildren(tree.getStart()).get(1)).get(0));
+        assertEquals(1, tree.getAttribute(parent, Attribute.INDEX));
+    }
 }

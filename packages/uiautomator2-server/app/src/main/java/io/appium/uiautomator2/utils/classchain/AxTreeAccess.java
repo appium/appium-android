@@ -246,6 +246,22 @@ public final class AxTreeAccess implements TreeAccess<AxTreeAccess.Node> {
         return node.info == null ? Collections.emptyList() : getChildren(getWindowsRoot());
     }
 
+    /** The position of a window root among the roots, also if it is reached from its child. */
+    private int windowRootIndex(AccessibilityNodeInfo info) {
+        AccessibilityNodeInfo parent = info.getParent();
+        if (parent != null) {
+            fetched.add(parent);
+            return -1;
+        }
+        getWindowsRoot();
+        for (int i = 0; i < windowRoots.length; i++) {
+            if (info.equals(windowRoots[i])) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     @Nullable
     @Override
     public String getClassName(Node node) {
@@ -260,9 +276,15 @@ public final class AxTreeAccess implements TreeAccess<AxTreeAccess.Node> {
         if (node.info == null) {
             return null;
         }
-        // known from the walk, whereas reading it scans the siblings of the node
-        if (attribute == Attribute.INDEX && node.index >= 0) {
-            return node.index;
+        if (attribute == Attribute.INDEX) {
+            // known from the walk, whereas reading it scans the siblings of the node
+            if (node.index >= 0) {
+                return node.index;
+            }
+            int rootIndex = windowRootIndex(node.info);
+            if (rootIndex >= 0) {
+                return rootIndex;
+            }
         }
         return UiElementSnapshot.getAttributeValue(node.info, attribute);
     }

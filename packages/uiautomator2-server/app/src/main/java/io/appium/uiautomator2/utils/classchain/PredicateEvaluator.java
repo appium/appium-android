@@ -115,7 +115,7 @@ public final class PredicateEvaluator {
                 } else if (comparison.getOperator() == PredicateNode.Operator.MATCHES) {
                     // a regex keeps its escapes, and the case is handled by a flag
                     values.add(comparison.isDiacriticInsensitive()
-                            ? foldRegexDiacritics((String) value) : value);
+                            ? RegexDiacritics.fold((String) value) : value);
                 } else {
                     values.add(fold((String) value, comparison));
                 }
@@ -215,34 +215,7 @@ public final class PredicateEvaluator {
         return pattern;
     }
 
-    /**
-     * Removes the diacritics from the literals of a regex, like it is done for the text. An escaped
-     * letter with a diacritic (a literal one) becomes a plain letter, since a backslash before an
-     * ASCII letter would have another meaning.
-     */
-    private static String foldRegexDiacritics(String regex) {
-        StringBuilder result = new StringBuilder(regex.length());
-        int i = 0;
-        while (i < regex.length()) {
-            int cp = regex.codePointAt(i);
-            i += Character.charCount(cp);
-            if (cp == '\\' && i < regex.length()) {
-                int escaped = regex.codePointAt(i);
-                i += Character.charCount(escaped);
-                String folded = removeDiacritics(new String(Character.toChars(escaped)));
-                if (folded.equals(new String(Character.toChars(escaped)))) {
-                    result.append('\\').appendCodePoint(escaped);
-                } else {
-                    result.append(folded);
-                }
-            } else {
-                result.append(removeDiacritics(new String(Character.toChars(cp))));
-            }
-        }
-        return result.toString();
-    }
-
-    private static String removeDiacritics(String value) {
+    static String removeDiacritics(String value) {
         return DIACRITICS.matcher(Normalizer.normalize(value, Normalizer.Form.NFD)).replaceAll("");
     }
 

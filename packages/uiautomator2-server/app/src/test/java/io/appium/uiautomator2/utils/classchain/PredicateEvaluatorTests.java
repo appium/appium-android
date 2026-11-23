@@ -250,6 +250,31 @@ public class PredicateEvaluatorTests {
     }
 
     @Test
+    public void diacriticInsensitiveRegexKeepsItsRangesValid() {
+        // folding the ends would give the reversed range z-a
+        assertTrue(eval("text MATCHES[d] '[z-à]'", Attribute.TEXT, "z"));
+        assertTrue(eval("text MATCHES[d] '[z-à]'", Attribute.TEXT, "à"));
+        assertFalse(eval("text MATCHES[d] '[z-à]'", Attribute.TEXT, "b"));
+        // a range that stays one is folded
+        assertTrue(eval("text MATCHES[d] '[à-ü]+'", Attribute.TEXT, "ïe"));
+        assertFalse(eval("text MATCHES[d] '[à-ü]+'", Attribute.TEXT, "z"));
+        assertTrue(eval("text MATCHES[d] '[-é]'", Attribute.TEXT, "-"));
+        assertTrue(eval("text MATCHES[d] '[a-cé]+'", Attribute.TEXT, "aec"));
+    }
+
+    @Test
+    public void diacriticInsensitiveRegexFoldsUnicodeEscapes() {
+        assertTrue(eval("text MATCHES[d] 'Caf\\\\u00E9'", Attribute.TEXT, "Café"));
+        assertTrue(eval("text MATCHES[d] 'Caf\\\\u00E9'", Attribute.TEXT, "Cafe"));
+        assertTrue(eval("text MATCHES[d] 'Caf\\\\x{E9}'", Attribute.TEXT, "Café"));
+        assertTrue(eval("text MATCHES[d] 'Caf\\\\xe9'", Attribute.TEXT, "Cafe"));
+        assertTrue(eval("text MATCHES[d] '[\\\\u00E0-\\\\u00FC]+'", Attribute.TEXT, "ïe"));
+        assertTrue(eval("text MATCHES[d] '\\\\Qcafé\\\\E'", Attribute.TEXT, "café"));
+        // an escape that is not a literal stays as it is
+        assertTrue(eval("text MATCHES[d] '\\\\u0041é'", Attribute.TEXT, "Ae"));
+    }
+
+    @Test
     public void styledTextIsComparedByItsContent() {
         assertTrue(eval("hint > 'a'", Attribute.HINT, new StringBuilder("b")));
         assertFalse(eval("hint < 'a'", Attribute.HINT, new StringBuilder("b")));
