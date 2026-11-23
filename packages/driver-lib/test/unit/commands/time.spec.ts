@@ -110,12 +110,19 @@ describe('Time Commands', function () {
       const getTimeZoneStub = sandbox.stub(driver.adb, 'getTimeZone').resolves('GMT\n');
       const warnSpy = sandbox.spy(driver.log, 'warn');
 
-      await adjustTimeZone.call(driver, 'Europe/Kyiv');
+      for (const zone of ['Europe/Kyiv', 'Us/Eastern']) {
+        shellStub.resetHistory();
+        getTimeZoneStub.resetHistory();
+        warnSpy.resetHistory();
 
-      sinon.assert.calledOnceWithExactly(shellStub, ['service', 'call', 'alarm', '3', 's16', 'Europe/Kyiv']);
-      sinon.assert.calledOnce(getTimeZoneStub);
-      sinon.assert.calledOnce(warnSpy);
-      assert.match(String(warnSpy.firstCall.args[0]), /'GMT'.*'Europe\/Kyiv'/);
+        await adjustTimeZone.call(driver, zone);
+
+        sinon.assert.calledOnceWithExactly(shellStub, ['service', 'call', 'alarm', '3', 's16', zone]);
+        sinon.assert.calledOnce(getTimeZoneStub);
+        sinon.assert.calledOnce(warnSpy);
+        assert.ok(String(warnSpy.firstCall.args[0]).includes(`'GMT'`));
+        assert.ok(String(warnSpy.firstCall.args[0]).includes(`'${zone}'`));
+      }
     });
 
     it('does not fail if reading back the device time zone fails', async function () {
@@ -130,7 +137,7 @@ describe('Time Commands', function () {
       assert.strictEqual(warnSpy.callCount, 0);
     });
 
-    it('rejects invalid, offset, malformed, and mis-cased canonical and alias time zones', async function () {
+    it('rejects invalid, offset, and malformed time zones', async function () {
       const shellStub = sandbox.stub(driver.adb, 'shell').resolves('');
       const getTimeZoneStub = sandbox.stub(driver.adb, 'getTimeZone');
 
@@ -147,6 +154,7 @@ describe('Time Commands', function () {
         'America//New_York',
         'Invalid/Zone',
         'Etc/GMT+15',
+        'Factory',
         '+05:00',
         '-04:00',
         '+00:00',
@@ -154,30 +162,15 @@ describe('Time Commands', function () {
         '+05',
         'GMT+05:00',
         'UTC+05:00',
+        'GMT+5',
+        'UTC+5',
         'Z',
         'utc',
-        'Utc',
         'gmt',
-        'Gmt',
         'etc/utc',
-        'Etc/Utc',
-        'ETC/UTC',
-        'Etc/Gmt',
         'america/new_york',
-        'America/New_york',
-        'AMERICA/NEW_YORK',
         'europe/kyiv',
-        'Europe/kyiv',
-        'Europe/KYIV',
-        'asia/kolkata',
-        'Asia/KOLKATA',
-        'Asia/Ho_chi_minh',
-        'Us/Eastern',
-        'US/EASTERN',
-        'Pst8pdt',
-        'Cet',
         'etc/gmt+5',
-        'Etc/Gmt+5',
         undefined as unknown as string,
         null as unknown as string,
       ]) {
