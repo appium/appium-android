@@ -16,6 +16,9 @@ dayjs.extend(utc);
 dayjs.extend(customParseFormat);
 
 const DATETIME_FORMAT_ISO8601 = 'YYYY-MM-DDTHH:mm:ssZ';
+// Restrict characters to valid IANA TZ identifiers; this whitelist also keeps
+// zoneName safe when adb shell re-parses the joined command string on device.
+const IANA_TIME_ZONE_PATTERN = /^[A-Z][A-Za-z0-9_+-]{0,31}(?:\/[A-Z][A-Za-z0-9_+-]{0,31}){0,2}$/;
 
 /**
  * Gets the current device time.
@@ -49,9 +52,15 @@ export async function mobileGetDeviceTime(this: AndroidDriver, format?: string):
 /**
  * Adjusts the device time zone.
  *
- * @param zoneName The time zone identifier (e.g., 'America/New_York', 'Europe/London').
+ * Host-side validation checks that `zoneName` matches the IANA character whitelist
+ * and is recognized by the host's ICU database; full case sensitivity and device
+ * tzdata support are left to Android, and a warning is logged if the device reports
+ * a different time zone after applying the setting.
+ *
+ * @param zoneName The case-sensitive IANA time zone identifier expected by Android
+ *   (e.g., 'America/New_York', 'Europe/London', 'UTC').
  * @returns Promise that resolves when the time zone is set.
- * @throws {Error} If the time zone identifier is not known.
+ * @throws {Error} If the time zone identifier is not recognized by the host ICU database.
  */
 export async function adjustTimeZone(this: AndroidDriver, zoneName: string): Promise<void> {
   if (!isValidTimeZone(zoneName)) {
@@ -67,6 +76,17 @@ export async function adjustTimeZone(this: AndroidDriver, zoneName: string): Pro
   // See, for example,
   // https://cs.android.com/android/platform/superproject/+/master:frameworks/base/apex/jobscheduler/framework/java/android/app/IAlarmManager.aidl;l=1?q=IAlarmManager
   await this.adb.shell(['service', 'call', 'alarm', '3', 's16', zoneName]);
+  try {
+    const currentZone = (await this.adb.getTimeZone())?.trim();
+    if (currentZone && currentZone !== zoneName) {
+      this.log.warn(
+        `The device time zone is '${currentZone}' after requesting '${zoneName}'. ` +
+          `The device may not recognize '${zoneName}' or may have normalized it to another identifier`,
+      );
+    }
+  } catch (e) {
+    this.log.debug(`Unable to verify the device time zone after setting it: ${(e as Error).message}`);
+  }
 }
 
 function parseOffset(timestamp: string): number {
@@ -79,5 +99,15 @@ function parseOffset(timestamp: string): number {
 }
 
 function isValidTimeZone(zoneName: string): boolean {
-  return Intl.supportedValuesOf('timeZone').includes(zoneName);
+  if (typeof zoneName !== 'string' || !IANA_TIME_ZONE_PATTERN.test(zoneName)) {
+    return false;
+  }
+  try {
+    // ICU validates known IANA names and aliases without enforcing full casing;
+    // exact casing and device tzdata support are checked via getTimeZone() afterward.
+    new Intl.DateTimeFormat(undefined, {timeZone: zoneName});
+    return true;
+  } catch {
+    return false;
+  }
 }
