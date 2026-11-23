@@ -4,7 +4,7 @@ import {describe, it, beforeEach, afterEach} from 'node:test';
 import {ADB} from 'appium-adb';
 import sinon from 'sinon';
 
-import {getDeviceTime} from '../../../lib/commands/time.js';
+import {adjustTimeZone, getDeviceTime} from '../../../lib/commands/time.js';
 import {AndroidDriver} from '../../../lib/driver.js';
 
 describe('Time Commands', function () {
@@ -43,6 +43,97 @@ describe('Time Commands', function () {
       const result = await getDeviceTime.call(driver, 'YYYY-MM-DD HH:mm:ss');
 
       assert.strictEqual(result, 'invalid-date');
+    });
+  });
+
+  describe('adjustTimeZone', function () {
+    it('sets canonical IANA time zones verbatim', async function () {
+      const shellStub = sandbox.stub(driver.adb, 'shell').resolves('');
+
+      for (const zone of ['America/New_York', 'Europe/London', 'Africa/Dar_es_Salaam', 'America/Port-au-Prince']) {
+        shellStub.resetHistory();
+        await adjustTimeZone.call(driver, zone);
+        sinon.assert.calledOnceWithExactly(shellStub, ['service', 'call', 'alarm', '3', 's16', zone]);
+      }
+    });
+
+    it('accepts UTC, GMT, and Etc/GMT time zones omitted by Intl.supportedValuesOf', async function () {
+      const shellStub = sandbox.stub(driver.adb, 'shell').resolves('');
+
+      for (const zone of ['UTC', 'Etc/UTC', 'GMT', 'Etc/GMT', 'Etc/GMT+5', 'Etc/GMT-8']) {
+        shellStub.resetHistory();
+        await adjustTimeZone.call(driver, zone);
+        sinon.assert.calledOnceWithExactly(shellStub, ['service', 'call', 'alarm', '3', 's16', zone]);
+      }
+    });
+
+    it('accepts modern canonical IANA names and aliases omitted by Intl.supportedValuesOf', async function () {
+      const shellStub = sandbox.stub(driver.adb, 'shell').resolves('');
+
+      for (const zone of [
+        'Europe/Kyiv',
+        'Asia/Kolkata',
+        'Asia/Ho_Chi_Minh',
+        'America/Argentina/Buenos_Aires',
+        'Asia/Kathmandu',
+        'Asia/Yangon',
+        'US/Eastern',
+        'PST8PDT',
+        'CET',
+      ]) {
+        shellStub.resetHistory();
+        await adjustTimeZone.call(driver, zone);
+        sinon.assert.calledOnceWithExactly(shellStub, ['service', 'call', 'alarm', '3', 's16', zone]);
+      }
+    });
+
+    it('rejects invalid, offset, malformed, lowercase-segment, and mis-cased canonical time zones', async function () {
+      const shellStub = sandbox.stub(driver.adb, 'shell').resolves('');
+
+      for (const invalidZone of [
+        '',
+        ' ',
+        ' UTC',
+        'UTC ',
+        'UTC\n',
+        'UTC\t',
+        '/America/New_York',
+        'America/New_York/',
+        'America//New_York',
+        'Invalid/Zone',
+        'Etc/GMT+15',
+        '+05:00',
+        '-04:00',
+        '+00:00',
+        '+0530',
+        '+05',
+        'GMT+05:00',
+        'UTC+05:00',
+        'Z',
+        'utc',
+        'Utc',
+        'gmt',
+        'etc/utc',
+        'america/new_york',
+        'America/New_york',
+        'AMERICA/NEW_YORK',
+        'europe/kyiv',
+        'Europe/kyiv',
+        'asia/kolkata',
+        'etc/gmt+5',
+        'Etc/Gmt+5',
+        undefined as unknown as string,
+        null as unknown as string,
+      ]) {
+        await assert.rejects(
+          adjustTimeZone.call(driver, invalidZone),
+          (err: unknown) =>
+            err instanceof Error &&
+            err.message.includes(`The provided time zone identifier '${String(invalidZone)}' is not known`),
+          `Expected '${String(invalidZone)}' to be rejected`,
+        );
+      }
+      assert.strictEqual(shellStub.callCount, 0);
     });
   });
 });

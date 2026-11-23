@@ -16,6 +16,7 @@ dayjs.extend(utc);
 dayjs.extend(customParseFormat);
 
 const DATETIME_FORMAT_ISO8601 = 'YYYY-MM-DDTHH:mm:ssZ';
+const IANA_TIME_ZONE_PATTERN = /^[A-Z][A-Za-z0-9_+-]{0,31}(?:\/[A-Z][A-Za-z0-9_+-]{0,31}){0,2}$/;
 
 /**
  * Gets the current device time.
@@ -79,5 +80,15 @@ function parseOffset(timestamp: string): number {
 }
 
 function isValidTimeZone(zoneName: string): boolean {
-  return Intl.supportedValuesOf('timeZone').includes(zoneName);
+  if (typeof zoneName !== 'string' || !IANA_TIME_ZONE_PATTERN.test(zoneName)) {
+    return false;
+  }
+  try {
+    const resolved = new Intl.DateTimeFormat('en-US', {timeZone: zoneName}).resolvedOptions().timeZone;
+    // Reject mis-cased canonical names while still allowing valid IANA aliases
+    // whose ICU primary ID differs (e.g. 'Europe/Kyiv' -> 'Europe/Kiev', 'Etc/UTC' -> 'UTC').
+    return resolved === zoneName || resolved.toLowerCase() !== zoneName.toLowerCase();
+  } catch {
+    return false;
+  }
 }
