@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [16.1.1](https://github.com/appium/appium-android/compare/appium-android-driver@16.1.0...appium-android-driver@16.1.1) (2026-11-23)
+
+### Bug Fixes
+
+* **driver-lib:** accept valid IANA time zone aliases and UTC in adjustTimeZone ([#179](https://github.com/appium/appium-android/issues/179)) ([c40a796](https://github.com/appium/appium-android/commit/c40a79631dd668d4013aa1c0c13998996f1f380e))
+
+
 ## [16.1.0](https://github.com/appium/appium-android/compare/appium-android-driver@16.0.1...appium-android-driver@16.1.0) (2026-11-23)
 
 ### Features
