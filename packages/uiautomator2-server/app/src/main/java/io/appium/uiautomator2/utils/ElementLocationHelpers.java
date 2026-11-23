@@ -107,8 +107,8 @@ public class ElementLocationHelpers {
         return new AccessibilityNodeInfoDumper(root, includedAttributes).findNodes(expression, multiple);
     }
 
-    public static NodeInfoList getClassChainNodeMatch(
-            By.ByAndroidClassChain by, @Nullable AndroidElement element, boolean multiple) {
+    public static NodeInfoList getTreeQueryNodeMatch(
+            By.ByTreeQuery by, @Nullable AndroidElement element, boolean multiple) {
         final long startTime = SystemClock.uptimeMillis();
         final AxTreeAccess tree = new AxTreeAccess(
                 element == null ? null : toAxNodeInfo(element.getUiObject()));
@@ -121,9 +121,8 @@ public class ElementLocationHelpers {
             return matchedNodes;
         } finally {
             tree.release(matchedNodes.getAll());
-            Logger.info(String.format("Took %sms to retrieve %s matches for '%s' class chain query",
-                    SystemClock.uptimeMillis() - startTime, matchedNodes.size(),
-                    by.getElementLocator()));
+            Logger.info(String.format("Took %sms to retrieve %s matches for %s",
+                    SystemClock.uptimeMillis() - startTime, matchedNodes.size(), by));
         }
     }
 
@@ -153,8 +152,8 @@ public class ElementLocationHelpers {
             return toSingleMatch(getXPathNodeMatch(by.getElementLocator(), null, false));
         } else if (by instanceof By.ByAndroidUiAutomator) {
             return new ByUiAutomatorFinder().findOne((By.ByAndroidUiAutomator) by);
-        } else if (by instanceof By.ByAndroidClassChain) {
-            return toSingleMatch(getClassChainNodeMatch((By.ByAndroidClassChain) by, null, false));
+        } else if (by instanceof By.ByTreeQuery) {
+            return toSingleMatch(getTreeQueryNodeMatch((By.ByTreeQuery) by, null, false));
         }
 
         throw new NotImplementedException(
@@ -174,8 +173,8 @@ public class ElementLocationHelpers {
             return toSingleMatch(getXPathNodeMatch(by.getElementLocator(), context, false));
         } else if (by instanceof By.ByAndroidUiAutomator) {
             return new ByUiAutomatorFinder().findOne((By.ByAndroidUiAutomator) by, context);
-        } else if (by instanceof By.ByAndroidClassChain) {
-            return toSingleMatch(getClassChainNodeMatch((By.ByAndroidClassChain) by, context, false));
+        } else if (by instanceof By.ByTreeQuery) {
+            return toSingleMatch(getTreeQueryNodeMatch((By.ByTreeQuery) by, context, false));
         }
 
         throw new NotImplementedException(
@@ -196,8 +195,8 @@ public class ElementLocationHelpers {
             return toMatches(getXPathNodeMatch(by.getElementLocator(), null, true));
         } else if (by instanceof By.ByAndroidUiAutomator) {
             return new ByUiAutomatorFinder().findMany((By.ByAndroidUiAutomator) by);
-        } else if (by instanceof By.ByAndroidClassChain) {
-            return toMatches(getClassChainNodeMatch((By.ByAndroidClassChain) by, null, true));
+        } else if (by instanceof By.ByTreeQuery) {
+            return toMatches(getTreeQueryNodeMatch((By.ByTreeQuery) by, null, true));
         }
 
         throw new NotImplementedException(
@@ -216,8 +215,8 @@ public class ElementLocationHelpers {
             return toMatches(getXPathNodeMatch(by.getElementLocator(), context, true));
         } else if (by instanceof By.ByAndroidUiAutomator) {
             return new ByUiAutomatorFinder().findMany((By.ByAndroidUiAutomator) by, context);
-        } else if (by instanceof By.ByAndroidClassChain) {
-            return toMatches(getClassChainNodeMatch((By.ByAndroidClassChain) by, context, true));
+        } else if (by instanceof By.ByTreeQuery) {
+            return toMatches(getTreeQueryNodeMatch((By.ByTreeQuery) by, context, true));
         }
 
         throw new NotImplementedException(

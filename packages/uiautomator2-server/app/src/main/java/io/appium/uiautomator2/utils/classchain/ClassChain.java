@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import io.appium.uiautomator2.utils.predicate.PredicateNode;
+
 /**
  * A parsed class chain: at least one step. The first step is relative to the search root
  * (window roots or the context element).
@@ -30,6 +32,14 @@ public final class ClassChain {
 
     ClassChain(List<ChainStep> steps) {
         this.steps = Collections.unmodifiableList(new ArrayList<>(steps));
+    }
+
+    /** The chain that finds all descendants of the search root matching the predicate. */
+    public static ClassChain ofPredicate(PredicateNode predicate) {
+        return new ClassChain(Collections.singletonList(new ChainStep(
+                ChainStep.Axis.DESCENDANT, null,
+                Collections.singletonList(new ChainStep.Filter(ChainStep.Scope.SELF, predicate)),
+                null)));
     }
 
     public List<ChainStep> getSteps() {

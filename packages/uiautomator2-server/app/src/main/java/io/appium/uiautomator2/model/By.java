@@ -18,6 +18,7 @@ package io.appium.uiautomator2.model;
 
 import io.appium.uiautomator2.utils.classchain.ClassChain;
 import io.appium.uiautomator2.utils.classchain.ClassChainParser;
+import io.appium.uiautomator2.utils.predicate.PredicateParser;
 
 /**
  * Mechanism used to locate elements within a document. In order to create your own locating
@@ -72,6 +73,14 @@ public abstract class By {
                     "Cannot find elements when '-android class chain' is null.");
         }
         return new ByAndroidClassChain(expression);
+    }
+
+    public static By androidPredicate(String expression) {
+        if (expression == null) {
+            throw new IllegalArgumentException(
+                    "Cannot find elements when '-android predicate string' is null.");
+        }
+        return new ByAndroidPredicate(expression);
     }
 
     public static By text(final String text) {
@@ -195,14 +204,14 @@ public abstract class By {
         }
     }
 
-    public static class ByAndroidClassChain extends By {
+    /** A locator that is evaluated on the accessibility tree as a parsed class chain. */
+    public abstract static class ByTreeQuery extends By {
         private final String expression;
         private final ClassChain chain;
 
-        /** @throws io.appium.uiautomator2.common.exceptions.ClassChainSyntaxException if invalid */
-        public ByAndroidClassChain(String expression) {
+        ByTreeQuery(String expression, ClassChain chain) {
             this.expression = expression;
-            this.chain = ClassChainParser.parse(expression);
+            this.chain = chain;
         }
 
         public ClassChain getChain() {
@@ -213,10 +222,30 @@ public abstract class By {
         public String getElementLocator() {
             return expression;
         }
+    }
+
+    public static class ByAndroidClassChain extends ByTreeQuery {
+        /** @throws io.appium.uiautomator2.common.exceptions.ClassChainSyntaxException if invalid */
+        public ByAndroidClassChain(String expression) {
+            super(expression, ClassChainParser.parse(expression));
+        }
 
         @Override
         public String toString() {
-            return "By.AndroidClassChain: " + expression;
+            return "By.AndroidClassChain: " + getElementLocator();
+        }
+    }
+
+    /** Matches all descendants of the search root that satisfy the predicate. */
+    public static class ByAndroidPredicate extends ByTreeQuery {
+        /** @throws io.appium.uiautomator2.common.exceptions.PredicateSyntaxException if invalid */
+        public ByAndroidPredicate(String expression) {
+            super(expression, ClassChain.ofPredicate(PredicateParser.parse(expression)));
+        }
+
+        @Override
+        public String toString() {
+            return "By.AndroidPredicate: " + getElementLocator();
         }
     }
 

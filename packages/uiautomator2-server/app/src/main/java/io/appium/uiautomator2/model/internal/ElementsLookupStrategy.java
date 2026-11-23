@@ -27,7 +27,8 @@ public enum ElementsLookupStrategy {
     BY_ACCESSIBILITY_ID("accessibility id"),
     BY_CLASS("class name"),
     BY_UIAUTOMATOR("-android uiautomator"),
-    BY_CLASS_CHAIN("-android class chain");
+    BY_CLASS_CHAIN("-android class chain"),
+    BY_PREDICATE("-android predicate string");
 
     private final String strategyName;
 
@@ -68,6 +69,8 @@ public enum ElementsLookupStrategy {
                 return By.androidUiAutomator(expression);
             case BY_CLASS_CHAIN:
                 return By.androidClassChain(expression);
+            case BY_PREDICATE:
+                return By.androidPredicate(expression);
             default:
                 throw new IllegalStateException(
                         String.format("%s cannot be transformed to a selector", this.name()));
