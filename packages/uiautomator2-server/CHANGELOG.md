@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.5.0](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.4.0...appium-uiautomator2-server@11.5.0) (2026-11-23)
+
+### Features
+
+* **uiautomator2-server:** add the -android class chain locator strategy ([#176](https://github.com/appium/appium-android/issues/176)) ([3a01d2f](https://github.com/appium/appium-android/commit/3a01d2fe14b3c7f90f19f55103b714f726ad7fc2))
+
+
 ## [11.4.0](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.3.0...appium-uiautomator2-server@11.4.0) (2026-11-22)
 
 ### Features
