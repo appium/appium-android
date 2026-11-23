@@ -356,7 +356,16 @@ class AndroidDriver<C extends AndroidDriverConstraints = AndroidDriverConstraint
   getAdbHost(): string | undefined {
     const {adbHost, remoteAdbHost} = this.caps as AndroidDriverCaps;
     const opts = this.opts as AndroidDriverOpts | undefined;
-    return adbHost || remoteAdbHost || opts?.adbHost || opts?.remoteAdbHost || undefined;
+    const initialOpts = this.initialOpts as AndroidDriverOpts;
+    return (
+      adbHost ||
+      remoteAdbHost ||
+      opts?.adbHost ||
+      opts?.remoteAdbHost ||
+      initialOpts.adbHost ||
+      initialOpts.remoteAdbHost ||
+      undefined
+    );
   }
 
   override async getLogTypes(): Promise<string[]> {

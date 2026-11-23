@@ -16,6 +16,11 @@ Android driver subclasses can use `this.getAdbHost()` to resolve the same host
 for their downstream connections, including when they call `BaseDriver.createSession`
 directly. The resolver leaves the original session capabilities and options intact.
 
+For remote ADB sessions, keep using `appium:remoteAdbHost` with UiAutomator2 and
+Espresso until the installed driver uses `getAdbHost()` for its proxy connection.
+With older versions, setting only `appium:adbHost` can send ADB commands to the
+remote server while the proxy still connects to the local machine.
+
 ## Examples
 
 - [`examples/media-stream-client.mts`](examples/media-stream-client.mts): a Node.js client that decodes the `appium:mediaStream` BiDi events into a local MJPEG HTTP server or an `.mp4` file written by `ffmpeg`. See `mobile: startMediaStream` in the driver docs.

@@ -70,6 +70,33 @@ describe('ADB server host capabilities', function () {
     }
   });
 
+  for (const capability of ['adbHost', 'remoteAdbHost'] as const) {
+    it(`should retain a driver default when the session supplies an empty ${capability}`, async function () {
+      const opts = {} as AndroidDriverOpts;
+      opts[capability] = 'lab.example';
+      const driver = new DirectBaseDriver(opts);
+      const createADB = sinon.stub(ADB, 'createADB').resolves(new ADB());
+      try {
+        const [, sessionCaps] = await driver.createSession({
+          alwaysMatch: {
+            platformName: 'Android',
+            'appium:automationName': 'UiAutomator2',
+            [`appium:${capability}`]: '',
+          },
+          firstMatch: [{}],
+        });
+        assert.equal(sessionCaps[capability], '');
+        assert.equal(driver.opts[capability], '');
+        assert.equal(driver.getAdbHost(), 'lab.example');
+        await driver.createADB();
+        assert.equal(createADB.firstCall.args[0]?.remoteAdbHost, 'lab.example');
+      } finally {
+        createADB.restore();
+        await driver.deleteSession();
+      }
+    });
+  }
+
   it('should reject a non-string adbHost before starting the session', async function () {
     const driver = new AndroidDriver();
     await assert.rejects(
