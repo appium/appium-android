@@ -174,6 +174,8 @@ public class TestUtils {
             strategy = "xpath";
         } else if (by instanceof By.ByAndroidUiAutomator || by instanceof By.ByText) {
             strategy = "-android uiautomator";
+        } else if (by instanceof By.ByAndroidClassChain) {
+            strategy = "-android class chain";
         } else {
             strategy = "unsupported";
         }

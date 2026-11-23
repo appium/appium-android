@@ -3,5 +3,8 @@
         <activity android:name="io.appium.uiautomator2.unittest.fixture.ClassRegexActivity"
                   android:exported="false"
                   android:theme="@android:style/Theme.Material.Light.NoActionBar" />
+        <activity android:name="io.appium.uiautomator2.unittest.fixture.ClassChainActivity"
+                  android:exported="false"
+                  android:theme="@android:style/Theme.Material.Light.NoActionBar" />
     </application>
 </manifest>

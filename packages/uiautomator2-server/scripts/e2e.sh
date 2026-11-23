@@ -27,7 +27,8 @@ run_class() {
 }
 
 # Small classes run whole on one shard (round-robin); the slowest one is split across all shards by test
-whole_classes=(ActionsCommandsTest AlertCommandsTest ElementCommandsTest ClassRegexCommandsTest)
+whole_classes=(ActionsCommandsTest AlertCommandsTest ElementCommandsTest ClassRegexCommandsTest
+               ClassChainCommandsTest)
 did_fail=0
 for i in "${!whole_classes[@]}"; do
   if (( i % shard_count == shard_index )) && ! run_class "${whole_classes[$i]}" whole; then

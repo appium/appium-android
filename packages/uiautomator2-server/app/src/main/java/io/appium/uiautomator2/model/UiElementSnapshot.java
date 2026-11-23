@@ -367,7 +367,7 @@ public class UiElementSnapshot extends UiElement<AccessibilityNodeInfo, UiElemen
      * @see <a href="https://issuetracker.google.com/issues/354958193">https://issuetracker.google.com/issues/354958193</a>
      * @return true, if the given node should be traversed further else false
      */
-    private boolean shouldTraverseIfRequested(AccessibilityNodeInfo node) {
+    public static boolean shouldTraverseIfRequested(AccessibilityNodeInfo node) {
         String className = StringHelpers.charSequenceToNullableString(node.getClassName());
         if (className == null) {
             return false;

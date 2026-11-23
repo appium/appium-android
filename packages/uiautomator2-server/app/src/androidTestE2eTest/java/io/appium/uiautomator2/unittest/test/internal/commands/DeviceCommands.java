@@ -73,7 +73,18 @@ public class DeviceCommands {
      * @return Response from UiAutomator2 server
      */
     public static Response findElements(By by) {
-        JsonObject json = TestUtils.convertByToJson(by, "");
+        return findElements(by, "");
+    }
+
+    /**
+     * finds the elements using By selector below a context element
+     *
+     * @param by        Element locator
+     * @param contextId Context id
+     * @return Response from UiAutomator2 server
+     */
+    public static Response findElements(By by, String contextId) {
+        JsonObject json = TestUtils.convertByToJson(by, contextId);
         return Client.post("/elements", json);
     }
 

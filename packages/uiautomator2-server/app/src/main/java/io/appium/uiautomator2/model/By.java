@@ -16,6 +16,9 @@
 
 package io.appium.uiautomator2.model;
 
+import io.appium.uiautomator2.utils.classchain.ClassChain;
+import io.appium.uiautomator2.utils.classchain.ClassChainParser;
+
 /**
  * Mechanism used to locate elements within a document. In order to create your own locating
  * mechanisms, it is possible to subclass this class and override the protected methods as
@@ -61,6 +64,14 @@ public abstract class By {
                     "Cannot find elements when '-android uiautomator' is null.");
         }
         return new ByAndroidUiAutomator(expression);
+    }
+
+    public static By androidClassChain(String expression) {
+        if (expression == null) {
+            throw new IllegalArgumentException(
+                    "Cannot find elements when '-android class chain' is null.");
+        }
+        return new ByAndroidClassChain(expression);
     }
 
     public static By text(final String text) {
@@ -181,6 +192,31 @@ public abstract class By {
         @Override
         public String toString() {
             return "By.AndroidUiAutomator: " + expression;
+        }
+    }
+
+    public static class ByAndroidClassChain extends By {
+        private final String expression;
+        private final ClassChain chain;
+
+        /** @throws io.appium.uiautomator2.common.exceptions.ClassChainSyntaxException if invalid */
+        public ByAndroidClassChain(String expression) {
+            this.expression = expression;
+            this.chain = ClassChainParser.parse(expression);
+        }
+
+        public ClassChain getChain() {
+            return chain;
+        }
+
+        @Override
+        public String getElementLocator() {
+            return expression;
+        }
+
+        @Override
+        public String toString() {
+            return "By.AndroidClassChain: " + expression;
         }
     }
 

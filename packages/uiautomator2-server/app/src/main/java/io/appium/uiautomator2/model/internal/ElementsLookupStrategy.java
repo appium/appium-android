@@ -26,7 +26,8 @@ public enum ElementsLookupStrategy {
     BY_XPATH("xpath"),
     BY_ACCESSIBILITY_ID("accessibility id"),
     BY_CLASS("class name"),
-    BY_UIAUTOMATOR("-android uiautomator");
+    BY_UIAUTOMATOR("-android uiautomator"),
+    BY_CLASS_CHAIN("-android class chain");
 
     private final String strategyName;
 
@@ -65,6 +66,8 @@ public enum ElementsLookupStrategy {
                 return By.accessibilityId(expression);
             case BY_UIAUTOMATOR:
                 return By.androidUiAutomator(expression);
+            case BY_CLASS_CHAIN:
+                return By.androidClassChain(expression);
             default:
                 throw new IllegalStateException(
                         String.format("%s cannot be transformed to a selector", this.name()));
