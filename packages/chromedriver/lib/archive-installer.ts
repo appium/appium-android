@@ -23,6 +23,8 @@ export async function installDriverFromArchive(opts: {
   const {archive, executableName, destination} = opts;
   const temporaryRoot = process.env.APPIUM_TMP_DIR || os.tmpdir();
   await fs.mkdirp(temporaryRoot);
+  // tempDir.openDir() uses recursive mkdir and can reuse an existing directory.
+  // Trust registration needs fresh, private staging under Appium's configured temporary root.
   const staging = await mkdtemp(path.resolve(temporaryRoot, 'driver-archive-'));
   try {
     await zip.extractStreamTo(archive, staging);
