@@ -49,26 +49,40 @@ describe('Time Commands', function () {
   describe('adjustTimeZone', function () {
     it('sets canonical IANA time zones verbatim', async function () {
       const shellStub = sandbox.stub(driver.adb, 'shell').resolves('');
+      const getTimeZoneStub = sandbox.stub(driver.adb, 'getTimeZone');
+      const warnSpy = sandbox.spy(driver.log, 'warn');
 
       for (const zone of ['America/New_York', 'Europe/London', 'Africa/Dar_es_Salaam', 'America/Port-au-Prince']) {
         shellStub.resetHistory();
+        getTimeZoneStub.resetHistory();
+        getTimeZoneStub.resolves(zone);
         await adjustTimeZone.call(driver, zone);
         sinon.assert.calledOnceWithExactly(shellStub, ['service', 'call', 'alarm', '3', 's16', zone]);
+        sinon.assert.calledOnce(getTimeZoneStub);
       }
+      assert.strictEqual(warnSpy.callCount, 0);
     });
 
     it('accepts UTC, GMT, and Etc/GMT time zones omitted by Intl.supportedValuesOf', async function () {
       const shellStub = sandbox.stub(driver.adb, 'shell').resolves('');
+      const getTimeZoneStub = sandbox.stub(driver.adb, 'getTimeZone');
+      const warnSpy = sandbox.spy(driver.log, 'warn');
 
       for (const zone of ['UTC', 'Etc/UTC', 'GMT', 'Etc/GMT', 'Etc/GMT+5', 'Etc/GMT-8']) {
         shellStub.resetHistory();
+        getTimeZoneStub.resetHistory();
+        getTimeZoneStub.resolves(zone);
         await adjustTimeZone.call(driver, zone);
         sinon.assert.calledOnceWithExactly(shellStub, ['service', 'call', 'alarm', '3', 's16', zone]);
+        sinon.assert.calledOnce(getTimeZoneStub);
       }
+      assert.strictEqual(warnSpy.callCount, 0);
     });
 
     it('accepts modern canonical IANA names and aliases omitted by Intl.supportedValuesOf', async function () {
       const shellStub = sandbox.stub(driver.adb, 'shell').resolves('');
+      const getTimeZoneStub = sandbox.stub(driver.adb, 'getTimeZone');
+      const warnSpy = sandbox.spy(driver.log, 'warn');
 
       for (const zone of [
         'Europe/Kyiv',
@@ -82,13 +96,43 @@ describe('Time Commands', function () {
         'CET',
       ]) {
         shellStub.resetHistory();
+        getTimeZoneStub.resetHistory();
+        getTimeZoneStub.resolves(zone);
         await adjustTimeZone.call(driver, zone);
         sinon.assert.calledOnceWithExactly(shellStub, ['service', 'call', 'alarm', '3', 's16', zone]);
+        sinon.assert.calledOnce(getTimeZoneStub);
       }
+      assert.strictEqual(warnSpy.callCount, 0);
     });
 
-    it('rejects invalid, offset, malformed, lowercase-segment, and mis-cased canonical time zones', async function () {
+    it('warns when the device reports a different time zone after setting it', async function () {
       const shellStub = sandbox.stub(driver.adb, 'shell').resolves('');
+      const getTimeZoneStub = sandbox.stub(driver.adb, 'getTimeZone').resolves('GMT\n');
+      const warnSpy = sandbox.spy(driver.log, 'warn');
+
+      await adjustTimeZone.call(driver, 'Europe/Kyiv');
+
+      sinon.assert.calledOnceWithExactly(shellStub, ['service', 'call', 'alarm', '3', 's16', 'Europe/Kyiv']);
+      sinon.assert.calledOnce(getTimeZoneStub);
+      sinon.assert.calledOnce(warnSpy);
+      assert.match(String(warnSpy.firstCall.args[0]), /'GMT'.*'Europe\/Kyiv'/);
+    });
+
+    it('does not fail if reading back the device time zone fails', async function () {
+      const shellStub = sandbox.stub(driver.adb, 'shell').resolves('');
+      const getTimeZoneStub = sandbox.stub(driver.adb, 'getTimeZone').rejects(new Error('getprop failed'));
+      const warnSpy = sandbox.spy(driver.log, 'warn');
+
+      await adjustTimeZone.call(driver, 'UTC');
+
+      sinon.assert.calledOnceWithExactly(shellStub, ['service', 'call', 'alarm', '3', 's16', 'UTC']);
+      sinon.assert.calledOnce(getTimeZoneStub);
+      assert.strictEqual(warnSpy.callCount, 0);
+    });
+
+    it('rejects invalid, offset, malformed, and mis-cased canonical and alias time zones', async function () {
+      const shellStub = sandbox.stub(driver.adb, 'shell').resolves('');
+      const getTimeZoneStub = sandbox.stub(driver.adb, 'getTimeZone');
 
       for (const invalidZone of [
         '',
@@ -97,6 +141,7 @@ describe('Time Commands', function () {
         'UTC ',
         'UTC\n',
         'UTC\t',
+        'UTC;id',
         '/America/New_York',
         'America/New_York/',
         'America//New_York',
@@ -113,13 +158,24 @@ describe('Time Commands', function () {
         'utc',
         'Utc',
         'gmt',
+        'Gmt',
         'etc/utc',
+        'Etc/Utc',
+        'ETC/UTC',
+        'Etc/Gmt',
         'america/new_york',
         'America/New_york',
         'AMERICA/NEW_YORK',
         'europe/kyiv',
         'Europe/kyiv',
+        'Europe/KYIV',
         'asia/kolkata',
+        'Asia/KOLKATA',
+        'Asia/Ho_chi_minh',
+        'Us/Eastern',
+        'US/EASTERN',
+        'Pst8pdt',
+        'Cet',
         'etc/gmt+5',
         'Etc/Gmt+5',
         undefined as unknown as string,
@@ -134,6 +190,7 @@ describe('Time Commands', function () {
         );
       }
       assert.strictEqual(shellStub.callCount, 0);
+      assert.strictEqual(getTimeZoneStub.callCount, 0);
     });
   });
 });
