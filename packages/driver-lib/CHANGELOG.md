@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [16.1.0](https://github.com/appium/appium-android/compare/appium-android-driver@16.0.1...appium-android-driver@16.1.0) (2026-11-23)
+
+### Features
+
+* **driver:** support the adbHost capability ([#155](https://github.com/appium/appium-android/issues/155)) ([c2b6ccd](https://github.com/appium/appium-android/commit/c2b6ccdf663c33d3e676d086e7360961d9d51821))
+
+
 ## [16.0.1](https://github.com/appium/appium-android/compare/appium-android-driver@16.0.0...appium-android-driver@16.0.1) (2026-11-23)
 
 **Note:** Version bump only for package appium-android-driver
