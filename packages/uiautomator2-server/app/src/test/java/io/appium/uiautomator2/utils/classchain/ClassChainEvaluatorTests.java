@@ -376,4 +376,40 @@ public class ClassChainEvaluatorTests {
         // text for every node, checked only for the matching text
         assertEquals(13 + 1, tree.attributeReads);
     }
+
+    @Test
+    public void firstMatchIsTheFirstOfAllMatches() {
+        String[] chains = {
+                "**/*/**/*[`text == 'Price'`]",
+                "**/" + LINEAR + "/**/" + TEXT,
+                "**/" + LINEAR + "[`clickable == false`]/**/*",
+                "**/*[`clickable == false`]/**/" + BUTTON,
+                "**/" + SWITCH + "/<*/^*",
+                "**/" + SWITCH + "/..",
+                "**/" + TEXT + "/..",
+                "**/" + LINEAR + "/>*/**/" + TEXT,
+                "**/*/~*/**/*[`checked == false`]",
+                "**/" + FRAME + "/**/" + LINEAR + "/*",
+                "*/*/*[2]/**/*",
+                "*/*/*[-1]/**/" + TEXT + "/..",
+                "**/*[2]/**/*/..",
+                "**/*[`text == 'nothing'`]/**/*",
+                "**/" + LINEAR + "/**/*[`text == 'nothing'`]/**/*",
+                "**/" + LINEAR + "[$text == 'Wi-Fi'$]/**/" + SWITCH,
+        };
+        for (String chain : chains) {
+            List<String> all = all(chain);
+            assertEquals(chain, all.isEmpty() ? list() : list(all.get(0)), first(chain));
+        }
+    }
+
+    @Test
+    public void firstMatchStopsFetchingAfterTheFirstIntermediateMatchThatLeadsToIt() {
+        String chain = "**/" + LINEAR + "[`clickable == true`]/**/*[`text == 'Wi-Fi'`]";
+        all(chain);
+        int eager = tree.visitedChildren;
+        tree = new FakeTree();
+        assertEquals(list("wifi"), first(chain));
+        assertTrue(tree.visitedChildren < eager);
+    }
 }

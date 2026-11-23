@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
+import java.util.NoSuchElementException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -56,17 +57,88 @@ public final class ClassChainEvaluator<N> {
      */
     public List<N> evaluate(ClassChain chain, N start, boolean multiple) {
         List<ChainStep> steps = chain.getSteps();
+        int lazyFrom = multiple ? steps.size() : firstLazyStep(steps);
         List<N> current = Collections.singletonList(start);
-        for (int i = 0; i < steps.size(); i++) {
+        for (int i = 0; i < lazyFrom; i++) {
             boolean isLast = i == steps.size() - 1;
             current = apply(steps.get(i), current, isLast && !multiple);
             if (current.isEmpty()) {
                 return current;
             }
         }
+        if (lazyFrom < steps.size()) {
+            // the first match needs no more of the intermediate matches than it takes to find it
+            Iterator<N> stream = current.iterator();
+            for (int i = lazyFrom; i < steps.size(); i++) {
+                stream = stage(steps.get(i), stream);
+            }
+            return stream.hasNext()
+                    ? Collections.singletonList(stream.next())
+                    : Collections.<N>emptyList();
+        }
         return multiple || current.size() == 1
                 ? current
                 : new ArrayList<>(current.subList(0, 1));
+    }
+
+    /**
+     * A position on a child or descendant step counts among all the matches of the step, so the
+     * steps up to the last such step run eagerly. The steps after it can be streamed, but that
+     * only pays off for two or more of them (the last step stops early anyway).
+     *
+     * @return the index of the first streamed step, or the number of steps if none is
+     */
+    private static int firstLazyStep(List<ChainStep> steps) {
+        int from = 0;
+        for (int i = steps.size() - 1; i >= 0; i--) {
+            ChainStep step = steps.get(i);
+            if (step.getPosition() != null && isDownwards(step)) {
+                from = i + 1;
+                break;
+            }
+        }
+        return steps.size() - from >= 2 ? from : steps.size();
+    }
+
+    private static boolean isDownwards(ChainStep step) {
+        return step.getAxis() == ChainStep.Axis.CHILD || step.isDescendant();
+    }
+
+    /** The matches of a step for the nodes of {@code sources}, in the order of the eager step. */
+    private Iterator<N> stage(ChainStep step, Iterator<N> sources) {
+        if (isDownwards(step)) {
+            return new DownwardMatches(step, sources, true);
+        }
+        Set<N> seen = new HashSet<>();
+        return new Iterator<N>() {
+            private Iterator<N> batch = Collections.emptyIterator();
+            private N next;
+
+            @Override
+            public boolean hasNext() {
+                while (next == null) {
+                    if (batch.hasNext()) {
+                        N candidate = batch.next();
+                        next = seen.add(candidate) ? candidate : null;
+                    } else if (sources.hasNext()) {
+                        batch = alongAxis(step, sources.next()).iterator();
+                    } else {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            @Override
+            public N next() {
+                if (!hasNext()) {
+                    throw new NoSuchElementException();
+                }
+                N result = next;
+                next = null;
+                return result;
+            }
+        };
     }
 
     private List<N> apply(ChainStep step, List<N> from, boolean firstOnly) {
@@ -87,44 +159,73 @@ public final class ClassChainEvaluator<N> {
         int limit = position != null ? (position > 0 ? position : UNLIMITED)
                 : firstOnly ? 1 : UNLIMITED;
         // overlapping roots would walk (and count) the same node more than once
-        Set<N> visited = from.size() > 1 ? new HashSet<>() : null;
+        Iterator<N> found = new DownwardMatches(step, from.iterator(), from.size() > 1);
         List<N> matches = new ArrayList<>();
-        for (N root : from) {
-            if (!collect(step, root, visited, matches, limit)) {
-                break;
-            }
+        while (matches.size() < limit && found.hasNext()) {
+            matches.add(found.next());
         }
         return select(position, matches);
     }
 
-    /** @return false once {@code limit} matches have been found */
-    private boolean collect(ChainStep step, N root, @Nullable Set<N> visited, List<N> matches,
-                            int limit) {
-        boolean descendants = step.isDescendant();
-        // iterators fetch the children on demand, so an early exit leaves the rest unfetched
-        Deque<Iterator<N>> pending = new ArrayDeque<>();
-        pending.push(tree.iterateChildren(root));
-        while (!pending.isEmpty()) {
-            Iterator<N> siblings = pending.peek();
-            if (!siblings.hasNext()) {
-                pending.pop();
-                continue;
-            }
-            N node = siblings.next();
-            if (visited != null && !visited.add(node)) {
-                continue;
-            }
-            if (matches(step, node)) {
-                matches.add(node);
-                if (matches.size() >= limit) {
-                    return false;
+    /**
+     * The matching children or descendants of the roots, one root after another in document
+     * order. The children are fetched on demand, so stopping early leaves the rest unfetched.
+     */
+    private final class DownwardMatches implements Iterator<N> {
+        private final ChainStep step;
+        private final boolean descendants;
+        private final Iterator<N> roots;
+        @Nullable
+        private final Set<N> visited;
+        private final Deque<Iterator<N>> pending = new ArrayDeque<>();
+        private N next;
+
+        DownwardMatches(ChainStep step, Iterator<N> roots, boolean dedupe) {
+            this.step = step;
+            this.descendants = step.isDescendant();
+            this.roots = roots;
+            this.visited = dedupe ? new HashSet<>() : null;
+        }
+
+        @Override
+        public boolean hasNext() {
+            while (next == null) {
+                if (pending.isEmpty()) {
+                    if (!roots.hasNext()) {
+                        return false;
+                    }
+                    pending.push(tree.iterateChildren(roots.next()));
+                    continue;
+                }
+                Iterator<N> siblings = pending.peek();
+                if (!siblings.hasNext()) {
+                    pending.pop();
+                    continue;
+                }
+                N node = siblings.next();
+                if (visited != null && !visited.add(node)) {
+                    continue;
+                }
+                boolean isMatch = matches(step, node);
+                if (descendants) {
+                    pending.push(tree.iterateChildren(node));
+                }
+                if (isMatch) {
+                    next = node;
                 }
             }
-            if (descendants) {
-                pending.push(tree.iterateChildren(node));
-            }
+            return true;
         }
-        return true;
+
+        @Override
+        public N next() {
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+            N result = next;
+            next = null;
+            return result;
+        }
     }
 
     // ---- axis steps ----
@@ -132,15 +233,20 @@ public final class ClassChainEvaluator<N> {
     private List<N> applyAlongAxis(ChainStep step, List<N> from) {
         Set<N> result = new LinkedHashSet<>();
         for (N node : from) {
-            List<N> matched = new ArrayList<>();
-            for (N candidate : axisNodes(step.getAxis(), node)) {
-                if (matches(step, candidate)) {
-                    matched.add(candidate);
-                }
-            }
-            result.addAll(select(step.getPosition(), matched));
+            result.addAll(alongAxis(step, node));
         }
         return new ArrayList<>(result);
+    }
+
+    /** The matches of an axis step for one node, the position counts for the node alone. */
+    private List<N> alongAxis(ChainStep step, N node) {
+        List<N> matched = new ArrayList<>();
+        for (N candidate : axisNodes(step.getAxis(), node)) {
+            if (matches(step, candidate)) {
+                matched.add(candidate);
+            }
+        }
+        return select(step.getPosition(), matched);
     }
 
     /** The nodes of the axis, nearest first for the reverse ones. */
