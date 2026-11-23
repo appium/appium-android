@@ -39,6 +39,11 @@ The trust store is never read from `executableDir`, since that folder may be pro
 Any other executable, including custom or self-built builds, drivers that are not on the allowlists
 and the ones set by `executable`/`executableDir`, is rejected.
 
+Integrations can call `installEdgeDriver({browserVersion, executableDir})` to install the official
+Microsoft Edge WebDriver for the host platform. Pass the four-component Edge browser version.
+The installer registers the SHA-256 of the freshly extracted executable and returns its path under
+`executableDir/<driver-version>/`. Call it on a cache miss when autodownload is enabled.
+
 To restore the legacy behavior and run any executable without verification, set the
 `allowUnverifiedExecutable` option. In the Appium UiAutomator2/Espresso drivers it is controlled by the
 `chromedriver_allow_any_executable` server feature (`--allow-insecure=<driver>:chromedriver_allow_any_executable`).

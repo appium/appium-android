@@ -13,8 +13,9 @@ import {
   getEdgeDriverChecksums,
   getTrustStoreDir,
   sha256File,
+  trustChecksumOf,
 } from '../../lib/checksums.js';
-import {Chromedriver, trustChecksumOf} from '../../lib/index.js';
+import {Chromedriver} from '../../lib/chromedriver.js';
 import {CHROMEDRIVER_CHROME_MAPPING} from '../../lib/utils.js';
 
 describe('checksums', function () {
