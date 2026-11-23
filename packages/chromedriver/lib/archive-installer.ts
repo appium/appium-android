@@ -1,9 +1,9 @@
 import {randomUUID} from 'node:crypto';
-import {chmod, constants, copyFile, mkdir, mkdtemp, readdir, rename, rm} from 'node:fs/promises';
+import {copyFile, mkdtemp, rm} from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 
-import {zip} from '@appium/support';
+import {fs, zip} from '@appium/support';
 
 import {trustChecksumOf} from './checksums.js';
 
@@ -24,26 +24,26 @@ export async function installDriverFromArchive(opts: {
   const staging = await mkdtemp(path.join(os.tmpdir(), 'driver-archive-'));
   try {
     await zip.extractStreamTo(archive, staging);
-    const entries = await readdir(staging, {recursive: true, withFileTypes: true});
+    const entries = await fs.readdir(staging, {recursive: true, withFileTypes: true});
     const matches = entries.filter((entry) => entry.isFile() && entry.name === executableName);
     if (matches.length !== 1) {
       throw new Error(`Expected one executable named '${executableName}' in the archive, found ${matches.length}`);
     }
     const executable = path.join(matches[0].parentPath, matches[0].name);
-    await chmod(executable, 0o755);
+    await fs.chmod(executable, 0o755);
     const destinationDir = path.dirname(destination);
-    await mkdir(destinationDir, {recursive: true});
+    await fs.mkdirp(destinationDir);
     // Publish a complete file even when staging and the destination are on different volumes.
     const pending = path.join(destinationDir, `.driver-${randomUUID()}`);
-    await copyFile(executable, pending, constants.COPYFILE_EXCL);
+    await copyFile(executable, pending, fs.constants.COPYFILE_EXCL);
     try {
       await trustChecksumOf(executable);
-      await rename(pending, destination);
+      await fs.rename(pending, destination);
     } finally {
       await rm(pending, {force: true});
     }
     return destination;
   } finally {
-    await rm(staging, {recursive: true, force: true});
+    await fs.rimraf(staging);
   }
 }
