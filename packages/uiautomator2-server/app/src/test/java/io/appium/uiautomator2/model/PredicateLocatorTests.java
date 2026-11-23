@@ -25,6 +25,7 @@ import io.appium.uiautomator2.model.internal.ElementsLookupStrategy;
 import io.appium.uiautomator2.utils.classchain.ChainStep;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -59,8 +60,8 @@ public class PredicateLocatorTests {
         assertEquals(By.androidPredicate("text == 'a'"), By.androidPredicate("text == 'a'"));
         assertEquals(By.androidPredicate("text == 'a'").hashCode(),
                 By.androidPredicate("text == 'a'").hashCode());
-        assertTrue(!By.androidPredicate("text == 'a'").equals(By.androidPredicate("text == 'b'")));
-        assertTrue(!By.androidPredicate("text == 'a'").equals(By.androidClassChain("**/*")));
+        assertNotEquals(By.androidPredicate("text == 'a'"), By.androidPredicate("text == 'b'"));
+        assertNotEquals(By.androidPredicate("text == 'a'"), By.androidClassChain("**/*"));
     }
 
     @Test

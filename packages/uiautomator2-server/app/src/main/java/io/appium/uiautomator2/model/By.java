@@ -204,7 +204,7 @@ public abstract class By {
         }
     }
 
-    /** A locator that is evaluated on the accessibility tree as a parsed class chain. */
+    /** A locator evaluated on the accessibility tree as a class chain, parsed from the expression. */
     public abstract static class ByTreeQuery extends By {
         private final String expression;
         private final ClassChain chain;
@@ -236,7 +236,7 @@ public abstract class By {
         }
     }
 
-    /** Matches all descendants of the search root that satisfy the predicate. */
+    /** Matches all descendants of the search root that satisfy the predicate (a one-step chain). */
     public static class ByAndroidPredicate extends ByTreeQuery {
         /** @throws io.appium.uiautomator2.common.exceptions.PredicateSyntaxException if invalid */
         public ByAndroidPredicate(String expression) {
