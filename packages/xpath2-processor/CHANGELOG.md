@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.0.7](https://github.com/appium/appium-android/compare/@appium/xpath2-processor@2.0.6...@appium/xpath2-processor@2.0.7) (2026-11-23)
+
+### Bug Fixes
+
+* **xpath2-processor:** count positions of reverse axis steps in reverse document order ([#178](https://github.com/appium/appium-android/issues/178)) ([983b9fd](https://github.com/appium/appium-android/commit/983b9fd474d0264ad270fa1492387e8bc82960e5))
+
+
 ## [2.0.6](https://github.com/appium/appium-android/compare/@appium/xpath2-processor@2.0.5...@appium/xpath2-processor@2.0.6) (2026-11-19)
 
 ### Miscellaneous Chores
