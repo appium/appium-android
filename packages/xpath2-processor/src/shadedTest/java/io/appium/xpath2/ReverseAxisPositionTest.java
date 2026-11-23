@@ -133,6 +133,15 @@ public class ReverseAxisPositionTest {
     }
 
     @Test
+    public void relativeReverseStepsWithoutPredicatesAreInDocumentOrder() throws Exception {
+        Element a4 = (Element) doc.getElementsByTagName("a").item(3);
+        assertEquals(list("r", "c"), evaluate("ancestor::*", a4));
+        assertEquals(list("r", "c"), evaluate("ancestor::*[true()]", a4));
+        assertEquals(list("r", "c", "a4"), evaluate("ancestor-or-self::*", a4));
+        assertEquals(list("a1", "a2", "a3", "b"), evaluate("preceding::*", a4));
+    }
+
+    @Test
     public void forwardAxesAndOtherQueriesAreUnchanged() throws Exception {
         assertEquals(list("c"), evaluate("//b/following-sibling::*[1]"));
         assertEquals(list("a3"), evaluate("//a[@n = '1']/following-sibling::*[2]"));
