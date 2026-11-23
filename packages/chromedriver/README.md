@@ -42,7 +42,7 @@ and the ones set by `executable`/`executableDir`, is rejected.
 Driver integrations can call `installDriverFromArchive({archive, executableName, destination})`
 after obtaining a ZIP stream from a distribution source they trust. The caller controls which source
 can supply trusted drivers. The helper selects the uniquely named regular file in private staging,
-registers its SHA-256, and publishes it at the destination.
+computes its SHA-256 there, and registers the digest after publishing the executable at the destination.
 
 To restore the legacy behavior and run any executable without verification, set the
 `allowUnverifiedExecutable` option. In the Appium UiAutomator2/Espresso drivers it is controlled by the

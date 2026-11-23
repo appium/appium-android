@@ -34,6 +34,17 @@ it('installs and trusts only the executable extracted from the archive', async (
   await fs.writeFile(path.join(source, 'nested', name), 'downloaded');
   const archive = await zip.toInMemoryZip(source);
   const opts = {executableName: name, destination: target};
+  await t.test('does not register the digest or leave a temporary copy when publication fails', async () => {
+    const blocked = path.join(root, 'blocked');
+    const destination = path.join(blocked, name);
+    await fs.mkdirp(destination);
+    await assert.rejects(installDriverFromArchive({...opts, archive: Readable.from([archive]), destination}), {
+      syscall: 'rename',
+    });
+    assert.deepEqual(await fs.readdir(blocked), [name]);
+    await assert.rejects(assertKnownChromedriver(path.join(source, 'nested', name)), /does not match/);
+  });
+
   assert.equal(await installDriverFromArchive({...opts, archive: Readable.from([archive])}), target);
   assert.equal(await fs.readFile(target, 'utf8'), 'downloaded');
   await assertKnownChromedriver(target);
