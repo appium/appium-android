@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -100,10 +101,16 @@ public final class ClassChainEvaluator<N> {
     private boolean collect(ChainStep step, N root, @Nullable Set<N> visited, List<N> matches,
                             int limit) {
         boolean descendants = step.isDescendant();
-        Deque<N> pending = new ArrayDeque<>();
-        pushChildren(pending, root);
+        // iterators fetch the children on demand, so an early exit leaves the rest unfetched
+        Deque<Iterator<N>> pending = new ArrayDeque<>();
+        pending.push(tree.iterateChildren(root));
         while (!pending.isEmpty()) {
-            N node = pending.pop();
+            Iterator<N> siblings = pending.peek();
+            if (!siblings.hasNext()) {
+                pending.pop();
+                continue;
+            }
+            N node = siblings.next();
             if (visited != null && !visited.add(node)) {
                 continue;
             }
@@ -114,18 +121,10 @@ public final class ClassChainEvaluator<N> {
                 }
             }
             if (descendants) {
-                pushChildren(pending, node);
+                pending.push(tree.iterateChildren(node));
             }
         }
         return true;
-    }
-
-    /** Pushes the children so that the first one is popped first. */
-    private void pushChildren(Deque<N> pending, N node) {
-        List<N> children = tree.getChildren(node);
-        for (int i = children.size() - 1; i >= 0; i--) {
-            pending.push(children.get(i));
-        }
     }
 
     // ---- axis steps ----
@@ -217,10 +216,10 @@ public final class ClassChainEvaluator<N> {
     private boolean hasMatchingDescendant(Filter filter, N node) {
         Set<N> dead = noMatches.computeIfAbsent(filter, f -> new HashSet<>());
         Deque<Frame<N>> path = new ArrayDeque<>();
-        path.push(new Frame<>(node, tree.getChildren(node)));
+        path.push(new Frame<>(node, tree.iterateChildren(node)));
         while (!path.isEmpty()) {
             Frame<N> frame = path.peek();
-            if (frame.next == frame.children.size()) {
+            if (!frame.children.hasNext()) {
                 path.pop();
                 if (!path.isEmpty()) {
                     // the node itself did not match either, or the walk would have stopped
@@ -228,24 +227,23 @@ public final class ClassChainEvaluator<N> {
                 }
                 continue;
             }
-            N child = frame.children.get(frame.next++);
+            N child = frame.children.next();
             if (dead.contains(child)) {
                 continue;
             }
             if (predicates.evaluate(filter.getPredicate(), new NodeValues(child))) {
                 return true;
             }
-            path.push(new Frame<>(child, tree.getChildren(child)));
+            path.push(new Frame<>(child, tree.iterateChildren(child)));
         }
         return false;
     }
 
     private static final class Frame<N> {
         final N node;
-        final List<N> children;
-        int next;
+        final Iterator<N> children;
 
-        Frame(N node, List<N> children) {
+        Frame(N node, Iterator<N> children) {
             this.node = node;
             this.children = children;
         }

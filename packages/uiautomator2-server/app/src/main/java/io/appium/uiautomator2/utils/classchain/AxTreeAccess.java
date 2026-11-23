@@ -28,7 +28,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -86,7 +88,7 @@ public final class AxTreeAccess implements TreeAccess<AxTreeAccess.Node> {
             Collections.newSetFromMap(new IdentityHashMap<>());
     private final List<AccessibilityNodeInfo> fetched = new ArrayList<>();
     // siblings and repeated walks would otherwise fetch the same children again
-    private final Map<Node, List<Node>> childrenCache = new HashMap<>();
+    private final Map<Node, Children> childrenCache = new HashMap<>();
     private final Node start;
 
     /** @param context the node to search below, or null to search all windows */
@@ -120,43 +122,83 @@ public final class AxTreeAccess implements TreeAccess<AxTreeAccess.Node> {
 
     @Override
     public List<Node> getChildren(Node node) {
-        List<Node> children = childrenCache.get(node);
-        if (children == null) {
-            children = fetchChildren(node);
-            childrenCache.put(node, children);
+        Children children = childrenOf(node);
+        while (children.fetchNext()) {
+            // fetches them all
         }
-        return children;
+        return children.view;
     }
 
-    private List<Node> fetchChildren(Node node) {
-        AccessibilityNodeInfo info = node.info;
-        if (node.depth >= maxDepth) {
-            return Collections.emptyList();
-        }
-        if (info == null) {
-            List<Node> roots = new ArrayList<>(windowRoots.length);
-            for (int i = 0; i < windowRoots.length; i++) {
-                roots.add(new Node(windowRoots[i], i, node.depth + 1));
+    @Override
+    public Iterator<Node> iterateChildren(Node node) {
+        Children children = childrenOf(node);
+        return new Iterator<Node>() {
+            private int position;
+
+            @Override
+            public boolean hasNext() {
+                return position < children.loaded.size() || children.fetchNext();
             }
-            return roots;
-        }
-        int count = info.getChildCount();
-        List<Node> children = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
-            AccessibilityNodeInfo child = info.getChild(i);
-            if (child == null) {
-                continue;
+
+            @Override
+            public Node next() {
+                if (!hasNext()) {
+                    throw new NoSuchElementException();
+                }
+                return children.loaded.get(position++);
             }
-            if (areInvisibleElementsAllowed
-                    || child.isVisibleToUser()
-                    || UiElementSnapshot.shouldTraverseIfRequested(child)) {
-                fetched.add(child);
-                children.add(new Node(child, i, node.depth + 1));
+        };
+    }
+
+    private Children childrenOf(Node node) {
+        return childrenCache.computeIfAbsent(node, Children::new);
+    }
+
+    /** The visible children of a node, fetched one by one as they are asked for. */
+    private final class Children {
+        private final Node parent;
+        private final List<Node> loaded = new ArrayList<>();
+        private final List<Node> view = Collections.unmodifiableList(loaded);
+        private final int count;
+        private int nextChild;
+        private boolean done;
+
+        Children(Node parent) {
+            this.parent = parent;
+            AccessibilityNodeInfo info = parent.info;
+            if (parent.depth >= maxDepth) {
+                count = 0;
+            } else if (info == null) {
+                count = 0;
+                for (int i = 0; i < windowRoots.length; i++) {
+                    loaded.add(new Node(windowRoots[i], i, parent.depth + 1));
+                }
             } else {
+                count = info.getChildCount();
+            }
+            done = count == 0;
+        }
+
+        /** @return false if there are no more children, otherwise the next one is in {@code loaded} */
+        boolean fetchNext() {
+            while (!done && nextChild < count) {
+                int i = nextChild++;
+                AccessibilityNodeInfo child = parent.info.getChild(i);
+                if (child == null) {
+                    continue;
+                }
+                if (areInvisibleElementsAllowed
+                        || child.isVisibleToUser()
+                        || UiElementSnapshot.shouldTraverseIfRequested(child)) {
+                    fetched.add(child);
+                    loaded.add(new Node(child, i, parent.depth + 1));
+                    return true;
+                }
                 AxNodeInfoHelper.recycleSafely(child);
             }
+            done = true;
+            return false;
         }
-        return children;
     }
 
     @Nullable

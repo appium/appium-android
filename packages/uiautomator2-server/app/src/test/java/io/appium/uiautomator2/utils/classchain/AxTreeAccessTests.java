@@ -27,6 +27,7 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 
 import io.appium.uiautomator2.model.settings.AllowInvisibleElements;
@@ -91,6 +92,29 @@ public class AxTreeAccessTests {
         assertSame(children, tree.getChildren(tree.getParent(children.get(0))));
         verify(context, times(1)).getChild(0);
         verify(context, times(1)).getChild(1);
+    }
+
+    @Test
+    public void iteratingFetchesChildrenOnDemand() {
+        AccessibilityNodeInfo hidden = node("hidden", false);
+        AccessibilityNodeInfo first = node("a", true);
+        AccessibilityNodeInfo second = node("b", true);
+        AccessibilityNodeInfo context = node("c", true, hidden, first, second);
+        AxTreeAccess tree = new AxTreeAccess(context);
+
+        Iterator<AxTreeAccess.Node> it = tree.iterateChildren(tree.getStart());
+        assertTrue(it.hasNext());
+        assertEquals("a", tree.getClassName(it.next()));
+        verify(context, never()).getChild(2);
+
+        // the part that is already fetched is reused
+        assertEquals(2, tree.getChildren(tree.getStart()).size());
+        verify(context, times(1)).getChild(1);
+        verify(context, times(1)).getChild(2);
+        Iterator<AxTreeAccess.Node> again = tree.iterateChildren(tree.getStart());
+        assertEquals("a", tree.getClassName(again.next()));
+        assertEquals("b", tree.getClassName(again.next()));
+        assertTrue(!again.hasNext());
     }
 
     @Test

@@ -19,6 +19,7 @@ package io.appium.uiautomator2.utils.classchain;
 
 import androidx.annotation.Nullable;
 
+import java.util.Iterator;
 import java.util.List;
 
 import io.appium.uiautomator2.utils.Attribute;
@@ -28,6 +29,11 @@ public interface TreeAccess<N> {
 
     /** The children that take part in lookups, in order. */
     List<N> getChildren(N node);
+
+    /** Same as {@link #getChildren}, but an implementation may fetch the children on demand. */
+    default Iterator<N> iterateChildren(N node) {
+        return getChildren(node).iterator();
+    }
 
     @Nullable
     N getParent(N node);
