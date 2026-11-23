@@ -320,6 +320,10 @@ class AndroidDriver<C extends AndroidDriverConstraints = AndroidDriverConstraint
     }
 
     const androidCaps = caps as AndroidDriverCaps;
+    if (androidCaps.remoteAdbHost) {
+      this.log.warn("The 'remoteAdbHost' capability is deprecated. Use 'adbHost' instead.");
+    }
+
     if (androidCaps.browserName) {
       if (androidCaps.app) {
         // warn if the capabilities have both `app` and `browser, although this is common with selenium grid
@@ -341,6 +345,27 @@ class AndroidDriver<C extends AndroidDriverConstraints = AndroidDriverConstraint
     }
 
     return true;
+  }
+
+  /**
+   * Resolves the ADB server host for ADB commands and downstream proxies.
+   * Session capabilities take precedence over driver defaults.
+   *
+   * @returns The configured host, or undefined for a local connection.
+   */
+  getAdbHost(): string | undefined {
+    const {adbHost, remoteAdbHost} = this.caps as AndroidDriverCaps;
+    const opts = this.opts as AndroidDriverOpts | undefined;
+    const initialOpts = this.initialOpts as AndroidDriverOpts;
+    return (
+      adbHost ||
+      remoteAdbHost ||
+      opts?.adbHost ||
+      initialOpts.adbHost ||
+      opts?.remoteAdbHost ||
+      initialOpts.remoteAdbHost ||
+      undefined
+    );
   }
 
   override async getLogTypes(): Promise<string[]> {
