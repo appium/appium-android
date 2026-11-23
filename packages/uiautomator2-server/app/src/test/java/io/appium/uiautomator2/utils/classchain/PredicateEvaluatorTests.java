@@ -233,4 +233,27 @@ public class PredicateEvaluatorTests {
         assertTrue(eval("text CONTAINS 'CLICK'", Attribute.TEXT, actions));
         assertEquals(true, eval("actions == 'ACTION_FOCUS'", Attribute.ACTIONS, "ACTION_FOCUS"));
     }
+
+    @Test
+    public void diacriticInsensitiveRegexFoldsItsLiteralsToo() {
+        assertTrue(eval("text MATCHES[d] 'Café'", Attribute.TEXT, "Café"));
+        assertTrue(eval("text MATCHES[d] 'Café'", Attribute.TEXT, "Cafe"));
+        assertTrue(eval("text MATCHES[cd] 'caf[éè]'", Attribute.TEXT, "CAFÉ"));
+        assertFalse(eval("text MATCHES[d] 'Café'", Attribute.TEXT, "Cafd"));
+        // the escapes stay, also in front of a letter with a diacritic
+        assertTrue(eval("text MATCHES[d] '\\\\d+é'", Attribute.TEXT, "12é"));
+        assertFalse(eval("text MATCHES[d] '\\\\d+é'", Attribute.TEXT, "ab"));
+        assertTrue(eval("text MATCHES[d] 'a\\\\.\\\\é'", Attribute.TEXT, "a.é"));
+        assertFalse(eval("text MATCHES[d] 'a\\\\.é'", Attribute.TEXT, "ab" + "e"));
+        // without the modifier the literal is compared as it is
+        assertFalse(eval("text MATCHES 'Café'", Attribute.TEXT, "Cafe"));
+    }
+
+    @Test
+    public void styledTextIsComparedByItsContent() {
+        assertTrue(eval("hint > 'a'", Attribute.HINT, new StringBuilder("b")));
+        assertFalse(eval("hint < 'a'", Attribute.HINT, new StringBuilder("b")));
+        assertTrue(eval("hint BETWEEN {'a', 'c'}", Attribute.HINT, new StringBuilder("b")));
+        assertTrue(eval("hint == 'b'", Attribute.HINT, new StringBuilder("b")));
+    }
 }

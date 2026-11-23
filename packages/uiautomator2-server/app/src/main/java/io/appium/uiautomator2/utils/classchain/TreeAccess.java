@@ -19,6 +19,7 @@ package io.appium.uiautomator2.utils.classchain;
 
 import androidx.annotation.Nullable;
 
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -37,6 +38,12 @@ public interface TreeAccess<N> {
 
     @Nullable
     N getParent(N node);
+
+    /** The nodes that share the parent of the node, itself included, in order. */
+    default List<N> getSiblings(N node) {
+        N parent = getParent(node);
+        return parent == null ? Collections.<N>emptyList() : getChildren(parent);
+    }
 
     @Nullable
     String getClassName(N node);

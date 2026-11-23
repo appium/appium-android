@@ -214,4 +214,45 @@ public class AxTreeAccessTests {
         verify(kept, never()).recycle();
         verify(context, never()).recycle();
     }
+
+    @Test
+    public void aCycleOfParentsDoesNotHangTheLookup() {
+        AccessibilityNodeInfo first = node("a", true);
+        AccessibilityNodeInfo second = node("b", true);
+        when(first.getParent()).thenReturn(second);
+        when(second.getParent()).thenReturn(first);
+
+        AxTreeAccess tree = new AxTreeAccess(first);
+        List<AxTreeAccess.Node> found = new ClassChainEvaluator<>(tree)
+                .evaluate(ClassChainParser.parse("^*"), tree.getStart(), true);
+        assertEquals(1, found.size());
+        assertSame(second, found.get(0).getInfo());
+    }
+
+    @Test
+    public void windowRootsAreSiblingsOfEachOther() {
+        AccessibilityNodeInfo first = node("w1", true);
+        AccessibilityNodeInfo second = node("w2", true);
+        AccessibilityNodeInfo third = node("w3", true);
+        AccessibilityNodeInfo[] roots = {first, second, third};
+
+        AxTreeAccess tree = new AxTreeAccess(null, () -> roots);
+        List<AxTreeAccess.Node> next = new ClassChainEvaluator<>(tree)
+                .evaluate(ClassChainParser.parse("*[1]/>*[1]"), tree.getStart(), true);
+        assertEquals(1, next.size());
+        assertSame(second, next.get(0).getInfo());
+
+        List<AxTreeAccess.Node> others = new ClassChainEvaluator<>(tree)
+                .evaluate(ClassChainParser.parse("*[3]/~*"), tree.getStart(), true);
+        assertEquals(2, others.size());
+        assertSame(first, others.get(0).getInfo());
+        assertSame(second, others.get(1).getInfo());
+
+        // also when the search starts below a window root
+        AxTreeAccess below = new AxTreeAccess(second, () -> roots);
+        List<AxTreeAccess.Node> preceding = new ClassChainEvaluator<>(below)
+                .evaluate(ClassChainParser.parse("<*"), below.getStart(), true);
+        assertEquals(1, preceding.size());
+        assertSame(first, preceding.get(0).getInfo());
+    }
 }

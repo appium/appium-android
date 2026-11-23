@@ -27,15 +27,18 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.function.Supplier;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
 import io.appium.uiautomator2.core.AxNodeInfoHelper;
+import io.appium.uiautomator2.utils.AXWindowHelpers;
 import io.appium.uiautomator2.model.UiElementSnapshot;
 import io.appium.uiautomator2.model.settings.AllowInvisibleElements;
 import io.appium.uiautomator2.model.settings.Settings;
@@ -43,7 +46,6 @@ import io.appium.uiautomator2.model.settings.SnapshotMaxDepth;
 import io.appium.uiautomator2.utils.Attribute;
 import io.appium.uiautomator2.utils.StringHelpers;
 
-import static io.appium.uiautomator2.utils.AXWindowHelpers.getCachedWindowRoots;
 
 /** The live accessibility tree with the visibility and depth rules of the page source. */
 public final class AxTreeAccess implements TreeAccess<AxTreeAccess.Node> {
@@ -82,7 +84,8 @@ public final class AxTreeAccess implements TreeAccess<AxTreeAccess.Node> {
     private final boolean areInvisibleElementsAllowed =
             Settings.get(AllowInvisibleElements.class).getValue();
     private final int maxDepth = Settings.get(SnapshotMaxDepth.class).getValue();
-    private final AccessibilityNodeInfo[] windowRoots;
+    private final Supplier<AccessibilityNodeInfo[]> windowRootsSource;
+    private AccessibilityNodeInfo[] windowRoots = new AccessibilityNodeInfo[0];
     // owned by somebody else, so they must not be recycled
     private final Set<AccessibilityNodeInfo> owned =
             Collections.newSetFromMap(new IdentityHashMap<>());
@@ -90,18 +93,33 @@ public final class AxTreeAccess implements TreeAccess<AxTreeAccess.Node> {
     // siblings and repeated walks would otherwise fetch the same children again
     private final Map<Node, Children> childrenCache = new HashMap<>();
     private final Node start;
+    // the node above all windows, created on demand if the search starts below a context
+    @Nullable
+    private Node windowsRoot;
 
     /** @param context the node to search below, or null to search all windows */
     public AxTreeAccess(@Nullable AccessibilityNodeInfo context) {
+        this(context, AXWindowHelpers::getCachedWindowRoots);
+    }
+
+    AxTreeAccess(@Nullable AccessibilityNodeInfo context,
+                 Supplier<AccessibilityNodeInfo[]> windowRootsSource) {
+        this.windowRootsSource = windowRootsSource;
         if (context == null) {
-            windowRoots = getCachedWindowRoots();
-            owned.addAll(Arrays.asList(windowRoots));
-            start = new Node(null, -1, 0);
+            start = getWindowsRoot();
         } else {
-            windowRoots = new AccessibilityNodeInfo[0];
             owned.add(context);
             start = new Node(context, -1, depthOf(context));
         }
+    }
+
+    private Node getWindowsRoot() {
+        if (windowsRoot == null) {
+            windowRoots = windowRootsSource.get();
+            owned.addAll(Arrays.asList(windowRoots));
+            windowsRoot = new Node(null, -1, 0);
+        }
+        return windowsRoot;
     }
 
     /** The node the first step of a chain is relative to. */
@@ -112,9 +130,15 @@ public final class AxTreeAccess implements TreeAccess<AxTreeAccess.Node> {
     /** The window roots are at depth 1. */
     private int depthOf(AccessibilityNodeInfo node) {
         int depth = 1;
+        // a broken provider may report a cycle of parents
+        Set<AccessibilityNodeInfo> seen = new HashSet<>();
+        seen.add(node);
         for (AccessibilityNodeInfo parent = node.getParent(); parent != null;
              parent = parent.getParent()) {
             fetched.add(parent);
+            if (!seen.add(parent)) {
+                break;
+            }
             depth++;
         }
         return depth;
@@ -210,6 +234,16 @@ public final class AxTreeAccess implements TreeAccess<AxTreeAccess.Node> {
         }
         fetched.add(parent);
         return new Node(parent, -1, Math.max(0, node.depth - 1));
+    }
+
+    @Override
+    public List<Node> getSiblings(Node node) {
+        Node parent = getParent(node);
+        if (parent != null) {
+            return getChildren(parent);
+        }
+        // a window root has no parent, but the other window roots are its siblings
+        return node.info == null ? Collections.emptyList() : getChildren(getWindowsRoot());
     }
 
     @Nullable

@@ -110,10 +110,15 @@ public final class PredicateEvaluator {
         if (values == null) {
             values = new ArrayList<>(comparison.getValues().size());
             for (Object value : comparison.getValues()) {
-                // a regex keeps its escapes
-                boolean fold = value instanceof String
-                        && comparison.getOperator() != PredicateNode.Operator.MATCHES;
-                values.add(fold ? fold((String) value, comparison) : value);
+                if (!(value instanceof String)) {
+                    values.add(value);
+                } else if (comparison.getOperator() == PredicateNode.Operator.MATCHES) {
+                    // a regex keeps its escapes, and the case is handled by a flag
+                    values.add(comparison.isDiacriticInsensitive()
+                            ? foldRegexDiacritics((String) value) : value);
+                } else {
+                    values.add(fold((String) value, comparison));
+                }
             }
             expectedValues.put(comparison, values);
         }
@@ -141,8 +146,9 @@ public final class PredicateEvaluator {
             double right = ((Number) expected).doubleValue();
             return Double.isNaN(left) || Double.isNaN(right) ? null : Double.compare(left, right);
         }
-        if (actual instanceof String && expected instanceof String) {
-            return ((String) actual).compareTo((String) expected);
+        // a styled text is a CharSequence, but not a String
+        if (actual instanceof CharSequence && expected instanceof String) {
+            return actual.toString().compareTo((String) expected);
         }
         return null;
     }
@@ -209,11 +215,41 @@ public final class PredicateEvaluator {
         return pattern;
     }
 
+    /**
+     * Removes the diacritics from the literals of a regex, like it is done for the text. An escaped
+     * letter with a diacritic (a literal one) becomes a plain letter, since a backslash before an
+     * ASCII letter would have another meaning.
+     */
+    private static String foldRegexDiacritics(String regex) {
+        StringBuilder result = new StringBuilder(regex.length());
+        int i = 0;
+        while (i < regex.length()) {
+            int cp = regex.codePointAt(i);
+            i += Character.charCount(cp);
+            if (cp == '\\' && i < regex.length()) {
+                int escaped = regex.codePointAt(i);
+                i += Character.charCount(escaped);
+                String folded = removeDiacritics(new String(Character.toChars(escaped)));
+                if (folded.equals(new String(Character.toChars(escaped)))) {
+                    result.append('\\').appendCodePoint(escaped);
+                } else {
+                    result.append(folded);
+                }
+            } else {
+                result.append(removeDiacritics(new String(Character.toChars(cp))));
+            }
+        }
+        return result.toString();
+    }
+
+    private static String removeDiacritics(String value) {
+        return DIACRITICS.matcher(Normalizer.normalize(value, Normalizer.Form.NFD)).replaceAll("");
+    }
+
     private static String fold(String value, Comparison comparison) {
         String result = value;
         if (comparison.isDiacriticInsensitive()) {
-            result = DIACRITICS.matcher(Normalizer.normalize(result, Normalizer.Form.NFD))
-                    .replaceAll("");
+            result = removeDiacritics(result);
         }
         if (comparison.isCaseInsensitive()
                 && comparison.getOperator() != PredicateNode.Operator.MATCHES) {

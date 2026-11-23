@@ -412,4 +412,15 @@ public class ClassChainEvaluatorTests {
         assertEquals(list("wifi"), first(chain));
         assertTrue(tree.visitedChildren < eager);
     }
+
+    @Test
+    public void ancestorsStopAtACycleOfParents() {
+        FakeNode a = node(LINEAR, "a");
+        FakeNode b = node(LINEAR, "b");
+        a.parent = b;
+        b.parent = a;
+        assertEquals(list("b"), allFrom("^*", a));
+        assertEquals(list("b"), allFrom("^" + LINEAR, a));
+        assertEquals(list("a"), allFrom("^*", b));
+    }
 }

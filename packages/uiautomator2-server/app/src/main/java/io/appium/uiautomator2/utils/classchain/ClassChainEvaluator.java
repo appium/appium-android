@@ -252,30 +252,31 @@ public final class ClassChainEvaluator<N> {
     /** The nodes of the axis, nearest first for the reverse ones. */
     private List<N> axisNodes(ChainStep.Axis axis, N node) {
         List<N> result = new ArrayList<>();
-        N parent = tree.getParent(node);
         switch (axis) {
             case PARENT:
+                N parent = tree.getParent(node);
                 if (parent != null) {
                     result.add(parent);
                 }
                 break;
             case ANCESTOR:
-                for (N ancestor = parent; ancestor != null; ancestor = tree.getParent(ancestor)) {
+                // a broken tree may have a cycle of parents
+                Set<N> seen = new HashSet<>();
+                seen.add(node);
+                for (N ancestor = tree.getParent(node); ancestor != null && seen.add(ancestor);
+                     ancestor = tree.getParent(ancestor)) {
                     result.add(ancestor);
                 }
                 break;
             default:
-                addSiblings(axis, node, parent, result);
+                addSiblings(axis, node, result);
                 break;
         }
         return result;
     }
 
-    private void addSiblings(ChainStep.Axis axis, N node, @Nullable N parent, List<N> result) {
-        if (parent == null) {
-            return;
-        }
-        List<N> siblings = tree.getChildren(parent);
+    private void addSiblings(ChainStep.Axis axis, N node, List<N> result) {
+        List<N> siblings = tree.getSiblings(node);
         int index = siblings.indexOf(node);
         if (index < 0) {
             return;
