@@ -70,10 +70,14 @@ describe('ADB server host capabilities', function () {
     }
   });
 
-  for (const capability of ['adbHost', 'remoteAdbHost'] as const) {
-    it(`should retain a driver default when the session supplies an empty ${capability}`, async function () {
-      const opts = {} as AndroidDriverOpts;
-      opts[capability] = 'lab.example';
+  const defaultHostCases = [
+    ['adbHost', 'adbHost', {}],
+    ['remoteAdbHost', 'remoteAdbHost', {}],
+    ['adbHost with a different legacy default', 'adbHost', {remoteAdbHost: 'legacy.example'}],
+  ] as const;
+  for (const [name, capability, otherOpts] of defaultHostCases) {
+    it(`should retain the driver default for ${name} when the session supplies an empty ${capability}`, async function () {
+      const opts = {...otherOpts, [capability]: 'lab.example'} as AndroidDriverOpts;
       const driver = new DirectBaseDriver(opts);
       const createADB = sinon.stub(ADB, 'createADB').resolves(new ADB());
       try {

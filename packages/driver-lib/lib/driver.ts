@@ -361,8 +361,8 @@ class AndroidDriver<C extends AndroidDriverConstraints = AndroidDriverConstraint
       adbHost ||
       remoteAdbHost ||
       opts?.adbHost ||
-      opts?.remoteAdbHost ||
       initialOpts.adbHost ||
+      opts?.remoteAdbHost ||
       initialOpts.remoteAdbHost ||
       undefined
     );
