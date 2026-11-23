@@ -39,6 +39,12 @@ The trust store is never read from `executableDir`, since that folder may be pro
 Any other executable, including custom or self-built builds, drivers that are not on the allowlists
 and the ones set by `executable`/`executableDir`, is rejected.
 
+Driver integrations can call `installDriverFromArchive({archive, executableName, destination})`
+after obtaining a ZIP stream from a distribution source they trust. The caller controls which source
+can supply trusted drivers. The helper selects the uniquely named regular file in private staging,
+registers its SHA-256, and publishes the executable at the destination. A registration failure preserves
+the existing driver. If publication fails, the staged digest remains trusted for future launches.
+
 To restore the legacy behavior and run any executable without verification, set the
 `allowUnverifiedExecutable` option. In the Appium UiAutomator2/Espresso drivers it is controlled by the
 `chromedriver_allow_any_executable` server feature (`--allow-insecure=<driver>:chromedriver_allow_any_executable`).
