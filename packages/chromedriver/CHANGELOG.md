@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.1.0](https://github.com/appium/appium-android/compare/appium-chromedriver@11.0.0...appium-chromedriver@11.1.0) (2026-11-23)
+
+### Features
+
+* **chromedriver:** install drivers from trusted ZIP streams ([#177](https://github.com/appium/appium-android/issues/177)) ([20f93a0](https://github.com/appium/appium-android/commit/20f93a0363ed8f2eea6b6c37c0bd4a62ef371847))
+
+
 ## [11.0.0](https://github.com/appium/appium-android/compare/appium-chromedriver@10.0.6...appium-chromedriver@11.0.0) (2026-11-22)
 
 ### ⚠ BREAKING CHANGES
