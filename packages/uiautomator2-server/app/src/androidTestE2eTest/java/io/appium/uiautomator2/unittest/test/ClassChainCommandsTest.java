@@ -324,9 +324,8 @@ public class ClassChainCommandsTest extends BaseTest {
                         + "and starts-with(@content-desc, 'chain-row')]//android.widget.CheckBox");
         assertSameAsXPath("**/*[`text == 'Café'`]/>android.widget.TextView[1]",
                 "//*[@text='Café']/following-sibling::android.widget.TextView[1]");
-        // XPath of this server counts the positions of preceding-sibling in document order
         assertSameAsXPath("**/*[`content-desc == 'chain-buy'`]/<*[2]",
-                "(//*[@content-desc='chain-buy']/preceding-sibling::*)[1]");
+                "//*[@content-desc='chain-buy']/preceding-sibling::*[2]");
         assertSameAsXPath("**/*[`content-desc == 'chain-label-0'`]/^android.widget.LinearLayout[1]",
                 "//*[@content-desc='chain-label-0']/ancestor::android.widget.LinearLayout[1]");
         assertSameAsXPath("**/*[`content-desc == 'chain-buy'`]/~android.widget.TextView",
