@@ -34,15 +34,28 @@ it('installs and trusts only the executable extracted from the archive', async (
   await fs.writeFile(path.join(source, 'nested', name), 'downloaded');
   const archive = await zip.toInMemoryZip(source);
   const opts = {executableName: name, destination: target};
-  await t.test('does not register the digest or leave a temporary copy when publication fails', async () => {
+  await t.test('preserves the installed driver and cleans up when trust registration fails', async () => {
+    // A regular file at the store path prevents marker creation even when running as root.
+    const store = getTrustStoreDir();
+    await fs.mkdirp(path.dirname(store));
+    await fs.writeFile(store, 'blocked', {flag: 'wx'});
+    try {
+      await assert.rejects(installDriverFromArchive({...opts, archive: Readable.from([archive])}));
+      assert.equal(await fs.readFile(target, 'utf8'), 'pre-existing');
+      assert.deepEqual(await fs.readdir(path.dirname(target)), [path.basename(target)]);
+    } finally {
+      await fs.unlink(store);
+    }
+  });
+
+  await t.test('retains the staged digest and cleans up when publication fails', async () => {
     const blocked = path.join(root, 'blocked');
     const destination = path.join(blocked, name);
     await fs.mkdirp(destination);
-    await assert.rejects(installDriverFromArchive({...opts, archive: Readable.from([archive]), destination}), {
-      syscall: 'rename',
-    });
+    await assert.rejects(installDriverFromArchive({...opts, archive: Readable.from([archive]), destination}));
+    assert.ok((await fs.stat(destination)).isDirectory());
     assert.deepEqual(await fs.readdir(blocked), [name]);
-    await assert.rejects(assertKnownChromedriver(path.join(source, 'nested', name)), /does not match/);
+    await assertKnownChromedriver(path.join(source, 'nested', name));
   });
 
   assert.equal(await installDriverFromArchive({...opts, archive: Readable.from([archive])}), target);

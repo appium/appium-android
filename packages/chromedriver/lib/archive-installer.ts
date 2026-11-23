@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import {fs, zip} from '@appium/support';
 
-import {sha256File, trustChecksum} from './checksums.js';
+import {trustChecksumOf} from './checksums.js';
 
 /**
  * Install a driver from a trusted ZIP stream and register its SHA-256 for future launches.
@@ -41,9 +41,9 @@ export async function installDriverFromArchive(opts: {
     const pending = path.join(destinationDir, `.driver-${randomUUID()}`);
     await copyFile(executable, pending, fs.constants.COPYFILE_EXCL);
     try {
-      const digest = await sha256File(executable);
+      // Keep the previous driver in place if the trust store cannot be updated.
+      await trustChecksumOf(executable);
       await fs.rename(pending, destination);
-      await trustChecksum(digest);
     } finally {
       await rm(pending, {force: true});
     }
