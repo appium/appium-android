@@ -17,7 +17,9 @@ const GPS_COORDINATES_PATTERN = /data="(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)"/;
 
 /**
  * Emulate geolocation coordinates on the device under test.
- * The `altitude` value is ignored while mocking the position.
+ * Emulators get the position via the emulator console, which also applies the optional
+ * `altitude`, `satellites` and `speed` values. Real devices get it mocked by the Settings app,
+ * which also applies the optional `altitude`, `speed`, `bearing` and `accuracy` values.
  *
  * @param location - Location object containing coordinates and optional metadata
  * @param isEmulator - Set it to true if the device under test is an emulator rather than a real device
