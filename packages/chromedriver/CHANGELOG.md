@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.1.1](https://github.com/appium/appium-android/compare/appium-chromedriver@11.1.0...appium-chromedriver@11.1.1) (2026-11-24)
+
+### Miscellaneous Chores
+
+* **chromedriver:** ChromeDriver Bump to v158.0.8127.88 ([#182](https://github.com/appium/appium-android/issues/182)) ([483199e](https://github.com/appium/appium-android/commit/483199ec27ec6f850ed91c080ce399e4f1ec9a55))
+
+
 ## [11.1.0](https://github.com/appium/appium-android/compare/appium-chromedriver@11.0.0...appium-chromedriver@11.1.0) (2026-11-23)
 
 ### Features
