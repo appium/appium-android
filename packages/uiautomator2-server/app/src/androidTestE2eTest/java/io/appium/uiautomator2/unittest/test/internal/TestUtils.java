@@ -176,6 +176,8 @@ public class TestUtils {
             strategy = "-android uiautomator";
         } else if (by instanceof By.ByAndroidClassChain) {
             strategy = "-android class chain";
+        } else if (by instanceof By.ByAndroidPredicate) {
+            strategy = "-android predicate string";
         } else {
             strategy = "unsupported";
         }
