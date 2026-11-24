@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.6.0](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.5.0...appium-uiautomator2-server@11.6.0) (2026-11-24)
+
+### Features
+
+* **uiautomator2-server:** add the -android predicate string locator strategy ([#181](https://github.com/appium/appium-android/issues/181)) ([b6d9865](https://github.com/appium/appium-android/commit/b6d986517e536f92008f475049dd7920b54db855))
+
+
 ## [11.5.0](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.4.0...appium-uiautomator2-server@11.5.0) (2026-11-23)
 
 ### Features
