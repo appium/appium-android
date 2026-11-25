@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.6.1](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.6.0...appium-uiautomator2-server@11.6.1) (2026-11-25)
+
+### Bug Fixes
+
+* **uiautomator2-server:** respect currentDisplayId for the active window root ([#180](https://github.com/appium/appium-android/issues/180)) ([af3e654](https://github.com/appium/appium-android/commit/af3e6549988e85cc71eb7d095a70e9cc680c7548))
+
+
 ## [11.6.0](https://github.com/appium/appium-android/compare/appium-uiautomator2-server@11.5.0...appium-uiautomator2-server@11.6.0) (2026-11-24)
 
 ### Features
