@@ -34,8 +34,10 @@ public class CurrentDisplayId extends AbstractSetting<Integer> {
 
     @Override
     public boolean reset() {
+        boolean isChanged = super.reset();
+        // applying the default value marks the setting as customized
         customized = false;
-        return super.reset();
+        return isChanged;
     }
 
     @Override

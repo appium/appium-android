@@ -22,6 +22,10 @@ import android.util.SparseArray;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.view.accessibility.AccessibilityWindowInfo;
 
+import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
+
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -32,6 +36,7 @@ import io.appium.uiautomator2.common.exceptions.UiAutomator2Exception;
 import io.appium.uiautomator2.core.UiAutomatorBridge;
 import io.appium.uiautomator2.model.NotificationListener;
 import io.appium.uiautomator2.model.internal.CustomUiDevice;
+import io.appium.uiautomator2.model.settings.CurrentDisplayId;
 import io.appium.uiautomator2.model.settings.DeferAccessibilityCacheReset;
 import io.appium.uiautomator2.model.settings.EnableMultiWindows;
 import io.appium.uiautomator2.model.settings.EnableTopmostWindowFromActivePackage;
@@ -121,9 +126,7 @@ public class AXWindowHelpers {
         long start = SystemClock.uptimeMillis();
         while (SystemClock.uptimeMillis() - start < AX_ROOT_RETRIEVAL_TIMEOUT_MS) {
             try {
-                AccessibilityNodeInfo rootNode = UiAutomatorBridge.getInstance()
-                        .getUiAutomation()
-                        .getRootInActiveWindow();
+                AccessibilityNodeInfo rootNode = getRootOfActiveWindow();
                 if (rootNode != null) {
                     return rootNode;
                 }
@@ -138,6 +141,44 @@ public class AXWindowHelpers {
                         "Make sure the active window is not constantly hogging the main UI thread " +
                         "(e.g. the application is being idle long enough), so the accessibility " +
                         "manager could do its work", SystemClock.uptimeMillis() - start));
+    }
+
+    @Nullable
+    private static AccessibilityNodeInfo getRootOfActiveWindow() {
+        // The active window of the system is not necessarily on the display that is asked for
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R
+                || !Settings.get(CurrentDisplayId.class).isCustomized()) {
+            return UiAutomatorBridge.getInstance().getUiAutomation().getRootInActiveWindow();
+        }
+        AccessibilityWindowInfo window = selectActiveWindow(getWindows());
+        return window == null ? null : window.getRoot();
+    }
+
+    /**
+     * @return the active window, otherwise the focused one, otherwise the topmost application
+     * window, otherwise the topmost one
+     */
+    @Nullable
+    @VisibleForTesting
+    static AccessibilityWindowInfo selectActiveWindow(List<AccessibilityWindowInfo> windows) {
+        for (AccessibilityWindowInfo window : windows) {
+            if (window.isActive()) {
+                return window;
+            }
+        }
+        for (AccessibilityWindowInfo window : windows) {
+            if (window.isFocused()) {
+                return window;
+            }
+        }
+        List<AccessibilityWindowInfo> byLayer = new ArrayList<>(windows);
+        byLayer.sort((w1, w2) -> Integer.compare(w2.getLayer(), w1.getLayer()));
+        for (AccessibilityWindowInfo window : byLayer) {
+            if (window.getType() == AccessibilityWindowInfo.TYPE_APPLICATION) {
+                return window;
+            }
+        }
+        return byLayer.isEmpty() ? null : byLayer.get(0);
     }
 
     public static List<AccessibilityWindowInfo> getWindows() {
