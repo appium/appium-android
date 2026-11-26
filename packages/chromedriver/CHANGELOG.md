@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.1.2](https://github.com/appium/appium-android/compare/appium-chromedriver@11.1.1...appium-chromedriver@11.1.2) (2026-11-26)
+
+### Miscellaneous Chores
+
+* **chromedriver:** Edge WebDriver Checksums Bump to v158.0.4370.33 ([#184](https://github.com/appium/appium-android/issues/184)) ([6973ee6](https://github.com/appium/appium-android/commit/6973ee623077e5032da19c2d4b9aa140da10c473))
+
+
 ## [11.1.1](https://github.com/appium/appium-android/compare/appium-chromedriver@11.1.0...appium-chromedriver@11.1.1) (2026-11-24)
 
 ### Miscellaneous Chores
