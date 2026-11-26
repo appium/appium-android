@@ -13,14 +13,16 @@ import {trustChecksumOf} from './checksums.js';
  * @param opts.archive - ZIP bytes from the trusted download.
  * @param opts.executableName - Basename of the single regular file to install from the ZIP.
  * @param opts.destination - Path at which to publish the executable.
+ * @param opts.trust - Whether to register the SHA-256 as trusted. Defaults to `true`.
  * @returns The destination path.
  */
 export async function installDriverFromArchive(opts: {
   archive: AsyncIterable<Uint8Array>;
   executableName: string;
   destination: string;
+  trust?: boolean;
 }): Promise<string> {
-  const {archive, executableName, destination} = opts;
+  const {archive, executableName, destination, trust = true} = opts;
   const temporaryRoot = process.env.APPIUM_TMP_DIR || os.tmpdir();
   await fs.mkdirp(temporaryRoot);
   // tempDir.openDir() uses recursive mkdir and can reuse an existing directory.
@@ -42,7 +44,10 @@ export async function installDriverFromArchive(opts: {
     await copyFile(executable, pending, fs.constants.COPYFILE_EXCL);
     try {
       // Keep the previous driver in place if the trust store cannot be updated.
-      await trustChecksumOf(executable);
+      // With `trust: false`, the destination is replaced even if it was trusted before.
+      if (trust) {
+        await trustChecksumOf(executable);
+      }
       await fs.rename(pending, destination);
     } finally {
       await rm(pending, {force: true});

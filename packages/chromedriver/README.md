@@ -44,6 +44,16 @@ after obtaining a ZIP stream from a distribution source they trust. The caller c
 can supply trusted drivers. The helper selects the uniquely named regular file in private staging,
 registers its SHA-256, and publishes the executable at the destination. A registration failure preserves
 the existing driver. If publication fails, the staged digest remains trusted for future launches.
+Pass `trust: false` to publish the executable without registering its checksum, so that it still has to be
+on the allowlist to be started. It replaces any driver already at the destination, trusted or not.
+
+`installDriverFromCdn({browser, version, destination, cdnUrl, platform, trust})` covers the common case
+of both Chrome and Microsoft Edge: it downloads the exact driver `version` from
+[Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/) (`browser: 'chrome'`) or from the
+Microsoft Edge WebDriver storage (`browser: 'edge'`) and installs it as above. `cdnUrl` (http(s) only) points to a
+mirror with the same layout, and `platform` (e.g. `win64`, `mac-arm64`) defaults to the current host.
+The download is limited to 200 MB and fails if it stalls. The checksum is registered as trusted by default only for
+the default distributions. Set `trust: true` explicitly for a mirror you control (preferably over https).
 
 To restore the legacy behavior and run any executable without verification, set the
 `allowUnverifiedExecutable` option. In the Appium UiAutomator2/Espresso drivers it is controlled by the
