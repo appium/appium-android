@@ -44,6 +44,31 @@ after obtaining a ZIP stream from a distribution source they trust. The caller c
 can supply trusted drivers. The helper selects the uniquely named regular file in private staging,
 registers its SHA-256, and publishes the executable at the destination. A registration failure preserves
 the existing driver. If publication fails, the staged digest remains trusted for future launches.
+Pass `trust: false` to install a driver from a source that is not trusted: its checksum is not registered, and
+the executable must already be known (allowlisted or trusted). Otherwise the install fails **before anything is
+published**, so a working driver already at the destination is preserved and an unknown binary never lands in a
+shared cache. Use `trust: true` only for sources whose content you are allowed to trust.
+
+`installDriverFromCdn({browser, version, destination, cdnUrl, platform, trust})` covers the common case
+of both Chrome and Microsoft Edge: it downloads a driver from
+[Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/) (`browser: 'chrome'`) or from the
+Microsoft Edge WebDriver storage (`browser: 'edge'`) and installs it as above.
+
+- `version` is the exact **driver** version as published by the distribution, not the browser version. A browser
+  patch version may have no driver of its own (and Chrome for Testing starts at 115), which results in a 404, so
+  resolve a compatible driver release first (see
+  [Chrome version selection](https://developer.chrome.com/docs/chromedriver/downloads/version-selection) and
+  [Edge version matching](https://learn.microsoft.com/en-us/microsoft-edge/webdriver/)).
+- `cdnUrl` (http(s) only) points to a mirror with the same layout. `platform` (e.g. `win64`, `mac-arm64`,
+  `linux-arm64`) defaults to the current host. Chrome on Windows ARM64 uses the x64 driver, and there is no
+  Edge driver for Linux ARM64.
+- The download is limited to 200 MB and fails if it stalls.
+- The checksum is registered as trusted by default only for the default distributions (`trust` defaults to `false`
+  if `cdnUrl` is set).
+
+When reusing the destination as a cache, install with the same `trust` that applies to the source of the build, and
+check the destination before reusing it: a file installed with `trust: true` from a mirror is trusted afterwards
+regardless of where the next session downloads from.
 
 To restore the legacy behavior and run any executable without verification, set the
 `allowUnverifiedExecutable` option. In the Appium UiAutomator2/Espresso drivers it is controlled by the
