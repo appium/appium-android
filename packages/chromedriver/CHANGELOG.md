@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [11.2.0](https://github.com/appium/appium-android/compare/appium-chromedriver@11.1.2...appium-chromedriver@11.2.0) (2026-11-27)
+
+### Features
+
+* **chromedriver:** add installDriverFromCdn for Chrome and Edge drivers ([#185](https://github.com/appium/appium-android/issues/185)) ([c96fd39](https://github.com/appium/appium-android/commit/c96fd3905e1fc5b93a201661dd4a06db249a478e))
+
+
 ## [11.1.2](https://github.com/appium/appium-android/compare/appium-chromedriver@11.1.1...appium-chromedriver@11.1.2) (2026-11-26)
 
 ### Miscellaneous Chores
