@@ -1,4 +1,5 @@
 import path from 'node:path';
+import type {Readable} from 'node:stream';
 
 import {system} from '@appium/support';
 
@@ -16,7 +17,10 @@ export type DriverBrowser = 'chrome' | 'edge';
 export interface InstallDriverFromCdnOptions {
   /** The browser the driver is for. */
   browser: DriverBrowser;
-  /** The exact driver version, e.g. `120.0.6099.109`. */
+  /**
+   * The exact published driver version, e.g. `120.0.6099.109`. It is not the browser version:
+   * resolve a compatible driver release first, as the browser patch may have no driver of its own.
+   */
   version: string;
   /** Path at which to publish the executable. */
   destination: string;
@@ -29,7 +33,8 @@ export interface InstallDriverFromCdnOptions {
   platform?: string;
   /**
    * Whether to register the checksum of the downloaded executable as trusted.
-   * If `false`, the executable must be on the shipped allowlist to be started.
+   * If `false`, the executable must already be known (allowlisted or trusted), otherwise the install fails
+   * before anything is published at `destination`.
    * Defaults to `true` for the default distributions and to `false` if `cdnUrl` is set.
    */
   trust?: boolean;
@@ -55,16 +60,14 @@ export async function installDriverFromCdn(opts: InstallDriverFromCdnOptions): P
     throw new Error(`Invalid driver platform '${opts.platform}'`);
   }
   const url = parseCdnUrl(cdnUrl ?? DEFAULT_CDN_URLS[browser]);
-  const platform = opts.platform ?? (await getHostPlatform(browser));
+  const platform = opts.platform ?? resolvePlatform(browser, await getHostInfo());
   url.pathname = path.posix.join(
     url.pathname,
     ...(browser === 'chrome'
       ? [version, platform, `chromedriver-${platform}.zip`]
       : [version, `edgedriver_${platform}.zip`]),
   );
-  const name = browser === 'chrome' ? 'chromedriver' : 'msedgedriver';
-  const isWindows = platform.startsWith('win') || (browser === 'edge' && platform === 'arm64');
-  const executableName = isWindows ? `${name}.exe` : name;
+  const executableName = getExecutableName(browser, platform);
 
   let body: AsyncIterable<Uint8Array>;
   try {
@@ -97,23 +100,62 @@ function parseCdnUrl(value: string): URL {
   return url;
 }
 
-async function getHostPlatform(browser: DriverBrowser): Promise<string> {
+export interface HostInfo {
+  os: (typeof OS)[keyof typeof OS];
+  arch: 'x86' | 'x64' | 'arm64' | 'other';
+}
+
+/** Describes the current host the way the drivers' distributions distinguish platforms. */
+export async function getHostInfo(): Promise<HostInfo> {
   const osName = getOsName();
-  const isArm = getCpuType() === CPU.ARM;
+  if (osName === OS.WINDOWS) {
+    if (String(await system.arch()) === ARCH.X86) {
+      return {os: osName, arch: 'x86'};
+    }
+    return {os: osName, arch: process.arch === 'arm64' ? 'arm64' : 'x64'};
+  }
+  if (osName === OS.MAC) {
+    return {os: osName, arch: getCpuType() === CPU.ARM ? 'arm64' : 'x64'};
+  }
+  return {os: osName, arch: process.arch === 'arm64' ? 'arm64' : process.arch === 'x64' ? 'x64' : 'other'};
+}
+
+/** Returns the vendor platform token of the browser's driver distribution for the host. */
+export function resolvePlatform(browser: DriverBrowser, host: HostInfo): string {
+  const {os: osName, arch} = host;
+  const unsupported = () =>
+    new Error(`There are no prebuilt ${browser} drivers for ${osName}/${arch}. Provide the 'platform' explicitly`);
   switch (osName) {
     case OS.WINDOWS:
-      if (browser === 'edge' && process.arch === 'arm64') {
-        return 'arm64';
+      if (arch === 'x86') {
+        return 'win32';
       }
-      return String(await system.arch()) === ARCH.X86 ? 'win32' : 'win64';
+      // Chrome for Testing has no native Windows ARM64 driver, the x64 one runs emulated
+      return browser === 'edge' && arch === 'arm64' ? 'arm64' : 'win64';
     case OS.MAC:
-      return browser === 'chrome' ? (isArm ? 'mac-arm64' : 'mac-x64') : isArm ? 'mac64_m1' : 'mac64';
-    default:
-      if (process.arch !== 'x64') {
-        throw new Error(`There are no prebuilt drivers for linux/${process.arch}. Provide the 'platform' explicitly`);
+      if (arch !== 'x64' && arch !== 'arm64') {
+        throw unsupported();
       }
-      return 'linux64';
+      if (browser === 'chrome') {
+        return arch === 'arm64' ? 'mac-arm64' : 'mac-x64';
+      }
+      return arch === 'arm64' ? 'mac64_m1' : 'mac64';
+    default:
+      if (arch === 'x64') {
+        return 'linux64';
+      }
+      if (arch === 'arm64' && browser === 'chrome') {
+        return 'linux-arm64';
+      }
+      throw unsupported();
   }
+}
+
+/** Returns the basename of the driver executable inside the archive of the given platform. */
+export function getExecutableName(browser: DriverBrowser, platform: string): string {
+  const name = browser === 'chrome' ? 'chromedriver' : 'msedgedriver';
+  const isWindows = platform.startsWith('win') || (browser === 'edge' && platform === 'arm64');
+  return isWindows ? `${name}.exe` : name;
 }
 
 /** Passes the chunks through, failing if the stream exceeds `maxBytes` or stalls for `idleMs`. */
@@ -124,15 +166,21 @@ export async function* limitStream(
   const {maxBytes, idleMs, url} = opts;
   const iterator = source[Symbol.asyncIterator]();
   let received = 0;
+  let stalled = false;
   try {
     for (;;) {
       let timer: NodeJS.Timeout | undefined;
-      const stalled = new Promise<never>((_resolve, reject) => {
-        timer = setTimeout(() => reject(new Error(`The download from ${url} stalled for ${idleMs} ms`)), idleMs);
+      const timeout = new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          stalled = true;
+          // Closes the connection, so the pending read ends and cleanup is not blocked behind it
+          (source as Partial<Readable>).destroy?.();
+          reject(new Error(`The download from ${url} stalled for ${idleMs} ms`));
+        }, idleMs);
       });
       let next: IteratorResult<Uint8Array>;
       try {
-        next = await Promise.race([iterator.next(), stalled]);
+        next = await Promise.race([iterator.next(), timeout]);
       } finally {
         clearTimeout(timer);
       }
@@ -146,7 +194,9 @@ export async function* limitStream(
       yield next.value;
     }
   } finally {
-    // Closes the underlying connection if we stop early
-    await iterator.return?.();
+    if (!stalled) {
+      // Closes the underlying connection if we stop early
+      await iterator.return?.();
+    }
   }
 }

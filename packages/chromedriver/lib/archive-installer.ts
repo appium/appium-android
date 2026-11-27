@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import {fs, zip} from '@appium/support';
 
-import {trustChecksumOf} from './checksums.js';
+import {assertKnownChromedriver, trustChecksumOf} from './checksums.js';
 
 /**
  * Install a driver from a trusted ZIP stream and register its SHA-256 for future launches.
@@ -14,6 +14,8 @@ import {trustChecksumOf} from './checksums.js';
  * @param opts.executableName - Basename of the single regular file to install from the ZIP.
  * @param opts.destination - Path at which to publish the executable.
  * @param opts.trust - Whether to register the SHA-256 as trusted. Defaults to `true`.
+ * If `false`, the executable must already be known (allowlisted or trusted), otherwise it is rejected
+ * before anything is published, so an existing driver at the destination is never replaced by an unknown one.
  * @returns The destination path.
  */
 export async function installDriverFromArchive(opts: {
@@ -36,6 +38,9 @@ export async function installDriverFromArchive(opts: {
       throw new Error(`Expected one executable named '${executableName}' in the archive, found ${matches.length}`);
     }
     const executable = path.join(matches[0].parentPath, matches[0].name);
+    if (!trust) {
+      await assertKnownChromedriver(executable);
+    }
     await fs.chmod(executable, 0o755);
     const destinationDir = path.dirname(destination);
     await fs.mkdirp(destinationDir);
@@ -44,7 +49,6 @@ export async function installDriverFromArchive(opts: {
     await copyFile(executable, pending, fs.constants.COPYFILE_EXCL);
     try {
       // Keep the previous driver in place if the trust store cannot be updated.
-      // With `trust: false`, the destination is replaced even if it was trusted before.
       if (trust) {
         await trustChecksumOf(executable);
       }

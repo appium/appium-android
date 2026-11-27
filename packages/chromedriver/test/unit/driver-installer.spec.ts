@@ -7,11 +7,15 @@ import {after, before, describe, it} from 'node:test';
 import {fs, tempDir, zip} from '@appium/support';
 
 import {TRUST_STORE_SUFFIX_ENV, assertKnownChromedriver, getTrustStoreDir} from '../../lib/checksums.js';
-import {limitStream} from '../../lib/driver-installer.js';
+import {getExecutableName, getHostInfo, limitStream, resolvePlatform} from '../../lib/driver-installer.js';
+import type {DriverBrowser, HostInfo} from '../../lib/driver-installer.js';
 import {installDriverFromCdn} from '../../lib/index.js';
+import {retrieveData} from '../../lib/utils.js';
 
 describe('installDriverFromCdn', function () {
   let root: string;
+  let trustStoreDir: string;
+  let previousSuffix: string | undefined;
   let server: http.Server;
   let baseUrl: string;
   const requested: string[] = [];
@@ -26,7 +30,10 @@ describe('installDriverFromCdn', function () {
 
   before(async function () {
     root = await tempDir.openDir();
+    previousSuffix = process.env[TRUST_STORE_SUFFIX_ENV];
     process.env[TRUST_STORE_SUFFIX_ENV] = `cdn-install-test-${path.basename(root)}`;
+    // Captured while the test suffix is active, so teardown never touches the real trust store
+    trustStoreDir = getTrustStoreDir();
     archives.set('/120.0.1.2/win64/chromedriver-win64.zip', await makeArchive('chromedriver.exe', 'chrome-win'));
     archives.set('/120.0.1.2/edgedriver_win64.zip', await makeArchive('msedgedriver.exe', 'edge-win'));
     archives.set('/120.0.1.2/linux64/chromedriver-linux64.zip', await makeArchive('chromedriver', 'chrome-linux'));
@@ -45,9 +52,13 @@ describe('installDriverFromCdn', function () {
   });
 
   after(async function () {
-    delete process.env[TRUST_STORE_SUFFIX_ENV];
+    if (previousSuffix === undefined) {
+      delete process.env[TRUST_STORE_SUFFIX_ENV];
+    } else {
+      process.env[TRUST_STORE_SUFFIX_ENV] = previousSuffix;
+    }
     await new Promise((resolve) => server.close(resolve));
-    await fs.rimraf(getTrustStoreDir());
+    await fs.rimraf(trustStoreDir);
     await fs.rimraf(root);
   });
 
@@ -81,17 +92,73 @@ describe('installDriverFromCdn', function () {
     await assertKnownChromedriver(destination);
   });
 
-  it('does not trust a custom CDN by default', async function () {
+  it('rejects an unknown driver from a custom CDN by default and publishes nothing', async function () {
     const destination = path.join(root, 'untrusted', 'chromedriver');
+    await assert.rejects(
+      installDriverFromCdn({
+        browser: 'chrome',
+        version: '120.0.1.2',
+        platform: 'linux64',
+        cdnUrl: baseUrl,
+        destination,
+      }),
+      /does not match any known/,
+    );
+    assert.equal(await fs.exists(destination), false);
+  });
+
+  it('preserves an existing driver when the download is rejected', async function () {
+    const destination = path.join(root, 'cache', 'chromedriver');
+    await fs.mkdirp(path.dirname(destination));
+    await fs.writeFile(destination, 'working-driver');
+    await assert.rejects(
+      installDriverFromCdn({
+        browser: 'chrome',
+        version: '120.0.1.2',
+        platform: 'linux64',
+        cdnUrl: baseUrl,
+        trust: false,
+        destination,
+      }),
+      /does not match any known/,
+    );
+    assert.equal(await fs.readFile(destination, 'utf8'), 'working-driver');
+    assert.deepEqual(await fs.readdir(path.dirname(destination)), ['chromedriver']);
+  });
+
+  it('installs an already trusted driver from a custom CDN with trust: false', async function () {
+    // 'chrome-win' has been trusted by the first test
+    const destination = path.join(root, 'known', 'chromedriver.exe');
     await installDriverFromCdn({
       browser: 'chrome',
       version: '120.0.1.2',
-      platform: 'linux64',
+      platform: 'win64',
       cdnUrl: baseUrl,
+      trust: false,
       destination,
     });
-    assert.equal(await fs.readFile(destination, 'utf8'), 'chrome-linux');
-    await assert.rejects(assertKnownChromedriver(destination), /does not match any known/);
+    assert.equal(await fs.readFile(destination, 'utf8'), 'chrome-win');
+  });
+
+  it('uses the host platform when none is given', async function () {
+    const host = await getHostInfo();
+    for (const browser of ['chrome', 'edge'] as const) {
+      let platform: string;
+      try {
+        platform = resolvePlatform(browser, host);
+      } catch {
+        continue; // e.g. Edge on Linux ARM64
+      }
+      const name = getExecutableName(browser, platform);
+      const urlPath =
+        browser === 'chrome'
+          ? `/7.7.7.7/${platform}/chromedriver-${platform}.zip`
+          : `/7.7.7.7/edgedriver_${platform}.zip`;
+      archives.set(urlPath, await makeArchive(name, `host-${browser}`));
+      const destination = path.join(root, 'host', browser, name);
+      await installDriverFromCdn({browser, version: '7.7.7.7', cdnUrl: baseUrl, trust: true, destination});
+      assert.equal(await fs.readFile(destination, 'utf8'), `host-${browser}`);
+    }
   });
 
   it('reports a failed download without leaving a file behind', async function () {
@@ -101,19 +168,6 @@ describe('installDriverFromCdn', function () {
       /Cannot download the driver archive/,
     );
     assert.equal(await fs.exists(destination), false);
-  });
-
-  it('does not register the checksum when trust is false', async function () {
-    const destination = path.join(root, 'untrusted-explicit', 'msedgedriver.exe');
-    await installDriverFromCdn({
-      browser: 'edge',
-      version: '120.0.1.2',
-      platform: 'win64',
-      cdnUrl: baseUrl,
-      trust: false,
-      destination,
-    });
-    await assert.rejects(assertKnownChromedriver(destination), /does not match any known/);
   });
 
   it('rejects a corrupt archive without leaving a file behind', async function () {
@@ -182,18 +236,58 @@ describe('limitStream', function () {
     await assert.rejects(collect(limitStream(chunks(3, 5), {maxBytes: 7, idleMs: 1000, url: 'u'})), /exceeds 7 bytes/);
   });
 
-  it('fails when the stream stalls and closes the source', async function () {
-    let closed = false;
-    const stalling = {
-      [Symbol.asyncIterator]: () => ({
-        next: () => new Promise<IteratorResult<Uint8Array>>(() => {}),
-        return: async () => {
-          closed = true;
-          return {done: true as const, value: undefined};
-        },
-      }),
-    };
-    await assert.rejects(collect(limitStream(stalling, {maxBytes: 7, idleMs: 20, url: 'u'})), /stalled for 20 ms/);
-    assert.ok(closed);
+  it('fails promptly on a stalled response and closes the socket', async function () {
+    let socketClosed: () => void;
+    const closed = new Promise<void>((resolve) => (socketClosed = resolve));
+    const server = http.createServer((req, res) => {
+      req.socket.once('close', () => socketClosed());
+      // A partial body, then the connection is held open
+      res.writeHead(200, {'content-length': '1000'});
+      res.write('partial');
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    try {
+      const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/archive.zip`;
+      const body = await retrieveData(url, undefined, {timeout: 5000, responseType: 'stream'});
+      const started = Date.now();
+      await assert.rejects(collect(limitStream(body, {maxBytes: 1000, idleMs: 100, url})), /stalled for 100 ms/);
+      assert.ok(Date.now() - started < 2000);
+      await closed;
+    } finally {
+      server.closeAllConnections();
+      await new Promise((resolve) => server.close(resolve));
+    }
   });
+});
+
+describe('resolvePlatform', function () {
+  const cases: [string, HostInfo, DriverBrowser, string | null, string][] = [
+    // [title, host, browser, platform (null if unsupported), executable]
+    ['Intel Mac', {os: 'mac', arch: 'x64'}, 'chrome', 'mac-x64', 'chromedriver'],
+    ['Intel Mac', {os: 'mac', arch: 'x64'}, 'edge', 'mac64', 'msedgedriver'],
+    ['Apple Silicon Mac', {os: 'mac', arch: 'arm64'}, 'chrome', 'mac-arm64', 'chromedriver'],
+    ['Apple Silicon Mac', {os: 'mac', arch: 'arm64'}, 'edge', 'mac64_m1', 'msedgedriver'],
+    ['Windows x86', {os: 'win', arch: 'x86'}, 'chrome', 'win32', 'chromedriver.exe'],
+    ['Windows x86', {os: 'win', arch: 'x86'}, 'edge', 'win32', 'msedgedriver.exe'],
+    ['Windows x64', {os: 'win', arch: 'x64'}, 'chrome', 'win64', 'chromedriver.exe'],
+    ['Windows x64', {os: 'win', arch: 'x64'}, 'edge', 'win64', 'msedgedriver.exe'],
+    ['Windows ARM64 (Chrome falls back to x64)', {os: 'win', arch: 'arm64'}, 'chrome', 'win64', 'chromedriver.exe'],
+    ['Windows ARM64', {os: 'win', arch: 'arm64'}, 'edge', 'arm64', 'msedgedriver.exe'],
+    ['Linux x64', {os: 'linux', arch: 'x64'}, 'chrome', 'linux64', 'chromedriver'],
+    ['Linux x64', {os: 'linux', arch: 'x64'}, 'edge', 'linux64', 'msedgedriver'],
+    ['Linux ARM64', {os: 'linux', arch: 'arm64'}, 'chrome', 'linux-arm64', 'chromedriver'],
+    ['Linux ARM64 (no Edge build)', {os: 'linux', arch: 'arm64'}, 'edge', null, ''],
+    ['unknown Linux architecture', {os: 'linux', arch: 'other'}, 'chrome', null, ''],
+  ];
+
+  for (const [title, host, browser, platform, executable] of cases) {
+    it(`${browser} on ${title}`, function () {
+      if (platform === null) {
+        assert.throws(() => resolvePlatform(browser, host), /no prebuilt/);
+        return;
+      }
+      assert.equal(resolvePlatform(browser, host), platform);
+      assert.equal(getExecutableName(browser, platform), executable);
+    });
+  }
 });
