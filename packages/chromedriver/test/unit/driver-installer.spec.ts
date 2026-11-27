@@ -7,8 +7,14 @@ import {after, before, describe, it} from 'node:test';
 import {fs, tempDir, zip} from '@appium/support';
 
 import {TRUST_STORE_SUFFIX_ENV, assertKnownChromedriver, getTrustStoreDir} from '../../lib/checksums.js';
-import {getExecutableName, getHostInfo, limitStream, resolvePlatform} from '../../lib/driver-installer.js';
-import type {DriverBrowser, HostInfo} from '../../lib/driver-installer.js';
+import {
+  classifyHost,
+  getExecutableName,
+  getHostInfo,
+  limitStream,
+  resolvePlatform,
+} from '../../lib/driver-installer.js';
+import type {DriverBrowser, HostFacts, HostInfo} from '../../lib/driver-installer.js';
 import {installDriverFromCdn} from '../../lib/index.js';
 import {retrieveData} from '../../lib/utils.js';
 
@@ -127,7 +133,15 @@ describe('installDriverFromCdn', function () {
   });
 
   it('installs an already trusted driver from a custom CDN with trust: false', async function () {
-    // 'chrome-win' has been trusted by the first test
+    // Make the fixture known here, so the test does not depend on the order of the others
+    await installDriverFromCdn({
+      browser: 'chrome',
+      version: '120.0.1.2',
+      platform: 'win64',
+      cdnUrl: baseUrl,
+      trust: true,
+      destination: path.join(root, 'known-seed', 'chromedriver.exe'),
+    });
     const destination = path.join(root, 'known', 'chromedriver.exe');
     await installDriverFromCdn({
       browser: 'chrome',
@@ -138,6 +152,42 @@ describe('installDriverFromCdn', function () {
       destination,
     });
     assert.equal(await fs.readFile(destination, 'utf8'), 'chrome-win');
+  });
+
+  it('closes the response when staging fails before the archive is read', async function () {
+    let socketClosed: () => void;
+    const closed = new Promise<void>((resolve) => (socketClosed = resolve));
+    const holding = http.createServer((req, res) => {
+      req.socket.once('close', () => socketClosed());
+      res.writeHead(200, {'content-length': '1000'});
+      res.write('partial');
+    });
+    await new Promise<void>((resolve) => holding.listen(0, '127.0.0.1', resolve));
+    // A regular file as the parent makes creating the staging root fail
+    const blocker = path.join(root, 'blocker');
+    await fs.writeFile(blocker, 'file');
+    const previousTmp = process.env.APPIUM_TMP_DIR;
+    process.env.APPIUM_TMP_DIR = path.join(blocker, 'tmp');
+    try {
+      await assert.rejects(
+        installDriverFromCdn({
+          browser: 'chrome',
+          version: '120.0.1.2',
+          platform: 'linux64',
+          cdnUrl: `http://127.0.0.1:${(holding.address() as AddressInfo).port}`,
+          destination: path.join(root, 'staging-failure', 'chromedriver'),
+        }),
+      );
+      await closed;
+    } finally {
+      if (previousTmp === undefined) {
+        delete process.env.APPIUM_TMP_DIR;
+      } else {
+        process.env.APPIUM_TMP_DIR = previousTmp;
+      }
+      holding.closeAllConnections();
+      await new Promise((resolve) => holding.close(resolve));
+    }
   });
 
   it('uses the host platform when none is given', async function () {
@@ -288,6 +338,43 @@ describe('resolvePlatform', function () {
       }
       assert.equal(resolvePlatform(browser, host), platform);
       assert.equal(getExecutableName(browser, platform), executable);
+    });
+  }
+});
+
+describe('classifyHost', function () {
+  const cases: [string, HostFacts, HostInfo][] = [
+    [
+      'native Windows ARM64, even if the bitness reads 32',
+      {os: 'win', processArch: 'arm64', bitness: '32', cpu: 'intel'},
+      {os: 'win', arch: 'arm64'},
+    ],
+    [
+      'Windows ARM64 with 64-bit bitness',
+      {os: 'win', processArch: 'arm64', bitness: '64', cpu: 'intel'},
+      {os: 'win', arch: 'arm64'},
+    ],
+    ['32-bit Windows', {os: 'win', processArch: 'ia32', bitness: '32', cpu: 'intel'}, {os: 'win', arch: 'x86'}],
+    ['Windows x64', {os: 'win', processArch: 'x64', bitness: '64', cpu: 'intel'}, {os: 'win', arch: 'x64'}],
+    [
+      '32-bit node on 64-bit Windows',
+      {os: 'win', processArch: 'ia32', bitness: '64', cpu: 'intel'},
+      {os: 'win', arch: 'x64'},
+    ],
+    ['Apple Silicon Mac', {os: 'mac', processArch: 'arm64', bitness: '64', cpu: 'arm'}, {os: 'mac', arch: 'arm64'}],
+    ['Intel Mac', {os: 'mac', processArch: 'x64', bitness: '64', cpu: 'intel'}, {os: 'mac', arch: 'x64'}],
+    ['Linux x64', {os: 'linux', processArch: 'x64', bitness: '64', cpu: 'intel'}, {os: 'linux', arch: 'x64'}],
+    ['Linux ARM64', {os: 'linux', processArch: 'arm64', bitness: '64', cpu: 'intel'}, {os: 'linux', arch: 'arm64'}],
+    [
+      'Linux with another architecture',
+      {os: 'linux', processArch: 's390x', bitness: '64', cpu: 'intel'},
+      {os: 'linux', arch: 'other'},
+    ],
+  ];
+
+  for (const [title, facts, expected] of cases) {
+    it(title, function () {
+      assert.deepEqual(classifyHost(facts), expected);
     });
   }
 });

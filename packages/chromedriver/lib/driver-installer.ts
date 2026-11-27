@@ -77,12 +77,17 @@ export async function installDriverFromCdn(opts: InstallDriverFromCdnOptions): P
       cause: e,
     });
   }
-  return await installDriverFromArchive({
-    archive: limitStream(body, {maxBytes: MAX_ARCHIVE_BYTES, idleMs: IDLE_TIMEOUT_MS, url: url.toString()}),
-    executableName,
-    destination,
-    trust,
-  });
+  try {
+    return await installDriverFromArchive({
+      archive: limitStream(body, {maxBytes: MAX_ARCHIVE_BYTES, idleMs: IDLE_TIMEOUT_MS, url: url.toString()}),
+      executableName,
+      destination,
+      trust,
+    });
+  } finally {
+    // The archive is lazy: if staging fails before it is read, nothing else releases the connection
+    (body as Partial<Readable>).destroy?.();
+  }
 }
 
 function parseCdnUrl(value: string): URL {
@@ -105,19 +110,39 @@ export interface HostInfo {
   arch: 'x86' | 'x64' | 'arm64' | 'other';
 }
 
-/** Describes the current host the way the drivers' distributions distinguish platforms. */
+export interface HostFacts {
+  os: HostInfo['os'];
+  /** `process.arch` */
+  processArch: string;
+  /** The OS bitness as reported by `system.arch()`: `'32'` or `'64'` */
+  bitness: string;
+  cpu: (typeof CPU)[keyof typeof CPU];
+}
+
+/** Classifies the host the way the drivers' distributions distinguish platforms. */
+export function classifyHost({os: osName, processArch, bitness, cpu}: HostFacts): HostInfo {
+  switch (osName) {
+    case OS.WINDOWS:
+      // `system.arch()` can report '32' for a native ARM64 process, so check it first
+      if (processArch === 'arm64') {
+        return {os: osName, arch: 'arm64'};
+      }
+      return {os: osName, arch: bitness === ARCH.X86 ? 'x86' : 'x64'};
+    case OS.MAC:
+      return {os: osName, arch: cpu === CPU.ARM ? 'arm64' : 'x64'};
+    default:
+      return {os: osName, arch: processArch === 'arm64' ? 'arm64' : processArch === 'x64' ? 'x64' : 'other'};
+  }
+}
+
+/** Describes the current host. */
 export async function getHostInfo(): Promise<HostInfo> {
-  const osName = getOsName();
-  if (osName === OS.WINDOWS) {
-    if (String(await system.arch()) === ARCH.X86) {
-      return {os: osName, arch: 'x86'};
-    }
-    return {os: osName, arch: process.arch === 'arm64' ? 'arm64' : 'x64'};
-  }
-  if (osName === OS.MAC) {
-    return {os: osName, arch: getCpuType() === CPU.ARM ? 'arm64' : 'x64'};
-  }
-  return {os: osName, arch: process.arch === 'arm64' ? 'arm64' : process.arch === 'x64' ? 'x64' : 'other'};
+  return classifyHost({
+    os: getOsName(),
+    processArch: process.arch,
+    bitness: String(await system.arch()),
+    cpu: getCpuType(),
+  });
 }
 
 /** Returns the vendor platform token of the browser's driver distribution for the host. */
