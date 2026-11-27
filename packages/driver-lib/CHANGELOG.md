@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [16.1.5](https://github.com/appium/appium-android/compare/appium-android-driver@16.1.4...appium-android-driver@16.1.5) (2026-11-27)
+
+### Miscellaneous Chores
+
+* bump @appium/types to v3 ([#186](https://github.com/appium/appium-android/issues/186)) ([13b4f2b](https://github.com/appium/appium-android/commit/13b4f2bb5df0efae68a1b535b24256642b98bc33))
+
+
 ## [16.1.4](https://github.com/appium/appium-android/compare/appium-android-driver@16.1.3...appium-android-driver@16.1.4) (2026-11-26)
 
 **Note:** Version bump only for package appium-android-driver

@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [17.0.5](https://github.com/appium/appium-android/compare/appium-adb@17.0.4...appium-adb@17.0.5) (2026-11-27)
+
+### Miscellaneous Chores
+
+* bump @appium/types to v3 ([#186](https://github.com/appium/appium-android/issues/186)) ([13b4f2b](https://github.com/appium/appium-android/commit/13b4f2bb5df0efae68a1b535b24256642b98bc33))
+
+
 ## [17.0.4](https://github.com/appium/appium-android/compare/appium-adb@17.0.3...appium-adb@17.0.4) (2026-11-17)
 
 ### Miscellaneous Chores

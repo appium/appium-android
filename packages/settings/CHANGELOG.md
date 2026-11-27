@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [9.2.5](https://github.com/appium/appium-android/compare/io.appium.settings@9.2.4...io.appium.settings@9.2.5) (2026-11-27)
+
+### Miscellaneous Chores
+
+* bump @appium/types to v3 ([#186](https://github.com/appium/appium-android/issues/186)) ([13b4f2b](https://github.com/appium/appium-android/commit/13b4f2bb5df0efae68a1b535b24256642b98bc33))
+
+
 ## [9.2.4](https://github.com/appium/appium-android/compare/io.appium.settings@9.2.3...io.appium.settings@9.2.4) (2026-11-24)
 
 **Note:** Version bump only for package io.appium.settings

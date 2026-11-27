@@ -1,6 +1,6 @@
 {
   "name": "appium-android-driver",
-  "version": "16.1.4",
+  "version": "16.1.5",
   "description": "Android UiAutomator and Chrome support for Appium",
   "keywords": [
     "android",
@@ -50,12 +50,12 @@
   },
   "dependencies": {
     "@appium/support": "^8.0.0-beta.7",
-    "appium-adb": "^17.0.4",
+    "appium-adb": "^17.0.5",
     "appium-chromedriver": "^11.1.2",
     "asyncbox": "^7.1.0",
     "axios": "^1.18.0",
     "dayjs": "^1.11.21",
-    "io.appium.settings": "^9.2.4",
+    "io.appium.settings": "^9.2.5",
     "lru-cache": "^11.1.0",
     "semver": "^7.0.0",
     "teen_process": "^5.0.0",
