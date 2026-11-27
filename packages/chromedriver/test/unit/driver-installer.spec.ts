@@ -14,7 +14,7 @@ import {
   limitStream,
   resolvePlatform,
 } from '../../lib/driver-installer.js';
-import type {DriverBrowser, HostFacts, HostInfo} from '../../lib/driver-installer.js';
+import type {DriverBrowser, HostFacts, HostInfo, HostProbe} from '../../lib/driver-installer.js';
 import {installDriverFromCdn} from '../../lib/index.js';
 import {retrieveData} from '../../lib/utils.js';
 
@@ -377,4 +377,51 @@ describe('classifyHost', function () {
       assert.deepEqual(classifyHost(facts), expected);
     });
   }
+});
+
+describe('getHostInfo', function () {
+  const probe = (partial: Omit<HostProbe, 'bitness' | 'cpu'> & {cpu?: HostProbe['cpu']}, bitness?: string) => {
+    const calls: number[] = [];
+    return {
+      calls,
+      probe: {
+        cpu: 'intel',
+        ...partial,
+        bitness: async () => {
+          calls.push(1);
+          if (bitness === undefined) {
+            throw new Error('uname is not available');
+          }
+          return bitness;
+        },
+      } as HostProbe,
+    };
+  };
+
+  for (const facts of [
+    {os: 'linux', processArch: 'x64'},
+    {os: 'linux', processArch: 'arm64'},
+    {os: 'mac', processArch: 'arm64', cpu: 'arm'},
+  ] as const) {
+    it(`does not query the bitness on ${facts.os}/${facts.processArch}`, async function () {
+      const {probe: p, calls} = probe({...facts});
+      const host = await getHostInfo(p);
+      assert.equal(host.os, facts.os);
+      assert.equal(calls.length, 0);
+    });
+  }
+
+  it('does not query the bitness for a native Windows ARM64 process', async function () {
+    const {probe: p, calls} = probe({os: 'win', processArch: 'arm64'});
+    assert.deepEqual(await getHostInfo(p), {os: 'win', arch: 'arm64'});
+    assert.equal(calls.length, 0);
+  });
+
+  it('queries the bitness on Windows otherwise', async function () {
+    const x86 = probe({os: 'win', processArch: 'ia32'}, '32');
+    assert.deepEqual(await getHostInfo(x86.probe), {os: 'win', arch: 'x86'});
+    assert.equal(x86.calls.length, 1);
+    const x64 = probe({os: 'win', processArch: 'x64'}, '64');
+    assert.deepEqual(await getHostInfo(x64.probe), {os: 'win', arch: 'x64'});
+  });
 });

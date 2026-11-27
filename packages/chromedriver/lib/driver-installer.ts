@@ -114,8 +114,8 @@ export interface HostFacts {
   os: HostInfo['os'];
   /** `process.arch` */
   processArch: string;
-  /** The OS bitness as reported by `system.arch()`: `'32'` or `'64'` */
-  bitness: string;
+  /** The OS bitness as reported by `system.arch()` (`'32'` or `'64'`). Only needed on Windows. */
+  bitness?: string;
   cpu: (typeof CPU)[keyof typeof CPU];
 }
 
@@ -135,14 +135,24 @@ export function classifyHost({os: osName, processArch, bitness, cpu}: HostFacts)
   }
 }
 
+export interface HostProbe extends Omit<HostFacts, 'bitness'> {
+  /** Queries the OS bitness. It may spawn a process, so it is only called where it is needed. */
+  bitness: () => Promise<string>;
+}
+
+const defaultProbe = (): HostProbe => ({
+  os: getOsName(),
+  processArch: process.arch,
+  cpu: getCpuType(),
+  bitness: async () => String(await system.arch()),
+});
+
 /** Describes the current host. */
-export async function getHostInfo(): Promise<HostInfo> {
-  return classifyHost({
-    os: getOsName(),
-    processArch: process.arch,
-    bitness: String(await system.arch()),
-    cpu: getCpuType(),
-  });
+export async function getHostInfo(probe: HostProbe = defaultProbe()): Promise<HostInfo> {
+  const {bitness, ...facts} = probe;
+  // `system.arch()` spawns `uname -m` on Linux/macOS and is not needed for a native ARM64 process
+  const needsBitness = facts.os === OS.WINDOWS && facts.processArch !== 'arm64';
+  return classifyHost({...facts, bitness: needsBitness ? await bitness() : undefined});
 }
 
 /** Returns the vendor platform token of the browser's driver distribution for the host. */
