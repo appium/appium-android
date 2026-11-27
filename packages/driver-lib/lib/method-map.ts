@@ -2,14 +2,7 @@ import type {MethodMap} from '@appium/types';
 
 import type {AndroidDriver} from './driver.js';
 
-export const newMethodMap = {
-  '/session/:sessionId/timeouts/implicit_wait': {
-    POST: {
-      command: 'implicitWait',
-      payloadParams: {required: ['ms']},
-      deprecated: true,
-    },
-  },
+const baseMethodMap = {
   '/session/:sessionId/ime/available_engines': {GET: {command: 'availableIMEEngines'}},
   '/session/:sessionId/ime/active_engine': {GET: {command: 'getActiveIMEEngine'}},
   '/session/:sessionId/ime/activated': {GET: {command: 'isIMEActivated'}},
@@ -26,25 +19,12 @@ export const newMethodMap = {
       deprecated: true,
     },
   },
-  '/session/:sessionId/orientation': {
-    GET: {command: 'getOrientation'},
-    POST: {
-      command: 'setOrientation',
-      payloadParams: {required: ['orientation']},
-    },
-  },
   '/session/:sessionId/context': {
     GET: {command: 'getCurrentContext'},
     POST: {command: 'setContext', payloadParams: {required: ['name']}},
   },
   '/session/:sessionId/contexts': {
     GET: {command: 'getContexts'},
-  },
-  '/session/:sessionId/rotation': {
-    // Not implemented locally - the UiAutomator2 server supports this endpoint
-    // natively, so the request is proxied straight through for that driver.
-    GET: {command: 'getRotation'},
-    POST: {command: 'setRotation', payloadParams: {required: ['x', 'y', 'z']}},
   },
   '/session/:sessionId/keys': {
     POST: {
@@ -121,14 +101,22 @@ export const newMethodMap = {
   '/session/:sessionId/appium/device/press_keycode': {
     POST: {
       command: 'pressKeyCode',
-      payloadParams: {required: ['keycode'], optional: ['metastate', 'flags']},
+      payloadParams: {
+        required: ['keycode'],
+        optional: ['metastate', 'flags'],
+        makeArgs: ({keycode, metastate, flags}) => [keycode, metastate, flags],
+      },
       deprecated: true,
     },
   },
   '/session/:sessionId/appium/device/long_press_keycode': {
     POST: {
       command: 'longPressKeyCode',
-      payloadParams: {required: ['keycode'], optional: ['metastate', 'flags']},
+      payloadParams: {
+        required: ['keycode'],
+        optional: ['metastate', 'flags'],
+        makeArgs: ({keycode, metastate, flags}) => [keycode, metastate, flags],
+      },
       deprecated: true,
     },
   },
@@ -185,13 +173,6 @@ export const newMethodMap = {
     POST: {
       command: 'networkSpeed',
       payloadParams: {required: ['netspeed']},
-      deprecated: true,
-    },
-  },
-  '/session/:sessionId/appium/device/keyevent': {
-    POST: {
-      command: 'keyevent',
-      payloadParams: {required: ['keycode'], optional: ['metastate']},
       deprecated: true,
     },
   },
@@ -325,3 +306,29 @@ export const newMethodMap = {
     },
   },
 } as const satisfies MethodMap<AndroidDriver>;
+
+// Implemented by subclasses (e.g. UiAutomator2) or proxied, so commands are not checked
+const subclassMethodMap = {
+  '/session/:sessionId/orientation': {
+    GET: {command: 'getOrientation'},
+    POST: {
+      command: 'setOrientation',
+      payloadParams: {required: ['orientation']},
+    },
+  },
+  '/session/:sessionId/rotation': {
+    // Not implemented locally - the UiAutomator2 server supports this endpoint
+    // natively, so the request is proxied straight through for that driver.
+    GET: {command: 'getRotation'},
+    POST: {command: 'setRotation', payloadParams: {required: ['x', 'y', 'z']}},
+  },
+  '/session/:sessionId/appium/device/keyevent': {
+    POST: {
+      command: 'keyevent',
+      payloadParams: {required: ['keycode'], optional: ['metastate']},
+      deprecated: true,
+    },
+  },
+} as const satisfies MethodMap<AndroidDriver, true>;
+
+export const newMethodMap = {...baseMethodMap, ...subclassMethodMap};
